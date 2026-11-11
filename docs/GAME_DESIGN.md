@@ -11,7 +11,7 @@ You drive an overpowered storm truck at 140 mph after a super tornado doing a hu
 1. **Chase (the wheel).** Close on the storm. It throws cars, tractors and barn doors at where you are going; you dodge, and the crew shoot wreckage out of the air.
 2. **Guns (the turret).** Cross into the storm's danger zone and you are on the gun, first person, while the truck drives itself. You aim and you fire: the machine gun on the band, rockets for anything armoured. Whatever you do not shoot down lands on the truck.
 3. **Harpoon.** Back at the wheel. Hook the weakened storm. It is dragged from a hundred miles an hour to a crawl.
-4. **DOROTHY.** Send the sensors. The camera leaves the truck and rides with them as they are sucked round and up the funnel; the truck drives itself. The storm weakens further and its core goes critical.
+4. **DOROTHY.** Release the swarm: eighty green sensors. The camera leaves the truck and rides with them as they are dragged in, sucked round and up, and keep swirling inside the funnel until it dies; the truck drives itself. The storm weakens further and its core goes critical.
 5. **Kill shot (the turret).** Hold the launcher on the glowing core until it locks. One rocket. The camera rides with it.
 
 **Driving feels like driving and shooting feels like shooting** because they are never the same moment: one seat at a time, one swing of the camera between them.
@@ -64,7 +64,7 @@ Simulated fight lengths: a gunner who never misses the seam takes Skinny Pete in
 | **Scripted** | Crossing into the danger zone puts you on the gun. A band shot off, or the storm weakened, puts you back at the wheel. A critical core puts you on the launcher. |
 | **Manual** | GUNS (the action button during a chase) takes the turret anywhere, and the autodrive closes the range for you, slower than you would. DRIVE gives the wheel back; it stays yours for at least four seconds, and until you leave the zone and come back in. |
 | **The swing** | 0.3 s, measured from the truck so the world never stops moving. No cut, no fade, no loading. Cuts are kept for the two cinematics. Calm mode shortens it to 0.1 s. |
-| **Nothing carries over** | Every finger and key held through a change is dropped, and the new seat ignores input for a fifth of a second: the thumb that pressed GUNS does not fire, the thumb that was aiming does not steer. |
+| **Nothing carries over** | Every finger and key held through a change is dropped, and the new seat ignores input for a third of a second: the thumb that pressed GUNS does not fire, the thumb that was aiming does not steer. |
 
 ### Autodrive
 
@@ -126,7 +126,7 @@ Protecting the truck and hurting the storm are different jobs done by different 
 | **Rockets** | you, on the turret (swap, hold the reticle on a target 0.4 s to lock, FIRE) | one rocket ends a car, a tractor or a satellite twister and anything within 17 m of it; takes 18% off a band | 3 in the rack (4 at most), 2 more after every band |
 | **Shotgun** | the crew, automatically | the last-second save: blasts whatever is about to hit you, and clears wrecks off the road | 22 m range, 4 s between shots (6.4 s while you are on the gun) |
 | **Harpoon** | you (phase 3) | hooks the weakened storm and drags it to a crawl | only on a weakened storm; 7 s window |
-| **DOROTHY** | you (phase 4) | sensors sucked up the funnel weaken it further and turn the core critical | only on a hooked storm |
+| **DOROTHY** | you (phase 4) | a swarm of sensors, sucked up to swirl inside the funnel, weakens it further and turns the core critical | only on a hooked storm |
 | **The kill shot** | you, on the turret (phase 5) | the launcher, locked on the critical core | one job, one shot; it does not come out of the rack |
 
 ### Knowing a shot landed
@@ -147,6 +147,8 @@ Damage shows on the target as well as in a bar. Wreckage chars as it is hit, tra
 The reticle is the weapon: an open cross for the gun, corner brackets with a ring that closes into a lock for the launcher. It is cream at rest, amber on something you can hurt, magenta on the seam or a lock, grey out of range. Each piece of wreckage in the air carries a magenta bracket (double for armour, flashing in its last 0.8 s), and an arrow on the edge of the screen when it is out of frame.
 
 **Each rig mounts a different gun.** The Mule's machine gun is the all-rounder. The Bulldog's minigun does 35% more damage but sprays. The Whippet's autocannon fires slow, heavy, dead-straight shots. They sound different and you see a different weapon in front of you: a jacketed barrel, six barrels in a turning cage, one long barrel with a slotted brake.
+
+**Cows.** Herds graze the open plains and every farm. The funnel lifts them, every super tornado keeps a few in orbit, and it throws them at you along with the bales and doors. They moo. Shoot them down like any other wreckage.
 
 **Not built yet:** COLD FRONT (briefly stops the storm juking) and CORKSCREW (an alternative to rockets for a rotating core). Both are designed as swaps for the DOROTHY slot and wait until the core loop has been played by people.
 

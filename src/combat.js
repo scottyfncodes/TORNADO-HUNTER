@@ -19,7 +19,7 @@ const SAT_RING = new THREE.RingGeometry(7, 8.6, 28), SAT_MAT = new THREE.MeshBas
 const BOUND = 1120;
 // rolling starts: rig on a road at speed, storm already running ahead of it
 const STARTS = { pete: [768, -1100, 0], agnes: [-1050, 768, Math.PI / 2], sisters: [256, 1050, Math.PI] };
-const SMALL = ['bale', 'door', 'sign'], BIG = ['car', 'tractor'];
+const SMALL = ['cow', 'bale', 'cow', 'door', 'cow', 'sign'], BIG = ['car', 'tractor'];
 
 export class Mission {
   constructor(G, def, loadout, upgrades, opts = {}) {
@@ -92,13 +92,13 @@ export class Mission {
     }
     if (this.phase === 'rip') { // phase 4: DOROTHY. The camera goes with the sensors; the truck looks after itself.
       this.phase = 'dorothy'; this.phaseT = 0; this.stats.dorothys++; G.audio.probeLaunch(); this.say('probe'); this.clearHazards(true); r.immune = Math.max(r.immune, FEEL.dorothySeconds + 0.6);
-      this.cine = { kind: 'pod', pos: G.fx.pod.position }; this.call('DOROTHY IS FLYING', 'good', 1.6);
-      G.fx.launchPod(r.muzzle(_a), s, () => {
+      this.cine = { kind: 'pod', pos: G.fx.swarmCenter }; this.call('DOROTHY IS FLYING', 'good', 1.6);
+      G.fx.launchSwarm(r.muzzle(_a), s, FEEL.dorothySeconds, () => {
         this.cine = null; if (this.phase !== 'dorothy') return;
         this.phase = 'kill'; this.phaseT = 0; this.killT = this.p.kill; this.reload = 0; s.thinTarget = Math.max(0.28, s.thinTarget * this.p.dorothyThin); this.enterGun('kill');
         G.audio.ping(); G.audio.dorothy(); G.audio.stagger(); G.fx.flash(0.6, PALETTE.signal); G.fx.shake(9); G.fx.hitStop(0.06); G.sky.strike(1); this.earn(10); this.call('CORE CRITICAL: KILL SHOT', 'good', 1.8);
         for (let i = 0; i < 5; i++) { s.spineAt(0.1 + i * 0.07, _a); G.fx.energy.play(s.x + _a.x, s.groundY + (0.1 + i * 0.07) * s.height, s.z + _a.z, 30, 30, { fps: 30 + i * 4 }); }
-      }, FEEL.dorothySeconds);
+      });
       return true;
     }
     if (this.phase === 'kill') { this.enterGun('kill'); return true; } // phase 5 is fired from the turret
@@ -164,6 +164,7 @@ export class Mission {
     const tx = clamp(r.x + ux * Math.max(18, sp * dur * lead) - uz * lateral, -1480, 1480), tz = clamp(r.z + uz * Math.max(18, sp * dur * lead) + ux * lateral, -1480, 1480);
     s.spineAt(0.2, _a); const h = G.fx.hazard(kind, { x: s.x + _a.x, y: s.groundY + s.height * 0.2, z: s.z + _a.z }, { x: tx, y: G.fx.ground(tx, tz) + 1, z: tz }, dur); if (!h) return;
     // it is thrown at where you will be, and corrects in flight until it locks: the last stretch is yours to dodge
+    if (kind === 'cow' && this.time - (this.mooT || -9) > 1.6) { this.mooT = this.time; G.audio.moo(); if (Math.random() < 0.4) this.call('COW', 'bad', 0.7); }
     const rad = big ? 10 : 7.5, lock = dur - Math.max(0.75, dur * 0.42), off = { x: -uz * lateral, z: ux * lateral };
     const tele = G.fx.telegraph(tx, tz, rad, dur + 0.05, null, { lock, track: (e, dt) => { const left = Math.max(0.2, h.dur - h.t), k = Math.min(1, dt * 4); e.x += (clamp(r.x + r.vx * left * lead + off.x, -1480, 1480) - e.x) * k; e.z += (clamp(r.z + r.vz * left * lead + off.z, -1480, 1480) - e.z) * k; h.tx = e.x; h.tz = e.z; h.ty = G.fx.ground(e.x, e.z) + 1; } });
     const hp = big ? FEEL.wreckHpBig : FEEL.wreckHp; this.hz.push({ h, big, hp, max: hp, rad, state: 'fly', tele });
@@ -285,7 +286,7 @@ export class Mission {
       if (Math.random() < dt * 12) { s.seam(b, r.x, r.z, _a); fx.flashAt(_a.x, _a.y, _a.z, 9, '#ff3f8e', 0.1); }
       fx.shake(this.view === 'gun' ? 0.6 : 2);
       if (this.phase === 'rip') this.hookT -= dt; else if (this.phase === 'kill' && !(this.cine && this.cine.kind === 'rocket')) this.killT -= dt;
-      if ((this.phase === 'rip' && this.hookT <= 0) || (this.phase === 'kill' && this.killT <= 0)) { this.leaveGun(); this.zoneLatch = false; this.phase = 'chase'; this.phaseT = 0; this.line = null; fx.hideCable(0); this.hp = this.stageMax * FEEL.hookRecover; s.thinTarget = 0.42 + 0.58 * s.bandsLeft / s.bands.length; this.call('LINE LET GO', 'bad', 1.4); G.audio.lineSnap(); }
+      if ((this.phase === 'rip' && this.hookT <= 0) || (this.phase === 'kill' && this.killT <= 0)) { this.leaveGun(); this.zoneLatch = false; this.phase = 'chase'; this.phaseT = 0; this.line = null; fx.hideCable(0); this.hp = this.stageMax * FEEL.hookRecover; s.thinTarget = 0.42 + 0.58 * s.bandsLeft / s.bands.length; fx.endSwarm(); this.call('LINE LET GO', 'bad', 1.4); G.audio.lineSnap(); }
     }
 
     // ---- rig ----
@@ -361,7 +362,7 @@ export class Mission {
     if (!this.surge) { if (!over && this.phase === 'chase' && dist < this.zone * 2.6) fx.setRing(s.x, s.z, this.zone, 1, this.inZone ? 0.28 : 0.45 + 0.2 * Math.sin(t * 5), this.inZone ? PALETTE.signal : PALETTE.primary, this.inZone ? 3 : 5); else fx.hideRing(); }
     this.convoy.update(dt, t, r, s);
     w.update(dt, s);
-    for (const e of w.events) { if (e.kind === 'rip') { fx.puff(e.x, e.y + 3, e.z, e.big ? 22 : 9, '#b89a58', 1.2); if (e.big && dist < 500) { G.audio.smash(); fx.shake(3); } } else if (e.kind === 'land' && Math.hypot(e.x - r.x, e.z - r.z) < 120) fx.puff(e.x, e.y + 1, e.z, 7); }
+    for (const e of w.events) { if (e.kind === 'rip') { fx.puff(e.x, e.y + 3, e.z, e.big ? 22 : 9, '#b89a58', 1.2); if (e.cow && dist < 420 && this.time - (this.mooT || -9) > 2.2) { this.mooT = this.time; G.audio.moo(); } if (e.big && dist < 500) { G.audio.smash(); fx.shake(3); } } else if (e.kind === 'land' && Math.hypot(e.x - r.x, e.z - r.z) < 120) fx.puff(e.x, e.y + 1, e.z, 7); }
     w.events.length = 0;
     s.hit = Math.max(0, (s.hit || 0) - dt * 3); const core = this.phase === 'dorothy' ? 0.3 + 0.5 * Math.min(1, this.phaseT / FEEL.dorothySeconds) : this.phase === 'kill' ? 0.85 + 0.15 * Math.sin(t * 18) : this.phase === 'stagger' || this.phase === 'rip' ? 0.5 + 0.2 * Math.sin(t * 10) : Math.max(s.hit * 0.8, this.inZone && this.firing > 0 ? 0.18 : 0);
     s.mat.uniforms.uCore.value += (core - s.mat.uniforms.uCore.value) * Math.min(1, dt * 10);

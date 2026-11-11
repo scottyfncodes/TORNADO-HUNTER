@@ -15,7 +15,7 @@ const _px = { x: 0, y: 0 }, _ky = { x: 0, y: 0 };
 const INK = '#1b2224', STEEL = '#3a4648', GUNMETAL = '#8b9693', CHROME = '#c9cdca', AMBER = '#ffc531', CREAM = '#f3ecd8', HAZ = '#e8b21c', OLIVE = '#4f6b54';
 const HALF = WORLD.size / 2 - 40;
 export const TARGET = {
-  bale: { name: 'HAY BALE', cols: ['#d9b45a', '#b89a58', '#8a7340'] }, door: { name: 'BARN DOOR', cols: ['#a3352b', '#f3ecd8', '#6e2a22'] }, sign: { name: 'ROAD SIGN', cols: ['#3f8f5a', '#aab3b4', '#f3ecd8'] },
+  cow: { name: 'COW', cols: ['#f1eee2', '#22292a', '#e8a0a8'] }, bale: { name: 'HAY BALE', cols: ['#d9b45a', '#b89a58', '#8a7340'] }, door: { name: 'BARN DOOR', cols: ['#a3352b', '#f3ecd8', '#6e2a22'] }, sign: { name: 'ROAD SIGN', cols: ['#3f8f5a', '#aab3b4', '#f3ecd8'] },
   car: { name: 'CAR', cols: ['#3f7f86', '#e9dfc4', '#1b2224'] }, tractor: { name: 'TRACTOR', cols: ['#3f8f3a', '#e8b21c', '#1b2224'] },
 };
 

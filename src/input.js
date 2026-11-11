@@ -2,11 +2,13 @@
 //   drive: floating stick on the left half, BOOST and one action button under the right thumb
 //   gun:   drag anywhere to aim (the FIRE button aims too, so one thumb can track and shoot), hold FIRE
 // Switching modes drops every held finger and key: nothing carries over as a shot or a swerve.
+import { FEEL } from './config.js';
+
 const keys = new Set();
 const pressed = { action: 0, boost: 0, mode: 0, swap: 0, pause: 0 }; // time of the last unconsumed press
 let stickId = null, stickOrigin = { x: 0, y: 0 }, stick = { x: 0, y: 0, active: false };
 let now = 0, touchSeen = false, els = null, enabled = false, mode = 'drive', modeAt = 0;
-const STICK_R = 56, GUARD = 0.22;
+const STICK_R = 56, GUARD = FEEL.gunGuard;
 const aim = { dx: 0, dy: 0, ptrs: new Map() }; // pixels dragged since the last read
 const fire = { ptrs: new Set(), mouse: false, key: false, stale: new Set() };
 const guarded = () => now - modeAt < GUARD;
@@ -124,7 +126,7 @@ export const input = {
     document.addEventListener('touchmove', (e) => { if (enabled) e.preventDefault(); }, { passive: false });
   },
   setEnabled(v) { enabled = v; if (!v) { keys.clear(); dropHeld(); if (document.pointerLockElement) document.exitPointerLock?.(); } },
-  // 'drive' or 'gun'. Everything held is let go, and the new controls ignore the first fifth of a second.
+  // 'drive' or 'gun'. Everything held is let go, and the new controls ignore the first third of a second.
   setMode(m) {
     if (m === mode) return; mode = m; modeAt = now; dropHeld();
     document.body.classList.toggle('gunning', m === 'gun');
