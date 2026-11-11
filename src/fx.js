@@ -1,7 +1,7 @@
 // Effects: ground telegraphs, the cable and its ring, flipbooks, dust, thrown chunks, data shards, shake, hit-stop.
 import * as THREE from '../vendor/three.module.min.js';
 import { PALETTE } from './config.js';
-import { box, cyl, merge } from './geo.js';
+import { box, cyl, merge, cowGeo } from './geo.js';
 
 const F = 'assets/fx/';
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3(), dummy = new THREE.Object3D();
@@ -57,6 +57,7 @@ export class Fx {
     // wreckage the storm throws: real objects you can read, dodge and shoot (pooled)
     const W = '#f3ecd8', K = '#1b2224';
     this.hazGeo = {
+      cow: cowGeo(),
       bale: merge([cyl(1.5, 1.5, 2.0, '#d9b45a', 0, 0, 0, 10, 0, Math.PI / 2)]),
       door: merge([box(4.2, 0.3, 2.6, '#a3352b', 0, 0, 0), box(4.3, 0.34, 0.3, W, 0, 0, 0), box(0.3, 0.34, 2.7, W, 0, 0, 0)]),
       sign: merge([box(3.2, 2.2, 0.2, '#3f8f5a', 0, 0, 0), box(3.4, 0.3, 0.24, W, 0, 0.95, 0), box(0.25, 3.6, 0.25, '#aab3b4', 0, -2.6, 0)]),
@@ -70,6 +71,10 @@ export class Fx {
     const ti = []; for (let i = 0; i < this.TR; i++) { const a = i * 4; ti.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } tg.setIndex(ti);
     this.tracerMesh = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ color: '#ffe08a', blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false, side: THREE.DoubleSide })); this.tracerMesh.frustumCulled = false; this.tracerMesh.renderOrder = 7; scene.add(this.tracerMesh);
     this.tracers = []; for (let i = 0; i < this.TR; i++) this.tracers.push({ on: false, a: new THREE.Vector3(), b: new THREE.Vector3(), t: 0, life: 0.1 });
+    // DOROTHY: a swarm of sensors, drawn over the funnel so you can watch them swirl inside it
+    this.SW = 80; this.swarmMesh = new THREE.InstancedMesh(new THREE.OctahedronGeometry(0.85), new THREE.MeshBasicMaterial({ color: '#4dff8f', depthTest: false, depthWrite: false, fog: false, transparent: true }), this.SW);
+    this.swarmMesh.frustumCulled = false; this.swarmMesh.renderOrder = 4; this.swarmMesh.visible = false; scene.add(this.swarmMesh);
+    this.swarm = { on: false }; this.swarmCenter = new THREE.Vector3();
     // rockets
     const rgeo = merge([cyl(0.28, 0.28, 2.2, W, 0, 0, 0, 6, Math.PI / 2), cyl(0.02, 0.3, 0.8, PALETTE.accent, 0, 0, 1.5, 5, Math.PI / 2), box(1.1, 0.08, 0.5, K, 0, 0, -0.9), box(0.08, 1.1, 0.5, K, 0, 0, -0.9)]);
     this.rockets = []; for (let i = 0; i < 4; i++) { const m = new THREE.Mesh(rgeo, new THREE.MeshBasicMaterial({ vertexColors: true, fog: false })); m.visible = false; scene.add(m); this.rockets.push({ m, on: false, p: new THREE.Vector3() }); }
@@ -174,6 +179,14 @@ export class Fx {
       if (dur > 2 && Math.random() < 0.5) { this.flashAt(this.pod.position.x + (Math.random() - 0.5) * 6, this.pod.position.y + (Math.random() - 0.5) * 6, this.pod.position.z + (Math.random() - 0.5) * 6, 3.5, '#62f58c', 0.25); }
     }, () => { this.pod.visible = false; onEaten(); });
   }
+  // release the swarm: each sensor arcs from the rig to the foot of the funnel, is caught, and goes round and up inside it.
+  // They keep swirling until endSwarm(). onEaten fires once, after `dur` seconds.
+  launchSwarm(from, storm, dur, onEaten) {
+    const items = []; for (let i = 0; i < this.SW; i++) items.push({ delay: Math.random() * dur * 0.3, ang: Math.random() * 6.283, rf: Math.random(), vf: Math.random(), sp: 0.7 + Math.random() * 0.9, ox: (Math.random() - 0.5) * 9, oy: Math.random() * 8, oz: (Math.random() - 0.5) * 9, arc: 8 + Math.random() * 22 });
+    this.swarm = { on: true, t: 0, dur, storm, from: from.clone(), items, onEaten, eaten: false, fade: 1, ending: false };
+    this.swarmMesh.visible = true; this.swarmCenter.copy(from);
+  }
+  endSwarm() { if (this.swarm.on) this.swarm.ending = true; }
   launchHarpoon(from, getTarget, onHit) {
     const start = from.clone(); this.bolt.visible = true;
     this.anim(0.28, (k) => { const to = getTarget(_a); this.bolt.position.lerpVectors(start, to, k); this.bolt.lookAt(to); this.bolt.rotateX(Math.PI / 2); this.setCable(0, start, this.bolt.position, 0.5, 0); }, () => { this.bolt.visible = false; onHit(); });
@@ -231,6 +244,29 @@ export class Fx {
       if (d <= step + 3 || r.t > 3) { r.on = false; r.m.visible = false; r.onHit(to.clone()); continue; }
       r.p.addScaledVector(_b, step / d); r.m.position.copy(r.p); r.m.lookAt(to); this.puff(r.p.x, r.p.y, r.p.z, 2.6, '#e9e2cc', 0.45, 1); this.flashAt(r.p.x - _b.x / d * 1.5, r.p.y - _b.y / d * 1.5, r.p.z - _b.z / d * 1.5, 3.2, '#ffb14a', 0.05);
     }
+    const sw = this.swarm;
+    if (sw.on) {
+      sw.t += dt; const s = sw.storm, A = sw.dur * 0.42; let cx = 0, cy = 0, cz = 0, n = 0;
+      if (sw.ending || !s.alive) { sw.fade -= dt * 0.9; if (sw.fade <= 0) { sw.on = false; this.swarmMesh.visible = false; } }
+      for (let i = 0; i < this.SW; i++) {
+        const it = sw.items[i], lt = sw.t - it.delay; let sc = 0;
+        if (lt > 0) {
+          if (lt < A) { // thrown, then dragged along the ground by the inflow
+            const u = lt / A, e = u * u * (3 - 2 * u), r0 = s.radiusAt(0.03) * 1.2 + 4; s.spineAt(0.03, _a);
+            _c.set(s.x + _a.x + Math.cos(it.ang) * r0, s.groundY + 3, s.z + _a.z + Math.sin(it.ang) * r0);
+            _d.set(sw.from.x + it.ox, sw.from.y + it.oy, sw.from.z + it.oz).lerp(_c, e); _d.y += Math.sin(u * Math.PI) * it.arc;
+          } else { // inside: round and up, over and over
+            const q = lt - A, v = 0.03 + ((q * 0.13 * it.sp + it.vf * 0.02) % 0.52), a = it.ang + q * s.spin * (2.4 + it.sp * 1.6), r = s.radiusAt(v) * (0.18 + 0.72 * it.rf) * Math.min(1, 0.35 + q * 0.5); s.spineAt(v, _a);
+            _d.set(s.x + _a.x + Math.cos(a) * r, s.groundY + v * s.height + (sw.ending ? (1 - sw.fade) * 120 : 0), s.z + _a.z + Math.sin(a) * r);
+          }
+          sc = (0.7 + 0.5 * Math.sin(sw.t * 9 + i)) * sw.fade; cx += _d.x; cy += _d.y; cz += _d.z; n++;
+          dummy.position.copy(_d); dummy.rotation.set(sw.t * 5 + i, sw.t * 7, 0);
+        }
+        dummy.scale.setScalar(sc); dummy.updateMatrix(); this.swarmMesh.setMatrixAt(i, dummy.matrix);
+      }
+      this.swarmMesh.instanceMatrix.needsUpdate = true; if (n) this.swarmCenter.lerp(_c.set(cx / n, cy / n, cz / n), Math.min(1, dt * 6));
+      if (!sw.eaten && sw.t >= sw.dur) { sw.eaten = true; sw.onEaten && sw.onEaten(); }
+    }
     for (const f of this.flashes) { if (!f.on) continue; f.t += dt; const k = f.t / f.life; if (k >= 1) { f.on = false; f.s.visible = false; continue; } const sz = f.size * (0.6 + 0.6 * k); f.s.scale.set(sz, sz, 1); f.s.material.opacity = 1 - k; }
     let any = false;
     for (let i = 0; i < this.SH; i++) {
@@ -247,5 +283,5 @@ export class Fx {
     this.lightning.update(dt); this.energy.update(dt);
   }
 
-  reset() { this.clearTelegraphs(); this.hideCable(0); this.hideCable(1); this.hideRing(); this.setStake(false); this.anims.length = 0; this.pod.visible = this.bolt.visible = this.wave.visible = false; this.lightning.stop(); this.energy.stop(); for (const h of this.haz) { h.on = false; h.m.visible = false; } for (const r of this.rockets) { r.on = false; r.m.visible = false; } for (const f of this.flashes) { f.on = false; f.s.visible = false; } for (const t of this.tracers) t.on = false; for (const s of this.shards) s.on = false; for (let i = 0; i < this.SH; i++) { dummy.scale.setScalar(0); dummy.updateMatrix(); this.shardMesh.setMatrixAt(i, dummy.matrix); } this.shardMesh.instanceMatrix.needsUpdate = true; this.stopT = 0; this.slowT = 0; this.shakeAmt = 0; }
+  reset() { this.clearTelegraphs(); this.hideCable(0); this.hideCable(1); this.hideRing(); this.setStake(false); this.anims.length = 0; this.pod.visible = this.bolt.visible = this.wave.visible = false; this.lightning.stop(); this.energy.stop(); this.swarm = { on: false }; this.swarmMesh.visible = false; for (const h of this.haz) { h.on = false; h.m.visible = false; } for (const r of this.rockets) { r.on = false; r.m.visible = false; } for (const f of this.flashes) { f.on = false; f.s.visible = false; } for (const t of this.tracers) t.on = false; for (const s of this.shards) s.on = false; for (let i = 0; i < this.SH; i++) { dummy.scale.setScalar(0); dummy.updateMatrix(); this.shardMesh.setMatrixAt(i, dummy.matrix); } this.shardMesh.instanceMatrix.needsUpdate = true; this.stopT = 0; this.slowT = 0; this.shakeAmt = 0; }
 }

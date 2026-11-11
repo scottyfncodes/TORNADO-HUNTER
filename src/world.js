@@ -1,7 +1,7 @@
 // The plains: terrain mesh, one baked ground texture (fields, roads, towns), instanced props the storm can eat.
 import * as THREE from '../vendor/three.module.min.js';
 import { WORLD } from './config.js';
-import { box, cyl, cone, blob, octa, open, dome, prism, merge, rng } from './geo.js';
+import { box, cyl, cone, blob, octa, open, dome, prism, merge, rng, cowGeo } from './geo.js';
 
 const HALF = WORLD.size / 2, N = 129, CELL = WORLD.size / (N - 1);
 const HW0 = { x: -HALF, z: -1180 }, HW1 = { x: HALF, z: 1020 };
@@ -45,7 +45,7 @@ const KIT = {
   pole: { r: 0.5, solid: 1, g: () => merge([cyl(0.22, 0.28, 10, C.trunk, 0, 5, 0, 5), box(3.2, 0.25, 0.25, C.trunk, 0, 9.2, 0)]) },
   fence: { r: 2.6, soft: 1, drag: 0.94, g: () => merge([box(0.3, 1.5, 0.3, C.cream, -2.8, 0.75, 0), box(0.3, 1.5, 0.3, C.cream, 0, 0.75, 0), box(0.3, 1.5, 0.3, C.cream, 2.8, 0.75, 0), box(6, 0.2, 0.14, C.cream, 0, 1.25, 0), box(6, 0.2, 0.14, C.cream, 0, 0.7, 0)]) },
   bale: { r: 1.5, soft: 1, drag: 0.86, g: () => merge([cyl(1.25, 1.25, 1.7, C.wheat, 0, 1.25, 0, 10, 0, Math.PI / 2)]) },
-  cow: { r: 1.4, soft: 1, drag: 0.9, g: () => merge([box(1.1, 1.0, 2.2, C.hide, 0, 1.3, 0), box(0.7, 0.7, 0.8, C.dark, 0, 1.7, 1.4), box(0.5, 0.5, 0.6, C.dark, 0.2, 1.5, -0.3), box(0.25, 0.9, 0.25, C.hide, 0.4, 0.45, 0.8), box(0.25, 0.9, 0.25, C.hide, -0.4, 0.45, 0.8), box(0.25, 0.9, 0.25, C.hide, 0.4, 0.45, -0.8), box(0.25, 0.9, 0.25, C.hide, -0.4, 0.45, -0.8)]) },
+  cow: { r: 1.4, soft: 1, drag: 0.9, g: () => cowGeo() },
   sign: { r: 1.2, soft: 1, drag: 0.96, g: () => merge([box(0.2, 2.6, 0.2, C.tin, 0, 1.3, 0), box(1.8, 1.2, 0.12, C.mustard, 0, 2.6, 0)]) },
   car: { r: 2.3, soft: 1, drag: 0.7, g: () => merge([box(1.9, 0.8, 4.2, C.teal, 0, 0.8, 0), box(1.7, 0.7, 2.1, C.cream, 0, 1.5, -0.2)]) },
   oak: { r: 1.0, tree: 1, veg: 1, g: () => merge([open(cyl(0.35, 0.5, 3.2, C.trunk, 0, 1.6, 0, 4)), blob(2.6, C.leaf, 0, 4.6, 0, 0.85), octa(1.8, C.leaf2, 1.2, 5.6, 0.6)]) },
@@ -158,13 +158,15 @@ export class World {
       put('barn', x, z, rot); put('silo', x + 15, z + 6); if (R() < 0.6) put('silo', x + 15, z - 3, 0, 0.8);
       put('house', x - 22, z + 16, rot + 1.5708); put('windmill', x - 8, z - 24, R() * 6.28);
       for (let i = 0; i < 6; i++) put('bale', x + 24 + (i % 3) * 3.2, z - 18 - Math.floor(i / 3) * 3.4, R() * 0.4);
-      for (let i = 0; i < 5; i++) { const a = R() * 6.283, d = 45 + R() * 45; put('cow', x + Math.cos(a) * d, z + Math.sin(a) * d, R() * 6.28); }
+      for (let i = 0; i < 11; i++) { const a = R() * 6.283, d = 42 + R() * 60; put('cow', x + Math.cos(a) * d, z + Math.sin(a) * d, R() * 6.28); }
       const fz = this.nearestRoadLine(z), side = z > fz ? 1 : -1;
       for (let i = -7; i <= 7; i++) if (Math.abs(i) > 1) put('fence', x + i * 6, fz + side * 10.5, 0);
       put('sign', x + 6, fz + side * 9, 0);
     }
     for (let s = 40; s < HWL - 40; s += 70) { const x = HW0.x + HWD.x * s - HWD.z * 14, z = HW0.z + HWD.z * s + HWD.x * 14; if (gridDist(x) > 10 && gridDist(z) > 10 && !nearTown(x, z, 60)) put('pole', x, z, Math.atan2(HWD.x, HWD.z)); }
     for (let i = 0; i < 46; i++) { const x = (R() - 0.5) * (WORLD.size - 200), z = (R() - 0.5) * (WORLD.size - 200); if (this.clear(x, z, 30) && !nearTown(x, z, 170)) for (let k = 0, n = 3 + Math.floor(R() * 3); k < n; k++) put('bale', x + (R() - 0.5) * 30, z + (R() - 0.5) * 30, R() * 3.14); }
+    // herds out in the open: the plains are full of cattle, and the storm knows it
+    for (let i = 0; i < 26; i++) { const x = (R() - 0.5) * (WORLD.size - 300), z = (R() - 0.5) * (WORLD.size - 300); if (this.clear(x, z, 24) && !nearTown(x, z, 170)) for (let k = 0, n = 6 + Math.floor(R() * 6); k < n; k++) put('cow', x + (R() - 0.5) * 46, z + (R() - 0.5) * 46, R() * 6.28, 0.9 + R() * 0.25); }
     let i = 0;
     for (const v of scatter.vegetation) {
       i++; const sp = v.species, x = v.position[0] * WORLD.scale, z = v.position[2] * WORLD.scale;
@@ -263,8 +265,8 @@ export class World {
     const R = storm.eatRadius;
     this.near(storm.x, storm.z, R + 10, (p) => {
       if (p.state !== 0) return; const dx = p.x - storm.x, dz = p.z - storm.z, d2 = dx * dx + dz * dz; if (d2 > (R + p.r) * (R + p.r)) return;
-      this.events.push({ kind: 'rip', x: p.x, y: p.y, z: p.z, big: !!p.kit.solid && p.r > 3 });
-      if (this.flying.length >= FLY_MAX) { p.state = 2; this.place(p, 0, 0, 0); return; }
+      this.events.push({ kind: 'rip', x: p.x, y: p.y, z: p.z, big: !!p.kit.solid && p.r > 3, cow: p.type === 'cow' });
+      if (this.flying.length >= FLY_MAX + (p.type === 'cow' ? 24 : 0)) { p.state = 2; this.place(p, 0, 0, 0); return; }
       p.state = 1; p.mesh.frustumCulled = false; p.ang = Math.atan2(dz, dx); p.rad = Math.sqrt(d2); p.h = 0; p.life = 0; p.climb = 14 + Math.random() * 22; p.tx = 0; p.tz = 0; p.spin = 1 + Math.random() * 3; p.storm = storm; this.flying.push(p);
     });
   }

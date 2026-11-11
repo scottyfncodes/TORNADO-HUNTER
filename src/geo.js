@@ -52,6 +52,13 @@ export function merge(parts) {
   return g;
 }
 
+// one cow, used on the ground, in the air and round the funnel
+export function cowGeo() {
+  const W = '#f1eee2', K = '#22292a', P = '#e8a0a8';
+  return merge([box(1.2, 1.1, 2.4, W, 0, 1.4, 0), box(1.22, 0.6, 0.9, K, 0, 1.55, 0.45), box(0.7, 0.5, 0.7, K, 0.27, 1.25, -0.7), box(0.72, 0.72, 0.85, W, 0, 1.85, 1.5), box(0.5, 0.36, 0.3, P, 0, 1.65, 2.0), box(0.16, 0.3, 0.16, K, 0.4, 2.3, 1.35), box(0.16, 0.3, 0.16, K, -0.4, 2.3, 1.35), box(0.5, 0.3, 0.5, P, 0, 0.75, -0.5),
+    box(0.26, 0.95, 0.26, W, 0.42, 0.47, 0.85), box(0.26, 0.95, 0.26, W, -0.42, 0.47, 0.85), box(0.26, 0.95, 0.26, W, 0.42, 0.47, -0.85), box(0.26, 0.95, 0.26, W, -0.42, 0.47, -0.85), box(0.12, 0.9, 0.12, K, 0, 1.5, -1.3, 0, 0.5)]);
+}
+
 // tileable value noise on a canvas (the one texture every weather shader samples)
 export function noiseTexture(size = 128, seed = 7) {
   let s = seed >>> 0; const rnd = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);

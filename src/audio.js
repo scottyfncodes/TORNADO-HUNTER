@@ -89,6 +89,8 @@ export const audio = {
   warn() { tone('square', 740, 740, 0.09, 0.07); tone('square', 740, 740, 0.09, 0.07, 0.16); },
   // the arsenal: each one has to be told apart with your eyes shut
   mg() { burst('highpass', 1800, 0.7, 0.045, 0.22); tone('square', 150, 70, 0.05, 0.12); },
+  // a cow at altitude, with opinions
+  moo() { if (!ctx) return; const t = ctx.currentTime, o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain(), l = ctx.createOscillator(), lg = ctx.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(125, t); o.frequency.linearRampToValueAtTime(165, t + 0.18); o.frequency.linearRampToValueAtTime(108, t + 0.75); f.type = 'bandpass'; f.frequency.setValueAtTime(420, t); f.frequency.linearRampToValueAtTime(760, t + 0.3); f.frequency.linearRampToValueAtTime(380, t + 0.75); f.Q.value = 2.2; l.frequency.value = 6.5; lg.gain.value = 7; l.connect(lg).connect(o.frequency); env(g, t, 0.06, 0.34, 0.75); o.connect(f).connect(g).connect(master); o.start(t); l.start(t); o.stop(t + 0.9); l.stop(t + 0.9); },
   minigun() { burst('highpass', 2600, 0.6, 0.03, 0.16); tone('square', 260, 180, 0.03, 0.07); },
   cannon() { burst('lowpass', 1800, 0.5, 0.14, 0.5, 200); tone('sine', 150, 50, 0.16, 0.35); },
   shotgun() { burst('lowpass', 2600, 0.5, 0.2, 1.0, 180); tone('sine', 120, 40, 0.22, 0.5); tone('square', 900, 300, 0.05, 0.1, 0.24); },

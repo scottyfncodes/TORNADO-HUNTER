@@ -9,7 +9,7 @@ A third-person arcade chase-combat game for the phone in your pocket: one storm 
 1. **Chase.** The storm is already running. Dodge what it throws; the guns shoot wreckage out of the air. Get inside the danger zone.
 2. **Guns.** In the zone the guns weaken the storm. Hit BURST to pour it on. Bigger storms shed outer bands first, surge and bolt.
 3. **Harpoon.** Hook the weakened storm. It is dragged to a crawl.
-4. **DOROTHY.** The camera rides with the sensors up the funnel while the truck drives itself. The core goes critical.
+4. **DOROTHY.** A swarm of sensors is sucked in and swirls inside the funnel; the camera rides with them while the truck drives itself. The core goes critical.
 5. **Kill shot.** One rocket.
 
 **Touch:** hold the left half of the screen to drive, slide to steer, pull back to brake, pull back while steering to drift. Right thumb: BOOST, and one big button that is always the next step (BURST, HARPOON, DOROTHY, KILL SHOT).
