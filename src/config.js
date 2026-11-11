@@ -118,9 +118,9 @@ export const RIGS = [
 
 export const CREW = [
   { id: 'doc', name: 'Doc Vane', role: 'Scientist', perk: 'DOROTHY weakens the storm further, and you get 3 more seconds for the kill shot.',
-    barks: { start: 'It is doing a hundred and climbing. I was right. Note that I was right.', probe: 'Dorothy is flying! Reading it now!', snap: 'Structure is gone! It is coming apart!', hurt: 'That was not in the model!', win: 'Textbook. My textbook.' } },
+    barks: { start: 'It is doing a hundred and climbing. I was right. Note that I was right.', probe: 'The swarm is away! Reading it now!', snap: 'Structure is gone! It is coming apart!', hurt: 'That was not in the model!', win: 'Textbook. My textbook.' } },
   { id: 'winch', name: 'Winch Okafor', role: 'Harpooner', perk: 'More time to land the harpoon, and the line holds 2 seconds longer.',
-    barks: { start: 'Cable is greased. Do not embarrass it.', probe: 'Pods away.', snap: 'She let go! Floor it!', hurt: 'Easy on my rig!', win: 'Steel beats weather. Every time.' } },
+    barks: { start: 'Cable is greased. Do not embarrass it.', probe: 'Sensors away.', snap: 'She let go! Floor it!', hurt: 'Easy on my rig!', win: 'Steel beats weather. Every time.' } },
   { id: 'sparks', name: 'Sparks Marín', role: 'Engineer', perk: 'The hull slowly repairs. Boost recharges 35% faster.',
     barks: { start: 'Everything is technically finished.', probe: 'Launcher worked! Write that down!', snap: 'Ha! Did you hear that?', hurt: 'I can fix that. Probably.', win: 'Nothing fell off. Nothing important.' } },
   { id: 'june', name: 'June Bug', role: 'Gunner', perk: 'Guns reach 30% further and hit harder. 20% more Data.',

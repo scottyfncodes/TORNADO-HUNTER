@@ -1,6 +1,7 @@
 // The storm: a funnel bent along a wobbling spine in the vertex shader, radar-coloured bands, GPU debris.
 import * as THREE from '../vendor/three.module.min.js';
 import { PALETTE } from './config.js';
+import { cowGeo } from './geo.js';
 
 // the same spine and radius maths runs here (JS) and in the shaders (GLSL): keep them in step
 const SPINE_GLSL = `
@@ -92,6 +93,7 @@ function debrisMesh(shared, funnelUniforms, count) {
   m.frustumCulled = false; return m;
 }
 
+let COW = null; const cowMat = new THREE.MeshLambertMaterial({ vertexColors: true }), cowDummy = new THREE.Object3D();
 const BAND_V = { 1: [0.12], 2: [0.16, 0.075], 3: [0.19, 0.125, 0.06] };
 const _v = new THREE.Vector3();
 
@@ -106,6 +108,8 @@ export class Storm {
     this.mat = funnelMaterial(shared, { height: def.height, r0: def.r0, r1: def.r1, pow: this.pow, wob: this.wob });
     this.funnel = new THREE.Mesh(funnelGeo, this.mat); this.funnel.frustumCulled = false; this.funnel.renderOrder = 2; this.group.add(this.funnel);
     this.debris = debrisMesh(shared, this.mat.uniforms, this.mini ? 24 : 150); this.group.add(this.debris);
+    // every super tornado keeps a few cows in the air. It is the law.
+    if (!this.mini) { COW = COW || cowGeo(); const n = opts.low ? 8 : 14; this.cows = new THREE.InstancedMesh(COW, cowMat, n); this.cows.frustumCulled = false; this.group.add(this.cows); this.cowSeed = Array.from({ length: n }, (_, i) => ({ v: 0.06 + 0.36 * ((i * 0.37) % 1), a: i * 2.4, w: 0.7 + ((i * 0.61) % 1) * 0.6, r: 1.15 + ((i * 0.43) % 1) * 0.9, s: 2.1 + ((i * 0.29) % 1) * 1.5 })); }
     // the dirt it is chewing: a low, wide, dark skirt around the base (skipped on weak GPUs: it is a lot of pixels)
     if (!this.mini && !opts.low) {
       this.skirtMat = funnelMaterial(shared, { height: 44 + def.r0, r0: def.r0 * 1.9 + 9, r1: def.r0 * 3.0 + 22, pow: 0.75, wob: 2.5 });
@@ -151,6 +155,11 @@ export class Storm {
     this.group.visible = this.visible; this.group.position.set(this.x, this.groundY, this.z);
     u.uSpin.value = this.spin; u.uThin.value = this.thin; u.uLean.value.copy(this.lean); u.uFade.value = this.fade; u.uCut.value = this.cut;
     if (this.skirtMat) { const su = this.skirtMat.uniforms; su.uSpin.value = this.spin; su.uThin.value = 0.55 + 0.45 * this.thin; su.uLean.value.set(0, 0); su.uFade.value = this.fade * 0.82; su.uCut.value = Math.min(1, this.cut * 2.2); }
+    if (this.cows) { // orbit, tumble, moo
+      const k = this.fade * Math.max(0, 1 - this.cut * 2);
+      this.cowSeed.forEach((c, i) => { const v = c.v + 0.05 * Math.sin(t * 0.5 + i), a = c.a + t * this.spin * c.w * 1.3, r = this.radiusAt(v) * c.r + 8; this.spineAt(v, _v); cowDummy.position.set(_v.x + Math.cos(a) * r, v * this.height, _v.z + Math.sin(a) * r); cowDummy.rotation.set(t * 1.7 * c.w + i, a, t * 1.1 + i * 2); cowDummy.scale.setScalar(c.s * k); cowDummy.updateMatrix(); this.cows.setMatrixAt(i, cowDummy.matrix); });
+      this.cows.instanceMatrix.needsUpdate = true;
+    }
     this.spineAt(1, this.topOffset);
     for (const b of this.bands) {
       const m = b.mesh, mu = m.material.uniforms;

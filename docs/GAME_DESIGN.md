@@ -11,7 +11,7 @@ You drive an overpowered storm truck at 140 mph after a super tornado doing a hu
 1. **Chase.** Close on the storm. It throws cars, tractors and barn doors at where you are going; you dodge, and the guns shoot wreckage out of the air.
 2. **Guns.** Get inside the storm's danger zone and stay there. In the zone the guns work on the storm itself until it weakens.
 3. **Harpoon.** Hook the weakened storm. It is dragged from a hundred miles an hour to a crawl.
-4. **DOROTHY.** Send the sensors. The camera leaves the truck and rides with them as they are sucked round and up the funnel; the truck drives itself. The storm weakens further and its core goes critical.
+4. **DOROTHY.** Release the swarm: eighty green sensors. The camera leaves the truck and rides with them as they are dragged in, sucked round and up, and keep swirling inside the funnel until it dies; the truck drives itself. The storm weakens further and its core goes critical.
 5. **Kill shot.** One rocket. The camera rides with it.
 
 Bigger storms shed their outer bands to gunfire first: each one answers with a wall of debris and a bolt, and you chase again. Phases 3 to 5 happen once, on the last band, as the finale.
@@ -108,10 +108,12 @@ Protecting the truck and hurting the storm are different jobs done by different 
 | **The rig's gun** | the crew, automatically; you call BURST | shoots incoming wreckage out of the air; inside the danger zone, weakens the storm | wreckage always comes first; nothing reaches the storm from outside the zone |
 | **Shotgun** | the crew, automatically | the last-second save: blasts whatever is about to hit you, and clears wrecks off the road | 22 m range, 4 s between shots |
 | **Harpoon** | you (phase 3) | hooks the weakened storm and drags it to a crawl | only on a weakened storm; 7 s window |
-| **DOROTHY** | you (phase 4) | sensors sucked up the funnel weaken it further and turn the core critical | only on a hooked storm |
+| **DOROTHY** | you (phase 4) | a swarm of sensors, sucked up to swirl inside the funnel, weakens it further and turn the core critical | only on a hooked storm |
 | **Rocket launcher** | you (phase 5) | the kill shot | one job, one shot |
 
 **Each rig mounts a different gun.** The Mule's machine gun is the all-rounder. The Bulldog's minigun does 35% more damage but reaches 15% less far, so it has to sit deeper in the zone. The Whippet's autocannon fires slow, heavy shots from 30% further out. They sound and look different.
+
+**Cows.** Herds graze the open plains and every farm. The funnel lifts them, every super tornado keeps a few in orbit, and it throws them at you along with the bales and doors. They moo. Shoot them down like any other wreckage.
 
 **Not built yet:** COLD FRONT (briefly stops the storm juking) and CORKSCREW (an alternative to rockets for a rotating core). Both are designed as swaps for the DOROTHY slot and wait until the core loop has been played by people.
 
