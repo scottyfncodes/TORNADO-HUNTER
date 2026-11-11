@@ -11,114 +11,117 @@ export const PALETTE = {
   wheat: '#d9b45a',
 };
 
-// play.feel: the numbers that make it feel right (SI units unless named).
+// play.feel: the numbers that make it feel right (SI units unless named). 1 m/s is 2.237 mph.
 export const FEEL = {
-  rigTopSpeedRoad: 34,        // m/s
-  rigTopSpeedField: 27,       // m/s
-  rigAccel: 16,               // m/s^2
-  rigBrake: 30,               // m/s^2
-  rigReverseSpeed: 11,        // m/s
-  rigTurnRate: 2.3,           // rad/s at low speed
-  rigGripRecover: 5.5,        // 1/s, how fast sideways slip bleeds off
-  boostMultiplier: 1.45,
-  boostSeconds: 1.6,
-  boostRecharge: 5,           // s
-  probeRange: 90,             // m
-  harpoonRange: 165,          // m
-  tetherLength: 100,          // m
-  tetherSweetBand: 14,        // m of give inside the ring before the line goes slack
-  tetherOverStretch: 7,       // m past the ring before the line is over-tensioned
-  tetherSpring: 3.0,          // 1/s^2, how hard a stretched line hauls the rig back
-  tetherSnapAfter: 0.9,       // s of over-tension before it parts
-  tetherGrace: 1.5,           // s after a hit before over-tension counts
-  harpoonReload: 2.0,         // s after a snap
-  bandWindSeconds: 12,        // s of perfect orbit to wind one band off (EF1)
-  windRefAngular: 0.3,        // rad/s: orbit rate that counts as 1.0
-  tetheredStormSlowdown: 0.55,
-  inputBuffer: 0.15,          // s an early action press is remembered
-  hitStopBandSnap: 0.12,      // s
-  hitStopHarpoon: 0.06,       // s
-  hitStopHull: 0.06,          // s
-  shakeBandSnap: 14,          // px-equivalent
-  shakeHull: 9,
-  telegraphMin: 0.8,          // s: nothing lands without at least this much warning
-  retryDelay: 0.6,            // s before the results plate accepts input
+  mph: 2.237,
+  rigTopSpeedRoad: 64,        // m/s (143 mph)
+  rigTopSpeedField: 53,       // m/s (119 mph): shortcuts cost speed, not the chase
+  rigAccel: 34,               // m/s^2 off the line, tapering toward top speed
+  rigBrake: 36,               // m/s^2
+  rigReverseSpeed: 14,        // m/s
+  rigTurnRate: 2.5,           // rad/s at low speed
+  rigGripRecover: 6.5,        // 1/s, how fast sideways slip bleeds off
+  driftGrip: 1.0,             // 1/s while the handbrake slide is held
+  driftTurn: 1.75,            // yaw multiplier in a slide
+  driftMinSpeed: 20,          // m/s
+  boostMultiplier: 1.38,      // 197 mph on a road
+  boostSeconds: 2.2,
+  boostRecharge: 5,           // s from empty
+  boostFromNearMiss: 0.3,     // share of a full charge
+  boostFromKill: 0.12,        // per piece of debris shot down
+  boostFromDrift: 0.22,       // per second sliding
+  dorothyRange: 135,          // m: you have to be in the inflow to feed it
+  dorothyCooldown: 9,         // s after the window closes
+  exposeSeconds: 9,           // s the core stays open
+  rocketRange: 320,           // m
+  rocketReload: 2.8,          // s
+  rocketDamage: 34,           // on an exposed core
+  rocketGlance: 0.2,          // share of damage when the core is shut
+  rocketSpeed: 230,           // m/s
+  mgRange: 160,               // m against incoming debris
+  mgStormRange: 230,          // m against an exposed core
+  mgDebrisDps: 60,            // debris hit points per second
+  mgStormDps: 5,              // stability per second on an exposed core
+  shotgunRange: 22,           // m
+  shotgunReload: 4,         // s
+  staggerSeconds: 6.5,        // s to land the harpoon
+  staggerRecover: 0.4,        // share of stability it gets back if you miss the window
+  harpoonRange: 230,          // m
+  ripSeconds: 1.5,            // s of full-throttle pull to tear a band off
+  ripIdle: 0.25,              // rip rate with no pull at all (never a softlock)
+  surgeSpeed: 52,             // m/s the debris wall expands
+  surgeRadius: 235,           // m it reaches
+  dmgSurge: 18,
+  inputBuffer: 0.15,          // s an early press is remembered
+  hitStopBandSnap: 0.12, hitStopHarpoon: 0.06, hitStopHull: 0.06, hitStopRocket: 0.035,
+  shakeBandSnap: 14, shakeHull: 9, shakeRocket: 6,
+  telegraphMin: 0.9,          // s: nothing lands without at least this much warning
+  retryDelay: 0.6,
   hullBase: 100,
-  dmgDebris: 18,
-  dmgLightning: 22,
-  dmgSatellite: 12,
-  dmgCore: 34,
-  dataMagnet: 30,             // m
-  anchorSeconds: 9,
-  anchorRate: 0.6,            // share of full wind rate while staked
-  crossfireAngle: 70,         // degrees between two lines for double strain
-  thumperRadius: 60,          // m
-  thumperCooldown: 14,        // s
-  anchorCooldown: 16,         // s
-  camDistance: 15, camHeight: 6.5, camFov: 62,
+  dmgDebris: 16, dmgBigDebris: 24, dmgWreck: 10, dmgLightning: 20, dmgSatellite: 12, dmgCore: 30,
+  crosswind: 15,              // m/s^2 sideways
+  camDistance: 13.5, camHeight: 5.4, camFov: 60, camFovSpeed: 16,
 };
 
 export const WORLD = { scale: 3, size: 3072, yScale: 1.6, roadSpacing: 512, roadOffset: 256, roadHalf: 6.5, highwayHalf: 9 };
 
-// Storms: a temperament each, not a bigger number.
+// Super tornadoes: a temperament each, not a bigger number. `run` is ground speed in m/s.
 export const STORMS = [
   {
-    id: 'pete', name: 'Skinny Pete', ef: 1, type: 'Rope', bands: 2,
-    blurb: 'Twitchy and thin. Zigzags like it owes somebody money.',
-    habit: 'Light debris. Lightning once it is angry.',
-    town: 'Hadley', pay: 60, speed: 6.5, wander: 0.9,
-    r0: 9, r1: 62, height: 250, suckR: 105, suck: 9, killR: 13,
-    windMul: 1.0, attackEvery: [4.2, 3.2], attacks: [['debris'], ['debris', 'lightning']],
-    volley: 1, start: 1050, unlocks: 'thumper',
+    id: 'pete', name: 'Skinny Pete', ef: 1, type: 'Rope', bands: 3, stageHp: 100,
+    blurb: 'A hundred miles an hour and never in a straight line.',
+    habit: 'Jukes hard. Throws whatever it just ate. Crosswinds.',
+    pay: 60, run: 45, juke: [4.5, 7.5], jukeAngle: [0.55, 1.5],
+    r0: 11, r1: 74, height: 310, suckR: 115, suck: 12, killR: 15, dorothyRange: 135,
+    attackEvery: [2.9, 2.4, 2.0], attacks: [['debris', 'debris', 'crosswind', 'big'], ['debris', 'big', 'lightning', 'crosswind', 'debris'], ['debris', 'big', 'lightning', 'crosswind', 'big']],
+    volley: [1, 2, 3], unlocks: null,
   },
   {
-    id: 'agnes', name: 'Big Agnes', ef: 3, type: 'Wedge', bands: 3,
-    blurb: 'A mile wide and in no hurry. Everything ends up inside her.',
-    habit: 'Suction that eats your slack. Debris lands in pairs.',
-    town: 'Coldwater', pay: 110, speed: 5.2, wander: 0.35,
-    r0: 26, r1: 120, height: 270, suckR: 150, suck: 13, killR: 32,
-    windMul: 1.25, attackEvery: [3.6, 3.0, 2.5], attacks: [['debris', 'surge'], ['debris', 'surge', 'lightning'], ['debris', 'lunge', 'lightning']],
-    volley: 2, start: 1150, unlocks: 'bulldog',
+    id: 'agnes', name: 'Big Agnes', ef: 3, type: 'Wedge', bands: 3, stageHp: 160,
+    blurb: 'Half a mile wide. Turns like a continent. Everything ends up inside her.',
+    habit: 'Whole debris fields at once. Suction that grabs from a block away.',
+    pay: 110, run: 40, juke: [8, 12], jukeAngle: [0.3, 0.8],
+    r0: 30, r1: 150, height: 340, suckR: 200, suck: 17, killR: 36, dorothyRange: 175,
+    attackEvery: [2.7, 2.3, 1.9], attacks: [['field', 'big', 'debris'], ['field', 'big', 'lightning', 'field'], ['field', 'field', 'big', 'lightning']],
+    volley: [2, 2, 3], unlocks: 'bulldog',
   },
   {
-    id: 'sisters', name: 'The Sisters', ef: 4, type: 'Multi-vortex', bands: 3,
-    blurb: 'Never travels alone, and never spins the same way twice.',
-    habit: 'Satellite twisters ride your ring. The spin reverses.',
-    town: 'Marrow Creek', pay: 180, speed: 7.2, wander: 0.6,
-    r0: 15, r1: 90, height: 260, suckR: 125, suck: 11, killR: 19,
-    windMul: 1.4, attackEvery: [3.8, 3.2, 2.7], attacks: [['debris', 'lightning'], ['debris', 'lightning', 'lunge'], ['debris', 'lightning', 'lunge']],
-    volley: 2, satellites: [2, 2, 3], reverses: true, start: 1200, unlocks: 'whippet',
+    id: 'sisters', name: 'The Sisters', ef: 4, type: 'Multi-vortex', bands: 3, stageHp: 150,
+    blurb: 'Never travels alone. They split, they close, they cut you off.',
+    habit: 'Satellite twisters sweep the ground around her. Fast.',
+    pay: 180, run: 54, juke: [3.5, 6], jukeAngle: [0.6, 1.6],
+    r0: 16, r1: 96, height: 320, suckR: 130, suck: 13, killR: 20, dorothyRange: 145,
+    attackEvery: [2.5, 2.1, 1.7], attacks: [['debris', 'lightning', 'crosswind'], ['debris', 'big', 'lightning', 'crosswind'], ['field', 'big', 'lightning', 'debris']],
+    volley: [2, 3, 3], satellites: [3, 4, 5], unlocks: 'whippet',
   },
 ];
 
 export const RIGS = [
-  { id: 'mule', name: 'The Mule', blurb: 'A farm pickup with a harpoon turret bolted on. Balanced.', price: 0,
+  { id: 'mule', name: 'The Mule', blurb: 'A lifted farm pickup with a gun mount and a harpoon. Balanced.', price: 0,
     speed: 1.0, accel: 1.0, turn: 1.0, hull: 1.0, resist: 1.0, boost: 1.0, body: '#e0662b', trim: '#f3ecd8', len: 4.8, wid: 2.2, hgt: 1.1 },
-  { id: 'bulldog', name: 'Bulldog', blurb: 'An armoured brick. Most hull, shrugs off suction, turns like a barn.', price: 260, needs: 'agnes',
+  { id: 'bulldog', name: 'Bulldog', blurb: 'An armoured wedge. Most hull, shrugs off suction, turns like a barn.', price: 260, needs: 'agnes',
     speed: 0.9, accel: 0.85, turn: 0.82, hull: 1.6, resist: 0.55, boost: 0.9, body: '#4f6b54', trim: '#ffc531', len: 5.4, wid: 2.6, hgt: 1.5 },
-  { id: 'whippet', name: 'Whippet', blurb: 'A stripped buggy. Fastest, tightest, made of paper.', price: 320, needs: 'sisters',
+  { id: 'whippet', name: 'Whippet', blurb: 'A stripped prerunner. Fastest, drifts on a dime, made of paper.', price: 320, needs: 'sisters',
     speed: 1.13, accel: 1.25, turn: 1.2, hull: 0.7, resist: 1.25, boost: 1.35, body: '#2f8f9a', trim: '#f3ecd8', len: 4.2, wid: 2.0, hgt: 0.8 },
 ];
 
 export const CREW = [
-  { id: 'doc', name: 'Doc Vane', role: 'Analyst', perk: 'Probes reach 40% further. Attack warnings last longer.',
-    barks: { start: 'Rotation is tightening. I was right. Note that I was right.', probe: 'Reading it now. Oh, that is ugly.', snap: 'Band is gone! Core pressure is climbing!', hurt: 'That was not in the model!', win: 'Textbook. My textbook.' } },
-  { id: 'winch', name: 'Winch Okafor', role: 'Rigger', perk: 'Wider sweet zone. The line survives over-tension 60% longer.',
-    barks: { start: 'Cable is greased. Do not embarrass it.', probe: 'Pod away.', snap: 'She let go! Reel in!', hurt: 'Easy on my rig!', win: 'Steel beats weather. Every time.' } },
+  { id: 'doc', name: 'Doc Vane', role: 'Scientist', perk: 'DOROTHY keeps the core open 3 seconds longer and works from further out.',
+    barks: { start: 'It is doing a hundred and climbing. I was right. Note that I was right.', probe: 'Dorothy is flying! Reading it now!', snap: 'Structure is gone! It is coming apart!', hurt: 'That was not in the model!', win: 'Textbook. My textbook.' } },
+  { id: 'winch', name: 'Winch Okafor', role: 'Harpooner', perk: 'Longer stagger window. Bands rip off 30% faster.',
+    barks: { start: 'Cable is greased. Do not embarrass it.', probe: 'Pods away.', snap: 'She let go! Floor it!', hurt: 'Easy on my rig!', win: 'Steel beats weather. Every time.' } },
   { id: 'sparks', name: 'Sparks Marín', role: 'Engineer', perk: 'The hull slowly repairs. Boost recharges 35% faster.',
     barks: { start: 'Everything is technically finished.', probe: 'Launcher worked! Write that down!', snap: 'Ha! Did you hear that?', hurt: 'I can fix that. Probably.', win: 'Nothing fell off. Nothing important.' } },
-  { id: 'june', name: 'June Bug', role: 'Spotter', perk: 'Data flies in from much further. 20% more Data.',
-    barks: { start: 'Drone is up. Nobody tell my mom.', probe: 'It ate it! It totally ate it!', snap: 'Data everywhere! Grabbing it!', hurt: 'Incoming! I said incoming!', win: 'Best. Tuesday. Ever.' } },
+  { id: 'june', name: 'June Bug', role: 'Gunner', perk: 'The machine gun reaches 30% further and hits harder. 20% more Data.',
+    barks: { start: 'Guns are hot. Nobody tell my mom.', probe: 'It ate it! It totally ate it!', snap: 'Data everywhere! Grabbing it!', hurt: 'Incoming! I said incoming!', win: 'Best. Tuesday. Ever.' } },
 ];
 
-export const GADGETS = [
-  { id: 'anchor', name: 'Ground Anchor', blurb: 'Stakes your line to the earth. It keeps winding while you dodge, or land a second harpoon for crossfire.', price: 0 },
-  { id: 'thumper', name: 'Thumper', blurb: 'A pressure-cannon shockwave. Swats debris out of the air and interrupts the storm.', price: 120, needs: 'pete' },
-];
+// kept so old saves load; the gadget slot was retired with the tether fight
+export const GADGETS = [{ id: 'anchor', name: 'Ground Anchor' }, { id: 'thumper', name: 'Thumper' }];
 
 export const UPGRADES = [
-  { id: 'winch', name: 'Winch', blurb: 'Bands wind faster', prices: [80, 160, 280], step: 0.12 },
-  { id: 'cable', name: 'Cable', blurb: 'Longer range, wider sweet zone', prices: [70, 140, 240], step: 0.1 },
+  { id: 'winch', name: 'Winch', blurb: 'Harpoon rips bands off faster', prices: [80, 160, 280], step: 0.15 },
+  { id: 'cable', name: 'Ordnance', blurb: 'Rockets hit harder and reload faster', prices: [70, 140, 240], step: 0.1 },
   { id: 'plating', name: 'Plating', blurb: 'More hull', prices: [70, 150, 260], step: 0.2 },
   { id: 'turbo', name: 'Turbo', blurb: 'Boost lasts longer and recharges faster', prices: [60, 130, 220], step: 0.15 },
 ];

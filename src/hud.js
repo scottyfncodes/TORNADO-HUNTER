@@ -1,6 +1,6 @@
-// In-mission HUD. Five things, bolted down. Writes to the DOM only when a value actually changes.
+// In-mission HUD: hull and speed on the left, the storm in the middle, three buttons under the right thumb.
+// Writes to the DOM only when a value actually changes.
 import * as THREE from '../vendor/three.module.min.js';
-import { GADGETS } from './config.js';
 
 const $ = (id) => document.getElementById(id);
 const _v = new THREE.Vector3();
@@ -18,9 +18,8 @@ export class Hud {
 
   begin(m) {
     this.last = {};
-    $('storm-name').textContent = m.def.name; $('storm-ef').textContent = 'EF' + m.ef; $('town-name').textContent = m.town.name;
+    $('storm-name').textContent = m.def.name; $('storm-ef').textContent = 'EF' + m.ef;
     const pips = $('band-pips'); pips.textContent = ''; this.pips = m.storm.bands.map(() => { const i = document.createElement('i'); pips.appendChild(i); return i; });
-    $('gadget-label').textContent = GADGETS.find((g) => g.id === m.gadget).name.replace('Ground ', '');
   }
 
   update(dt, m, camera, touch) {
@@ -31,29 +30,28 @@ export class Hud {
     this.set('hull', hull, (v) => { this.hullSegs.forEach((e, i) => e.classList.toggle('off', i >= v)); $('hud-hull').classList.toggle('low', v <= 3); });
     this.set('hit', r.immune > 0.2, (v) => $('hud-hull').classList.toggle('hit', v));
     this.set('data', Math.round(m.dataShown), (v) => { $('hud-data').textContent = v; });
-    const pipState = s.bands.map((b) => (b.gone ? 'gone' : !b.exposed ? '' : b.strain > 0.01 ? 'strain' : 'exposed')).join(',');
-    this.set('pips', pipState, (v) => v.split(',').forEach((c, i) => { this.pips[i].className = c; }));
-    const eta = Math.max(0, Math.min(1, (m.townDist - 75) / (m.startDist - 75)));
-    this.set('eta', Math.round(eta * 100), (v) => { $('eta-fill').style.transform = `scaleX(${v / 100})`; $('eta-fill').parentElement.parentElement.classList.toggle('late', v < 25); });
-    // action button
-    const a = m.actionState();
-    this.set('alabel', a.label, (v) => { $('action-label').textContent = v; });
+    this.set('mph', Math.round(r.mph / 2) * 2, (v) => { $('rig-mph').textContent = v; });
+    this.set('boosting', r.boostT > 0, (v) => $('hud-speed').classList.toggle('boost', v));
+    this.set('smph', Math.round(m.stormMph / 5) * 5, (v) => { $('storm-mph').textContent = v; });
+    this.set('pips', s.bands.map((b) => (b.gone ? 'gone' : '')).join(','), (v) => v.split(',').forEach((c, i) => { this.pips[i].className = c; }));
+    // stability: the bar is the current band; it turns green while DOROTHY has the core open, magenta when staggered
+    const mode = m.phase === 'stagger' || m.phase === 'rip' ? 'stagger' : m.exposed > 0 ? 'open' : '';
+    this.set('mode', mode, (v) => { const e = $('hud-storm'); e.classList.toggle('open', v === 'open'); e.classList.toggle('stagger', v === 'stagger'); });
+    this.set('stabLabel', mode === 'stagger' ? (m.phase === 'rip' ? 'Ripping' : 'Staggered') : mode === 'open' ? 'Core open' : 'Stability', (v) => { $('stab-label').textContent = v; });
+    const fill = m.phase === 'rip' ? 1 - m.rip : m.phase === 'stagger' ? m.staggerT / m.p.stagger : m.stability;
+    this.set('stab', Math.round(Math.max(0, Math.min(1, fill)) * 100), (v) => { $('stab-fill').style.transform = `scaleX(${v / 100})`; });
+    // buttons
+    const a = m.rocketState();
     this.set('ahint', a.hint || '', (v) => { $('action-hint').textContent = v; });
-    this.set('aready', (a.ready ? 1 : 0) + (a.danger ? 2 : 0), (v) => { const b = $('btn-action'); b.classList.toggle('ready', v === 1); b.classList.toggle('danger', v >= 2); if (v) this.onReady && this.onReady(); });
-    this.set('boost', Math.round(r.boostCharge * 20), (v) => { $('boost-fill').style.transform = `scaleY(${1 - v / 20})`; $('btn-boost').classList.toggle('charged', v >= 20); });
-    const gcd = m.gadget === 'thumper' ? 14 : 16, gk = Math.round(Math.min(1, m.gadgetCd / gcd) * 20), usable = m.gadgetCd <= 0 && (m.gadget !== 'anchor' || (m.phase === 'tethered' && m.line && !m.anchor));
-    this.set('gadget', gk, (v) => { $('gadget-fill').style.transform = `scaleY(${v / 20})`; });
-    this.set('gready', usable, (v) => $('btn-gadget').classList.toggle('charged', v));
-    // strain gauge
-    const teth = m.phase === 'tethered' && s.band;
-    this.set('gauge', !!teth, (v) => { $('hud-gauge').hidden = !v; $('hud-eta').hidden = v; });
-    if (teth) {
-      this.set('strain', Math.round(s.band.strain * 100), (v) => { $('strain-pct').textContent = v + '%'; $('strain-fill').style.transform = `scaleX(${v / 100})`; });
-      const tau = m.tension === null ? 0.55 : m.tension, pos = tau < 0 ? 30 + Math.max(-1, tau) * 30 : tau <= 1 ? 30 + tau * 50 : 80 + Math.min(1, (tau - 1) * 2) * 20;
-      this.set('needle', Math.round(pos), (v) => { $('tension-needle').style.left = v + '%'; });
-      this.set('xfire', m.crossfire, (v) => { $('xfire').hidden = !v; });
-    }
-    const line = m.coachLine(), tone = /SLACK|TIGHT|WRONG|RUNNING/.test(line) ? 'bad' : /WINDING|PROBE IT|HARPOON|DRIVE|CROSSFIRE/.test(line) ? 'good' : '';
+    this.set('aready', a.ready, (v) => { $('btn-action').classList.toggle('ready', v); });
+    this.set('afill', Math.round(a.fill * 20), (v) => { $('action-fill').style.transform = `scaleY(${v / 20})`; });
+    this.set('boost', Math.round(r.boostCharge * 20), (v) => { $('boost-fill').style.transform = `scaleY(${1 - v / 20})`; $('btn-boost').classList.toggle('ready', v >= 20); });
+    const g = m.techState();
+    this.set('glabel', g.label, (v) => { $('gadget-label').textContent = v; });
+    this.set('ghint', g.hint || '', (v) => { $('gadget-hint').textContent = v; });
+    this.set('gready', (g.ready ? 1 : 0) + (g.ready && g.danger ? 2 : 0), (v) => { const b = $('btn-gadget'); b.classList.toggle('ready', v === 1); b.classList.toggle('danger', v >= 2); if (v) this.onReady && this.onReady(); });
+    this.set('gfill', Math.round(g.fill * 20), (v) => { $('gadget-fill').style.transform = `scaleY(${v / 20})`; });
+    const line = m.coachLine(), tone = /CATCH|CLOSER|OUTRUN/.test(line) ? 'bad' : /FIRE|DROP DOROTHY$|HARPOON IT|FLOOR|BOOST/.test(line) ? 'good' : '';
     this.set('coach', line, (v) => { $('hud-coach').textContent = v; }); this.set('coachTone', tone, (v) => { $('hud-coach').className = 'coach ' + v; });
     const call = m.calloutT > 0 && m.callout ? m.callout : null;
     this.set('callout', call ? call.text + call.tone : '', () => { const e = $('hud-callout'); e.hidden = !call; if (call) { e.textContent = call.text; e.className = 'callout ' + call.tone; } });
@@ -65,7 +63,8 @@ export class Hud {
     this.set('arrowOn', off && s.alive, (v) => { $('storm-arrow').hidden = !v; });
     if (off && s.alive) {
       let x = _v.x, y = _v.y; if (_v.z > 1) { x = -x; y = -y; } const k = 1 / Math.max(Math.abs(x), Math.abs(y), 0.001); x *= k * 0.86; y *= k * 0.7;
-      const W = window.innerWidth, H = window.innerHeight; $('storm-arrow').style.transform = `translate(${(x * 0.5 + 0.5) * W - 15}px, ${(-y * 0.5 + 0.5) * H - 15}px) rotate(${Math.atan2(x, y)}rad)`;
+      const W = window.innerWidth, H = window.innerHeight, py = Math.max(H * 0.36, Math.min(H * 0.78, (-y * 0.5 + 0.5) * H)); // keep it off the plates and the pad
+      $('storm-arrow').style.transform = `translate(${(x * 0.5 + 0.5) * W - 15}px, ${py - 15}px) rotate(${Math.atan2(x, y)}rad)`;
     }
   }
 }

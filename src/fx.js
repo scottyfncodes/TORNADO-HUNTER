@@ -1,6 +1,7 @@
 // Effects: ground telegraphs, the cable and its ring, flipbooks, dust, thrown chunks, data shards, shake, hit-stop.
 import * as THREE from '../vendor/three.module.min.js';
 import { PALETTE } from './config.js';
+import { box, cyl, merge } from './geo.js';
 
 const F = 'assets/fx/';
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3(), dummy = new THREE.Object3D();
@@ -52,10 +53,28 @@ export class Fx {
     }
     // dust puffs
     this.dustTex = softDot(); this.dust = [];
-    for (let i = 0; i < 44; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.dustTex, color: '#cdb27a', transparent: true, depthWrite: false, opacity: 0 })); s.visible = false; s.renderOrder = 5; scene.add(s); this.dust.push({ s, on: false }); }
-    // thrown chunks
-    this.chunks = [];
-    for (let i = 0; i < 10; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.2, 2.2), new THREE.MeshLambertMaterial({ color: i % 3 ? '#5a4330' : '#d9b45a' })); m.visible = false; scene.add(m); this.chunks.push({ m, on: false }); }
+    for (let i = 0; i < 72; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.dustTex, color: '#cdb27a', transparent: true, depthWrite: false, opacity: 0 })); s.visible = false; s.renderOrder = 5; scene.add(s); this.dust.push({ s, on: false }); }
+    // wreckage the storm throws: real objects you can read, dodge and shoot (pooled)
+    const W = '#f3ecd8', K = '#1b2224';
+    this.hazGeo = {
+      bale: merge([cyl(1.5, 1.5, 2.0, '#d9b45a', 0, 0, 0, 10, 0, Math.PI / 2)]),
+      door: merge([box(4.2, 0.3, 2.6, '#a3352b', 0, 0, 0), box(4.3, 0.34, 0.3, W, 0, 0, 0), box(0.3, 0.34, 2.7, W, 0, 0, 0)]),
+      sign: merge([box(3.2, 2.2, 0.2, '#3f8f5a', 0, 0, 0), box(3.4, 0.3, 0.24, W, 0, 0.95, 0), box(0.25, 3.6, 0.25, '#aab3b4', 0, -2.6, 0)]),
+      car: merge([box(2.2, 0.9, 4.8, '#3f7f86', 0, 0, 0), box(2.0, 0.8, 2.4, '#e9dfc4', 0, 0.8, -0.2), box(2.3, 0.3, 0.3, '#c9cdca', 0, -0.3, 2.4), cyl(0.5, 0.5, 2.5, K, 0, -0.5, 1.5, 8, 0, Math.PI / 2), cyl(0.5, 0.5, 2.5, K, 0, -0.5, -1.5, 8, 0, Math.PI / 2)]),
+      tractor: merge([box(1.8, 1.3, 3.6, '#3f8f3a', 0, 0.2, 0.3), box(1.7, 1.5, 1.6, '#3f8f3a', 0, 1.3, -1.0), box(1.5, 0.9, 1.4, '#16262a', 0, 1.5, -1.0), cyl(1.3, 1.3, 2.8, K, 0, -0.2, -1.1, 10, 0, Math.PI / 2), cyl(0.7, 0.7, 2.4, K, 0, -0.8, 1.6, 8, 0, Math.PI / 2), cyl(0.14, 0.14, 1.6, K, 0.5, 1.9, 1.2, 5), cyl(0.6, 0.6, 2.9, '#e8b21c', 0, -0.2, -1.1, 6, 0, Math.PI / 2)]),
+    };
+    const hmat = new THREE.MeshLambertMaterial({ vertexColors: true });
+    this.haz = []; for (let i = 0; i < 16; i++) { const m = new THREE.Mesh(this.hazGeo.bale, hmat); m.visible = false; scene.add(m); this.haz.push({ m, on: false }); }
+    // tracers: one mesh of camera-facing dashes
+    this.TR = 28; const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(this.TR * 12), 3));
+    const ti = []; for (let i = 0; i < this.TR; i++) { const a = i * 4; ti.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } tg.setIndex(ti);
+    this.tracerMesh = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ color: '#ffe08a', blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false, side: THREE.DoubleSide })); this.tracerMesh.frustumCulled = false; this.tracerMesh.renderOrder = 7; scene.add(this.tracerMesh);
+    this.tracers = []; for (let i = 0; i < this.TR; i++) this.tracers.push({ on: false, a: new THREE.Vector3(), b: new THREE.Vector3(), t: 0, life: 0.1 });
+    // rockets
+    const rgeo = merge([cyl(0.28, 0.28, 2.2, W, 0, 0, 0, 6, Math.PI / 2), cyl(0.02, 0.3, 0.8, PALETTE.accent, 0, 0, 1.5, 5, Math.PI / 2), box(1.1, 0.08, 0.5, K, 0, 0, -0.9), box(0.08, 1.1, 0.5, K, 0, 0, -0.9)]);
+    this.rockets = []; for (let i = 0; i < 4; i++) { const m = new THREE.Mesh(rgeo, new THREE.MeshBasicMaterial({ vertexColors: true, fog: false })); m.visible = false; scene.add(m); this.rockets.push({ m, on: false, p: new THREE.Vector3() }); }
+    // flashes (muzzle, explosions): additive sprites
+    this.flashes = []; for (let i = 0; i < 10; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.dustTex, color: '#ffd27a', blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false })); sp.visible = false; sp.renderOrder = 8; scene.add(sp); this.flashes.push({ s: sp, on: false }); }
     // data shards
     this.SH = 48; this.shardMesh = new THREE.InstancedMesh(new THREE.OctahedronGeometry(0.75), new THREE.MeshBasicMaterial({ color: PALETTE.signal, fog: false }), this.SH); this.shardMesh.frustumCulled = false; scene.add(this.shardMesh);
     this.shards = []; for (let i = 0; i < this.SH; i++) { this.shards.push({ on: false, p: new THREE.Vector3(), v: new THREE.Vector3(), t: 0 }); dummy.scale.setScalar(0); dummy.updateMatrix(); this.shardMesh.setMatrixAt(i, dummy.matrix); }
@@ -121,7 +140,22 @@ export class Fx {
     const d = this.dust.find((e) => !e.on) || this.dust[(Math.random() * this.dust.length) | 0];
     d.on = true; d.t = 0; d.life = life; d.size = size; d.rise = rise; d.s.visible = true; d.s.position.set(x, y, z); d.s.material.color.set(color); d.s.material.rotation = Math.random() * 6;
   }
-  chunk(from, to, dur) { const c = this.chunks.find((e) => !e.on); if (!c) return; Object.assign(c, { on: true, t: 0, dur, fx: from.x, fy: from.y, fz: from.z, tx: to.x, ty: to.y, tz: to.z }); c.m.visible = true; }
+  // a thrown object: arcs from `from` to `to` in `dur` seconds; returns the pooled record (x,y,z are live)
+  hazard(kind, from, to, dur) {
+    const h = this.haz.find((e) => !e.on); if (!h) return null;
+    Object.assign(h, { on: true, kind, t: 0, dur, fx: from.x, fy: from.y, fz: from.z, tx: to.x, ty: to.y, tz: to.z, x: from.x, y: from.y, z: from.z, landed: false, big: kind === 'car' || kind === 'tractor', spin: 3 + Math.random() * 5 });
+    h.m.geometry = this.hazGeo[kind]; h.m.visible = true; h.m.scale.setScalar(h.big ? 1.25 : 1.1); h.m.position.set(from.x, from.y, from.z); return h;
+  }
+  freeHazard(h) { if (h) { h.on = false; h.m.visible = false; } }
+  tracer(a, b) { const t = this.tracers.find((e) => !e.on) || this.tracers[0]; t.on = true; t.t = 0; t.a.copy(a); t.b.copy(b); t.life = Math.min(0.14, 0.04 + a.distanceTo(b) / 1600); }
+  flashAt(x, y, z, size, color = '#ffd27a', life = 0.08) { const f = this.flashes.find((e) => !e.on) || this.flashes[0]; f.on = true; f.t = 0; f.life = life; f.size = size; f.s.visible = true; f.s.position.set(x, y, z); f.s.material.color.set(color); }
+  explode(x, y, z, size = 14) {
+    this.flashAt(x, y, z, size * 2.2, '#ffe9b0', 0.14); this.flashAt(x, y, z, size * 1.3, '#ff9a3c', 0.22);
+    for (let i = 0; i < 5; i++) this.puff(x + (Math.random() - 0.5) * size * 0.7, y + (Math.random() - 0.3) * size * 0.5, z + (Math.random() - 0.5) * size * 0.7, size * (0.5 + Math.random() * 0.5), i % 2 ? '#2a2420' : '#6e5637', 0.9 + Math.random() * 0.5, 4);
+  }
+  // a rocket that homes on getTarget(out) and calls onHit(point)
+  rocket(from, getTarget, speed, onHit) { const r = this.rockets.find((e) => !e.on); if (!r) { onHit(getTarget(_a).clone()); return; } r.on = true; r.p.copy(from); r.get = getTarget; r.speed = speed; r.onHit = onHit; r.t = 0; r.m.visible = true; }
+
   // data bursts out, hangs, then flies to the rig; onGet fires as each one arrives
   shardBurst(x, y, z, n, target, onGet) {
     for (let i = 0; i < n; i++) { const s = this.shards.find((e) => !e.on); if (!s) { onGet(i); continue; } const a = Math.random() * 6.283, v = 14 + Math.random() * 22; s.on = true; s.t = -i * 0.03; s.p.set(x, y, z); s.v.set(Math.cos(a) * v, 14 + Math.random() * 20, Math.sin(a) * v); s.target = target; s.onGet = onGet; s.i = i; }
@@ -160,8 +194,8 @@ export class Fx {
   hideCable(i) { this.cables[i].m.visible = false; }
 
   // ring at radius L around (cx,cz), draped on the terrain; dir +1/-1 is the way to orbit; state colours it
-  setRing(cx, cz, L, dir, alpha, color) {
-    const pos = this.ring.geometry.attributes.position, RS = this.RS, w = 5; this.ring.visible = alpha > 0.01;
+  setRing(cx, cz, L, dir, alpha, color, w = 5) {
+    const pos = this.ring.geometry.attributes.position, RS = this.RS; this.ring.visible = alpha > 0.01;
     if (!this.ring.visible) return;
     for (let i = 0; i <= RS; i++) { const a = i / RS * 6.2831853, c = Math.cos(a), s = Math.sin(a), xi = cx + c * (L - w), zi = cz + s * (L - w), xo = cx + c * (L + w), zo = cz + s * (L + w); pos.setXYZ(i * 2, xi, this.ground(xi, zi) + 0.45, zi); pos.setXYZ(i * 2 + 1, xo, this.ground(xo, zo) + 0.45, zo); }
     pos.needsUpdate = true; const u = this.ring.material.uniforms; u.uDir.value = dir; u.uAlpha.value = alpha; u.uColor.value.set(color); u.uReps.value = Math.round(L * 6.283 / 12);
@@ -178,7 +212,24 @@ export class Fx {
       if (e.time >= e.dur) { e.on = false; e.g.visible = false; e.onLand && e.onLand(e); }
     }
     for (const d of this.dust) { if (!d.on) continue; d.t += dt; const k = d.t / d.life; if (k >= 1) { d.on = false; d.s.visible = false; continue; } d.s.position.y += d.rise * dt; const s = d.size * (0.5 + k * 1.2); d.s.scale.set(s, s, 1); d.s.material.opacity = 0.6 * (1 - k); }
-    for (const c of this.chunks) { if (!c.on) continue; c.t += dt; const k = Math.min(1, c.t / c.dur); c.m.position.set(c.fx + (c.tx - c.fx) * k, c.fy + (c.ty - c.fy) * k + Math.sin(k * Math.PI) * 40, c.fz + (c.tz - c.fz) * k); c.m.rotation.x += dt * 7; c.m.rotation.z += dt * 5; if (k >= 1) { c.on = false; c.m.visible = false; } }
+    for (const h of this.haz) {
+      if (!h.on) continue; h.t += dt;
+      if (!h.landed) { const k = Math.min(1, h.t / h.dur); h.x = h.fx + (h.tx - h.fx) * k; h.z = h.fz + (h.tz - h.fz) * k; h.y = h.fy + (h.ty - h.fy) * k + Math.sin(k * Math.PI) * (26 + h.dur * 12); h.m.rotation.x += dt * h.spin; h.m.rotation.z += dt * h.spin * 0.7; }
+      h.m.position.set(h.x, h.y, h.z);
+    }
+    const tp = this.tracerMesh.geometry.attributes.position; let tn = 0;
+    for (let i = 0; i < this.TR; i++) {
+      const tr = this.tracers[i]; let ok = false;
+      if (tr.on) { tr.t += dt; const k = tr.t / tr.life; if (k >= 1) tr.on = false; else { ok = true; tn++; _c.lerpVectors(tr.a, tr.b, k); _d.lerpVectors(tr.a, tr.b, Math.min(1, k + 0.22)); _b.subVectors(this.camera.position, _c); _a.subVectors(_d, _c).cross(_b).normalize().multiplyScalar(0.22); tp.setXYZ(i * 4, _c.x - _a.x, _c.y - _a.y, _c.z - _a.z); tp.setXYZ(i * 4 + 1, _c.x + _a.x, _c.y + _a.y, _c.z + _a.z); tp.setXYZ(i * 4 + 2, _d.x - _a.x, _d.y - _a.y, _d.z - _a.z); tp.setXYZ(i * 4 + 3, _d.x + _a.x, _d.y + _a.y, _d.z + _a.z); } }
+      if (!ok) for (let v = 0; v < 4; v++) tp.setXYZ(i * 4 + v, 0, -999, 0);
+    }
+    tp.needsUpdate = true; this.tracerMesh.visible = tn > 0 || this.tracerWas; this.tracerWas = tn > 0;
+    for (const r of this.rockets) {
+      if (!r.on) continue; r.t += dt; const to = r.get(_a); _b.subVectors(to, r.p); const d = _b.length(), step = r.speed * dt;
+      if (d <= step + 3 || r.t > 3) { r.on = false; r.m.visible = false; r.onHit(to.clone()); continue; }
+      r.p.addScaledVector(_b, step / d); r.m.position.copy(r.p); r.m.lookAt(to); this.puff(r.p.x, r.p.y, r.p.z, 2.6, '#e9e2cc', 0.45, 1); this.flashAt(r.p.x - _b.x / d * 1.5, r.p.y - _b.y / d * 1.5, r.p.z - _b.z / d * 1.5, 3.2, '#ffb14a', 0.05);
+    }
+    for (const f of this.flashes) { if (!f.on) continue; f.t += dt; const k = f.t / f.life; if (k >= 1) { f.on = false; f.s.visible = false; continue; } const sz = f.size * (0.6 + 0.6 * k); f.s.scale.set(sz, sz, 1); f.s.material.opacity = 1 - k; }
     let any = false;
     for (let i = 0; i < this.SH; i++) {
       const s = this.shards[i]; if (!s.on) continue; any = true; s.t += dt;
@@ -194,5 +245,5 @@ export class Fx {
     this.lightning.update(dt); this.energy.update(dt);
   }
 
-  reset() { this.clearTelegraphs(); this.hideCable(0); this.hideCable(1); this.hideRing(); this.setStake(false); this.anims.length = 0; this.pod.visible = this.bolt.visible = this.wave.visible = false; this.lightning.stop(); this.energy.stop(); for (const c of this.chunks) { c.on = false; c.m.visible = false; } for (const s of this.shards) s.on = false; for (let i = 0; i < this.SH; i++) { dummy.scale.setScalar(0); dummy.updateMatrix(); this.shardMesh.setMatrixAt(i, dummy.matrix); } this.shardMesh.instanceMatrix.needsUpdate = true; this.stopT = 0; this.slowT = 0; this.shakeAmt = 0; }
+  reset() { this.clearTelegraphs(); this.hideCable(0); this.hideCable(1); this.hideRing(); this.setStake(false); this.anims.length = 0; this.pod.visible = this.bolt.visible = this.wave.visible = false; this.lightning.stop(); this.energy.stop(); for (const h of this.haz) { h.on = false; h.m.visible = false; } for (const r of this.rockets) { r.on = false; r.m.visible = false; } for (const f of this.flashes) { f.on = false; f.s.visible = false; } for (const t of this.tracers) t.on = false; for (const s of this.shards) s.on = false; for (let i = 0; i < this.SH; i++) { dummy.scale.setScalar(0); dummy.updateMatrix(); this.shardMesh.setMatrixAt(i, dummy.matrix); } this.shardMesh.instanceMatrix.needsUpdate = true; this.stopT = 0; this.slowT = 0; this.shakeAmt = 0; }
 }

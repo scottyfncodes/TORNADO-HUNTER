@@ -275,14 +275,14 @@ export class World {
     this.near(rig.x, rig.z, 14, (p) => {
       if (p.state !== 0) return; const dx = rig.x - p.x, dz = rig.z - p.z, rr = p.r + 1.5, d2 = dx * dx + dz * dz; if (d2 > rr * rr) return;
       const sp = Math.hypot(rig.vx, rig.vz);
-      if (p.kit.soft || (p.kit.tree && sp > 13)) {
-        this.launch(p, rig.vx * 0.9 + (Math.random() - 0.5) * 6, 5 + sp * 0.25, rig.vz * 0.9 + (Math.random() - 0.5) * 6);
-        const drag = p.kit.tree ? 0.72 : p.kit.drag; rig.vx *= drag; rig.vz *= drag; rig.speed *= drag;
-        out.push({ kind: p.kit.tree ? 'crash' : 'smash', dmg: p.kit.tree ? 3 : 0, x: p.x, y: p.y, z: p.z, type: p.type });
+      if (p.kit.soft || (p.kit.tree && sp > 13)) { // at these speeds everything short of a building goes flying: it costs speed, never hull
+        this.launch(p, rig.vx * 0.6 + (Math.random() - 0.5) * 8, 6 + sp * 0.16, rig.vz * 0.6 + (Math.random() - 0.5) * 8);
+        const drag = p.kit.tree ? 0.86 : Math.max(0.93, p.kit.drag); rig.vx *= drag; rig.vz *= drag; rig.speed *= drag;
+        out.push({ kind: 'smash', dmg: 0, x: p.x, y: p.y, z: p.z, type: p.type, tree: !!p.kit.tree });
       } else {
         const d = Math.sqrt(d2) || 0.01, nx = dx / d, nz = dz / d, into = -(rig.vx * nx + rig.vz * nz);
         rig.x = p.x + nx * rr; rig.z = p.z + nz * rr;
-        if (into > 0) { rig.vx += nx * into * 1.3; rig.vz += nz * into * 1.3; rig.speed *= 0.4; if (into > 9) out.push({ kind: 'crash', dmg: into > 18 ? 7 : 3, x: p.x, y: p.y, z: p.z, type: p.type }); }
+        if (into > 0) { rig.vx += nx * into * 1.25; rig.vz += nz * into * 1.25; rig.speed *= 0.55; if (into > 12) out.push({ kind: 'crash', dmg: into > 30 ? 8 : 4, x: p.x, y: p.y, z: p.z, type: p.type }); }
       }
     });
     return out;

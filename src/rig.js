@@ -88,12 +88,15 @@ export class Rig {
   dispose() { this.scene.remove(this.model); this.scene.remove(this.shadow); }
   place(x, z, heading, world) { this.x = x; this.z = z; this.heading = heading; this.vx = this.vz = this.speed = 0; this.y = world.heightAt(x, z); this.sync(world, 0); }
   get topSpeed() { return (this.surface > 0 ? FEEL.rigTopSpeedRoad : FEEL.rigTopSpeedField) * this.def.speed * (this.boostT > 0 ? FEEL.boostMultiplier : 1); }
-  get speedFrac() { return Math.min(1.3, Math.hypot(this.vx, this.vz) / (FEEL.rigTopSpeedRoad * this.def.speed)); }
+  get speedFrac() { return Math.min(1.5, Math.hypot(this.vx, this.vz) / (FEEL.rigTopSpeedRoad * this.def.speed)); }
+  get mph() { return Math.round(Math.hypot(this.vx, this.vz) * FEEL.mph); }
   boost() { if (this.boostCharge < 1 || this.stun > 0 || this.dead) return false; this.boostT = FEEL.boostSeconds * this.def.boost * this.mods.boost; this.boostCharge = 0; return true; }
+  // near misses, kills and slides pay back into the boost
+  addBoost(n) { if (this.boostT <= 0) this.boostCharge = Math.min(1, this.boostCharge + n); }
   damage(n) { if (this.immune > 0 || this.dead) return false; this.hull = Math.max(0, this.hull - n); this.immune = 1.1; return true; }
-  fling(nx, nz, v, up = 9) { this.vx = nx * v; this.vz = nz * v; this.vy = up; this.air = 0.01; this.stun = 0.9; }
+  fling(nx, nz, v, up = 9) { this.vx = nx * v; this.vz = nz * v; this.vy = up; this.air = 0.01; this.stun = 0.7; }
 
-  // axes: {steer, throttle}; ax/az: outside acceleration (suction, the cable)
+  // axes: {steer, throttle}; ax/az: outside acceleration (suction, crosswind, the cable)
   update(dt, axes, world, ax, az) {
     this.immune = Math.max(0, this.immune - dt); this.stun = Math.max(0, this.stun - dt);
     if (this.boostT > 0) this.boostT -= dt; else this.boostCharge = Math.min(1, this.boostCharge + dt / (FEEL.boostRecharge / this.mods.recharge));
@@ -101,30 +104,46 @@ export class Rig {
     this.launch = thr > 0 && this.throttle <= 0 && Math.abs(this.speed) < 6; // the frame the throttle goes down from rest
     this.throttle = thr; this.steerIn = steer; this.surface = world.surfaceAt(this.x, this.z);
     const grounded = this.air <= 0;
-    // heading first, then split velocity into the new forward/side so momentum carries through a turn
     let fx = Math.sin(this.heading), fz = Math.cos(this.heading), vF = this.vx * fx + this.vz * fz;
+    const sp0 = Math.hypot(this.vx, this.vz);
+    // brake + steer at speed is a handbrake slide: the nose swings in, the truck keeps its speed and its line bends to follow
+    const drift = grounded && thr < 0 && Math.abs(steer) > 0.25 && sp0 > FEEL.driftMinSpeed && vF > 0;
+    if (drift) { this.addBoost(FEEL.boostFromDrift * dt); this.driftOut = 0.45; } else this.driftOut = Math.max(0, (this.driftOut || 0) - dt);
+    this.drifting = drift;
     if (grounded) {
-      const grip = Math.min(1, Math.abs(vF) / 7) * (1 - 0.5 * Math.min(1, Math.abs(vF) / 44));
-      this.heading -= steer * FEEL.rigTurnRate * this.def.turn * grip * (vF >= -0.5 ? 1 : -1) * dt;
+      const grip = Math.min(1, Math.abs(vF) / 6) * (1 - 0.56 * Math.min(1, Math.abs(vF) / 75));
+      let yaw = steer * FEEL.rigTurnRate * this.def.turn * (drift ? FEEL.driftTurn * (1 - 0.4 * Math.min(1, sp0 / 80)) : grip) * (vF >= -0.5 ? 1 : -1);
+      if (drift) { // the nose may lead the direction of travel by about 50 degrees, no more: a slide, not a spin
+        const slipA = Math.atan2(this.vx * fz - this.vz * fx, Math.max(0.01, vF)); if (Math.abs(slipA) > 0.85 && Math.sign(slipA) === Math.sign(steer)) yaw = 0;
+      }
+      this.heading -= yaw * dt;
       fx = Math.sin(this.heading); fz = Math.cos(this.heading);
     }
     const rx = -fz, rz = fx; vF = this.vx * fx + this.vz * fz; let vS = this.vx * rx + this.vz * rz;
     if (grounded) {
-      const top = this.topSpeed, acc = FEEL.rigAccel * this.def.accel * (this.boostT > 0 ? 2.2 : 1);
-      if (thr > 0) { if (vF < top) vF = Math.min(top, vF + acc * thr * dt); else vF -= Math.min(vF - top, 9 * dt); }
-      else if (thr < 0) { if (vF > 0.5) vF -= FEEL.rigBrake * -thr * dt; else vF = Math.max(-FEEL.rigReverseSpeed, vF - acc * 0.6 * -thr * dt); }
-      else vF -= Math.sign(vF) * Math.min(Math.abs(vF), 5 * dt);
-      vS *= Math.exp(-FEEL.rigGripRecover * (this.boostT > 0 ? 0.7 : 1) * dt);
+      if (drift || this.driftOut > 0) {
+        // swing the velocity round toward the nose without throwing the speed away; getting back on the throttle carries it out
+        const sp = Math.max(0, sp0 - (drift ? 7 : 0) * dt), va = Math.atan2(this.vx, this.vz); let d = this.heading - va; d = Math.atan2(Math.sin(d), Math.cos(d));
+        const na = va + Math.sign(d) * Math.min(Math.abs(d), (drift ? 1.5 : 3.2) * dt); this.vx = Math.sin(na) * sp; this.vz = Math.cos(na) * sp;
+        vF = this.vx * fx + this.vz * fz; vS = this.vx * rx + this.vz * rz;
+        if (!drift && thr > 0) { const top = this.topSpeed; if (Math.hypot(vF, vS) < top) vF += FEEL.rigAccel * this.def.accel * 0.6 * dt; }
+      } else {
+        const top = this.topSpeed, k = Math.max(0, vF) / top, acc = FEEL.rigAccel * this.def.accel * (this.boostT > 0 ? 1.8 : 1) * (1 - 0.62 * Math.min(1, k));
+        if (thr > 0) { if (vF < top) vF = Math.min(top, vF + acc * thr * dt); else vF -= Math.min(vF - top, 12 * dt); }
+        else if (thr < 0) { if (vF > 0.5) vF -= FEEL.rigBrake * -thr * dt; else vF = Math.max(-FEEL.rigReverseSpeed, vF - 14 * -thr * dt); }
+        else vF -= Math.sign(vF) * Math.min(Math.abs(vF), 7 * dt);
+        vS *= Math.exp(-FEEL.rigGripRecover * dt);
+      }
     }
-    this.vx = fx * vF + rx * vS + ax * dt; this.vz = fz * vF + rz * vS + az * dt; this.speed = vF;
+    this.vx = fx * vF + rx * vS + ax * dt; this.vz = fz * vF + rz * vS + az * dt; this.speed = vF; this.slip = vS;
     this.x += this.vx * dt; this.z += this.vz * dt;
     if (Math.abs(this.x) > HALF) { this.x = Math.sign(this.x) * HALF; this.vx *= -0.3; }
     if (Math.abs(this.z) > HALF) { this.z = Math.sign(this.z) * HALF; this.vz *= -0.3; }
     const gy = world.heightAt(this.x, this.z);
     if (this.air > 0) { this.vy -= 24 * dt; this.y += this.vy * dt; this.air += dt; if (this.y <= gy) { this.y = gy; this.air = 0; this.vy = 0; this.landed = true; } }
     else this.y = gy;
-    this.squat += ((thr > 0 && vF < this.topSpeed - 2 ? -0.09 : thr < 0 && vF > 2 ? 0.1 : 0) - this.squat) * Math.min(1, dt * 14);
-    this.lean = (this.lean || 0) + ((-steer * Math.min(1, Math.abs(vF) / 20) * 0.09 - vS * 0.012) - (this.lean || 0)) * Math.min(1, dt * 7);
+    this.squat += ((thr > 0 && vF < this.topSpeed - 3 ? -0.09 - (this.boostT > 0 ? 0.05 : 0) : thr < 0 && vF > 2 ? 0.1 : 0) - this.squat) * Math.min(1, dt * 14);
+    this.lean = (this.lean || 0) + ((-steer * Math.min(1, Math.abs(vF) / 30) * 0.1 - vS * 0.012) - (this.lean || 0)) * Math.min(1, dt * 7);
     this.wheelSpin += vF * dt / 0.66;
     this.sync(world, dt);
   }

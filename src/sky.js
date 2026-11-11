@@ -81,9 +81,9 @@ export class Sky {
     const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); rg.setAttribute('aEnd', new THREE.BufferAttribute(seed, 1));
     this.rain = new THREE.LineSegments(rg, new THREE.ShaderMaterial({
       transparent: true, depthWrite: false, fog: false,
-      uniforms: { uTime: u.uTime, uAmount: { value: 0 }, uWind: { value: new THREE.Vector3(0.3, -1, 0.1) }, uCam: { value: new THREE.Vector3() } },
-      vertexShader: `attribute float aEnd; uniform float uTime,uAmount; uniform vec3 uWind,uCam; varying float vA;
-        void main(){ vec3 box=vec3(70.0,44.0,70.0); vec3 p=position*box; p+=uWind*uTime*46.0; p=mod(p-uCam,box)-box*0.5; p+=uWind*aEnd*2.6;
+      uniforms: { uTime: u.uTime, uAmount: { value: 0 }, uWind: { value: new THREE.Vector3(0.3, -1, 0.1) }, uStreak: { value: new THREE.Vector3(0.8, -2.6, 0.3) }, uCam: { value: new THREE.Vector3() } },
+      vertexShader: `attribute float aEnd; uniform float uTime,uAmount; uniform vec3 uWind,uCam,uStreak; varying float vA;
+        void main(){ vec3 box=vec3(70.0,44.0,70.0); vec3 p=position*box; p+=uWind*uTime*46.0; p=mod(p-uCam,box)-box*0.5; p+=uStreak*aEnd;
           vA=uAmount*step(position.x*0.999,uAmount+0.2); gl_Position=projectionMatrix*viewMatrix*vec4(p+uCam,1.0); }`,
       fragmentShader: `varying float vA; void main(){ gl_FragColor=vec4(0.78,0.86,0.88,0.34*vA); }`,
     }));
@@ -95,7 +95,7 @@ export class Sky {
   setRain(on) { this.rain.visible = on; }
 
   // storm 0 (clear morning) .. 1 (under the shelf); tornado gives the wall cloud and ground shadow a centre
-  update(dt, t, stormTarget, tor, prox) {
+  update(dt, t, stormTarget, tor, prox, mover) {
     const u = this.uniforms; u.uTime.value = t;
     this.storm += (stormTarget - this.storm) * Math.min(1, dt * (stormTarget < this.storm ? 0.7 : 2));
     this.flash = Math.max(0, this.flash - dt * 3.2);
@@ -111,8 +111,10 @@ export class Sky {
       this.wall.visible = tor.visible; this.wall.position.set(tor.x + tor.topOffset.x, tor.groundY + tor.height + 6, tor.z + tor.topOffset.z);
       this.wall.scale.setScalar(tor.wallR); this.wall.material.uniforms.uSpin.value = tor.spin; this.wall.material.uniforms.uAlpha.value = tor.fade * Math.min(1, s * 1.4);
     } else { u.uTor.value.set(0, 0, 0.001); this.wall.visible = false; }
-    this.rain.material.uniforms.uAmount.value = s * (0.35 + 0.65 * prox); this.rain.material.uniforms.uCam.value.copy(this.camera.position);
+    this.rain.material.uniforms.uAmount.value = s * (0.45 + 0.55 * prox); this.rain.material.uniforms.uCam.value.copy(this.camera.position);
     if (tor) { _w.set(tor.x - this.camera.position.x, 0, tor.z - this.camera.position.z).normalize(); this.rain.material.uniforms.uWind.value.set(_w.x * 0.35 + _w.z * 0.2 * tor.spin, -1, _w.z * 0.35 - _w.x * 0.2 * tor.spin); }
+    // at speed the rain comes at you: streaks stretch back along your own velocity (the cheapest honest speed cue there is)
+    const st = this.rain.material.uniforms.uStreak.value, wv = this.rain.material.uniforms.uWind.value; if (mover) st.set(wv.x * 2.6 - mover.vx * 0.055, -2.6, wv.z * 2.6 - mover.vz * 0.055); else st.set(wv.x * 2.6, -2.6, wv.z * 2.6);
   }
 }
 const _stormFog = new THREE.Color('#42585a'), _stormSky = new THREE.Color('#7fa6a2'), _w = new THREE.Vector3();
