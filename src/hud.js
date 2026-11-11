@@ -34,25 +34,22 @@ export class Hud {
     this.set('boosting', r.boostT > 0, (v) => $('hud-speed').classList.toggle('boost', v));
     this.set('smph', Math.round(m.stormMph / 5) * 5, (v) => { $('storm-mph').textContent = v; });
     this.set('pips', s.bands.map((b) => (b.gone ? 'gone' : '')).join(','), (v) => v.split(',').forEach((c, i) => { this.pips[i].className = c; }));
-    // one bar, three meanings: the shield you are breaking (wheat), the exposed core's window (green), the hook's hold (magenta)
-    const mode = m.phase === 'rip' ? 'stagger' : m.phase === 'stagger' ? 'open' : '';
+    // one bar: the storm's strength while the guns work on it, then the window for whichever step comes next
+    const ph = m.phase, mode = ph === 'kill' || ph === 'dorothy' ? 'stagger' : ph === 'stagger' || ph === 'rip' ? 'open' : '';
     this.set('mode', mode, (v) => { const e = $('hud-storm'); e.classList.toggle('open', v === 'open'); e.classList.toggle('stagger', v === 'stagger'); });
-    this.set('stabLabel', m.phase === 'rip' ? 'Hooked' : m.phase === 'stagger' ? 'Exposed' : m.exposed > 0 ? 'Shield x2' : 'Shield', (v) => { $('stab-label').textContent = v; });
-    const fill = m.phase === 'rip' ? m.hookT / m.p.hook : m.phase === 'stagger' ? m.staggerT / m.p.stagger : m.shield;
+    this.set('stabLabel', ph === 'kill' ? 'Critical' : ph === 'dorothy' ? 'Dorothy' : ph === 'rip' ? 'Hooked' : ph === 'stagger' ? 'Weakened' : 'Strength', (v) => { $('stab-label').textContent = v; });
+    const fill = ph === 'kill' ? m.killT / m.p.kill : ph === 'dorothy' ? 1 - m.phaseT / 3.4 : ph === 'rip' ? m.hookT / m.p.hook : ph === 'stagger' ? m.staggerT / m.p.stagger : m.shield;
     this.set('stab', Math.round(Math.max(0, Math.min(1, fill)) * 100), (v) => { $('stab-fill').style.transform = `scaleX(${v / 100})`; });
-    // buttons
-    const a = m.rocketState();
-    this.set('ahint', a.hint || '', (v) => { $('action-hint').textContent = v; });
+    this.set('zone', ph === 'chase' && m.inZone, (v) => $('hud-storm').classList.toggle('inzone', v));
+    // two buttons: BOOST, and one that is always the next thing to do
+    const a = m.actionState();
     this.set('alabel', a.label, (v) => { $('action-label').textContent = v; });
-    this.set('aready', (a.ready ? 1 : 0) + (a.ready && a.danger ? 2 : 0), (v) => { const b = $('btn-action'); b.classList.toggle('ready', v === 1); b.classList.toggle('danger', v >= 2); });
+    this.set('ahint', a.hint || '', (v) => { $('action-hint').textContent = v; });
+    this.set('aready', (a.ready ? 1 : 0) + (a.ready && a.danger ? 2 : 0) + (a.hot ? 4 : 0), (v) => { const b = $('btn-action'); b.classList.toggle('ready', (v & 3) === 1); b.classList.toggle('danger', (v & 3) === 3); b.classList.toggle('hot', v >= 4); if ((v & 3) === 3) this.onReady && this.onReady(); });
     this.set('afill', Math.round(a.fill * 20), (v) => { $('action-fill').style.transform = `scaleY(${v / 20})`; });
     this.set('boost', Math.round(r.boostCharge * 20), (v) => { $('boost-fill').style.transform = `scaleY(${1 - v / 20})`; $('btn-boost').classList.toggle('ready', v >= 20); });
-    const g = m.techState();
-    this.set('glabel', g.label, (v) => { $('gadget-label').textContent = v; });
-    this.set('ghint', g.hint || '', (v) => { $('gadget-hint').textContent = v; });
-    this.set('gready', (g.ready ? 1 : 0) + (g.ready && g.danger ? 2 : 0), (v) => { const b = $('btn-gadget'); b.classList.toggle('ready', v === 1); b.classList.toggle('danger', v >= 2); if (v) this.onReady && this.onReady(); });
-    this.set('gfill', Math.round(g.fill * 20), (v) => { $('gadget-fill').style.transform = `scaleY(${v / 20})`; });
-    const line = m.coachLine(), tone = /CATCH|CLOSER|OUTRUN|GET IN/.test(line) ? 'bad' : /FIRE|HARPOON IT|KILL|BOOST/.test(line) ? 'good' : '';
+    this.set('cine', !!m.cine, (v) => this.el.classList.toggle('cine', v));
+    const line = m.coachLine(), tone = /CATCH|CLOSER|OUTRUN|GET INSIDE/.test(line) ? 'bad' : /FIRE|HARPOON IT|KILL|BOOST|BURST|SEND/.test(line) ? 'good' : '';
     this.set('coach', line, (v) => { $('hud-coach').textContent = v; }); this.set('coachTone', tone, (v) => { $('hud-coach').className = 'coach ' + v; });
     const call = m.calloutT > 0 && m.callout ? m.callout : null;
     this.set('callout', call ? call.text + call.tone : '', () => { const e = $('hud-callout'); e.hidden = !call; if (call) { e.textContent = call.text; e.className = 'callout ' + call.tone; } });

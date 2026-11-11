@@ -41,7 +41,12 @@ export const FEEL = {
   mgRange: 160,               // m against incoming debris
   mgStormRange: 230,          // m against an exposed core
   mgDebrisDps: 60,            // debris hit points per second
-  mgStormDps: 6,              // shield per second while the gunner can reach the storm
+  mgStormDps: 13,             // storm strength per second while the guns are on it (inside the danger zone)
+  burstMultiplier: 2.3,       // gun damage while the trigger is held down hard (BURST)
+  burstSeconds: 2.6,
+  burstCooldown: 6,
+  dorothySeconds: 3.4,        // s the camera rides with the sensors while the truck drives itself
+  killSeconds: 8,             // s to fire the kill shot once DOROTHY has done her work
   shotgunRange: 22,           // m
   shotgunReload: 4,         // s
   staggerSeconds: 7,          // s the core stays exposed after the shield breaks: land the harpoon
@@ -71,16 +76,16 @@ export const WORLD = { scale: 3, size: 3072, yScale: 1.6, roadSpacing: 512, road
 // Super tornadoes: a temperament each, not a bigger number. `run` is ground speed in m/s.
 export const STORMS = [
   {
-    id: 'pete', name: 'Skinny Pete', ef: 1, type: 'Rope', bands: 3, stageHp: 220,
+    id: 'pete', name: 'Skinny Pete', ef: 1, type: 'Rope', bands: 2, stageHp: 230, zone: 185,
     blurb: 'A hundred miles an hour and never in a straight line.',
     habit: 'Jukes hard. Throws whatever it just ate. Crosswinds.',
     pay: 60, run: 45, juke: [4.5, 7.5], jukeAngle: [0.55, 1.5],
     r0: 11, r1: 74, height: 310, suckR: 115, suck: 12, killR: 15, dorothyRange: 135,
-    attackEvery: [2.9, 2.4, 2.0], attacks: [['debris', 'debris', 'crosswind', 'big'], ['debris', 'big', 'lightning', 'crosswind', 'debris'], ['debris', 'big', 'lightning', 'crosswind', 'big']],
-    volley: [1, 2, 3], unlocks: null,
+    attackEvery: [2.8, 2.2], attacks: [['debris', 'debris', 'crosswind', 'big'], ['debris', 'big', 'lightning', 'crosswind', 'debris']],
+    volley: [1, 2], unlocks: null,
   },
   {
-    id: 'agnes', name: 'Big Agnes', ef: 3, type: 'Wedge', bands: 3, stageHp: 330,
+    id: 'agnes', name: 'Big Agnes', ef: 3, type: 'Wedge', bands: 3, stageHp: 300, zone: 240,
     blurb: 'Half a mile wide. Turns like a continent. Everything ends up inside her.',
     habit: 'Whole debris fields at once. Suction that grabs from a block away.',
     pay: 110, run: 40, juke: [8, 12], jukeAngle: [0.3, 0.8],
@@ -89,33 +94,36 @@ export const STORMS = [
     volley: [2, 2, 3], unlocks: 'bulldog',
   },
   {
-    id: 'sisters', name: 'The Sisters', ef: 4, type: 'Multi-vortex', bands: 3, stageHp: 300,
+    id: 'sisters', name: 'The Sisters', ef: 4, type: 'Multi-vortex', bands: 3, stageHp: 240, zone: 215,
     blurb: 'Never travels alone. They split, they close, they cut you off.',
     habit: 'Satellite twisters sweep the ground around her. Fast.',
     pay: 180, run: 54, juke: [3.5, 6], jukeAngle: [0.6, 1.6],
     r0: 16, r1: 96, height: 320, suckR: 130, suck: 13, killR: 20, dorothyRange: 145,
-    attackEvery: [2.5, 2.1, 1.7], attacks: [['debris', 'lightning', 'crosswind'], ['debris', 'big', 'lightning', 'crosswind'], ['field', 'big', 'lightning', 'debris']],
-    volley: [2, 3, 3], satellites: [3, 4, 5], unlocks: 'whippet',
+    attackEvery: [2.9, 2.5, 2.1], attacks: [['debris', 'lightning', 'crosswind'], ['debris', 'big', 'lightning', 'crosswind'], ['field', 'big', 'lightning', 'debris']],
+    volley: [2, 2, 3], satellites: [3, 4, 5], unlocks: 'whippet',
   },
 ];
 
 export const RIGS = [
-  { id: 'mule', name: 'The Mule', blurb: 'A lifted farm pickup with a gun mount and a harpoon. Balanced.', price: 0,
+  { id: 'mule', name: 'The Mule', blurb: 'A lifted farm pickup with a machine gun and a harpoon. Balanced.', price: 0,
+    gun: { name: 'Machine gun', dps: 1, range: 1, every: 0.085, sound: 'mg' },
     speed: 1.0, accel: 1.0, turn: 1.0, hull: 1.0, resist: 1.0, boost: 1.0, body: '#e0662b', trim: '#f3ecd8', len: 4.8, wid: 2.2, hgt: 1.1 },
-  { id: 'bulldog', name: 'Bulldog', blurb: 'An armoured wedge. Most hull, shrugs off suction, turns like a barn.', price: 260, needs: 'agnes',
+  { id: 'bulldog', name: 'Bulldog', blurb: 'An armoured wedge with a minigun: brutal up close, short reach. Most hull, turns like a barn.', price: 260, needs: 'agnes',
+    gun: { name: 'Minigun', dps: 1.35, range: 0.85, every: 0.045, sound: 'minigun' },
     speed: 0.9, accel: 0.85, turn: 0.82, hull: 1.6, resist: 0.55, boost: 0.9, body: '#4f6b54', trim: '#ffc531', len: 5.4, wid: 2.6, hgt: 1.5 },
-  { id: 'whippet', name: 'Whippet', blurb: 'A stripped prerunner. Fastest, drifts on a dime, made of paper.', price: 320, needs: 'sisters',
+  { id: 'whippet', name: 'Whippet', blurb: 'A stripped prerunner with an autocannon: slow, heavy shots from long range. Fastest, made of paper.', price: 320, needs: 'sisters',
+    gun: { name: 'Autocannon', dps: 0.9, range: 1.3, every: 0.2, sound: 'cannon' },
     speed: 1.13, accel: 1.25, turn: 1.2, hull: 0.7, resist: 1.25, boost: 1.35, body: '#2f8f9a', trim: '#f3ecd8', len: 4.2, wid: 2.0, hgt: 0.8 },
 ];
 
 export const CREW = [
-  { id: 'doc', name: 'Doc Vane', role: 'Scientist', perk: 'DOROTHY doubles shield damage for 3 seconds longer and works from further out.',
+  { id: 'doc', name: 'Doc Vane', role: 'Scientist', perk: 'DOROTHY weakens the storm further, and you get 3 more seconds for the kill shot.',
     barks: { start: 'It is doing a hundred and climbing. I was right. Note that I was right.', probe: 'Dorothy is flying! Reading it now!', snap: 'Structure is gone! It is coming apart!', hurt: 'That was not in the model!', win: 'Textbook. My textbook.' } },
   { id: 'winch', name: 'Winch Okafor', role: 'Harpooner', perk: 'More time to land the harpoon, and the line holds 2 seconds longer.',
     barks: { start: 'Cable is greased. Do not embarrass it.', probe: 'Pods away.', snap: 'She let go! Floor it!', hurt: 'Easy on my rig!', win: 'Steel beats weather. Every time.' } },
   { id: 'sparks', name: 'Sparks Marín', role: 'Engineer', perk: 'The hull slowly repairs. Boost recharges 35% faster.',
     barks: { start: 'Everything is technically finished.', probe: 'Launcher worked! Write that down!', snap: 'Ha! Did you hear that?', hurt: 'I can fix that. Probably.', win: 'Nothing fell off. Nothing important.' } },
-  { id: 'june', name: 'June Bug', role: 'Gunner', perk: 'The machine gun reaches 30% further and hits harder. 20% more Data.',
+  { id: 'june', name: 'June Bug', role: 'Gunner', perk: 'Guns reach 30% further and hit harder. 20% more Data.',
     barks: { start: 'Guns are hot. Nobody tell my mom.', probe: 'It ate it! It totally ate it!', snap: 'Data everywhere! Grabbing it!', hurt: 'Incoming! I said incoming!', win: 'Best. Tuesday. Ever.' } },
 ];
 
@@ -124,7 +132,7 @@ export const GADGETS = [{ id: 'anchor', name: 'Ground Anchor' }, { id: 'thumper'
 
 export const UPGRADES = [
   { id: 'winch', name: 'Winch', blurb: 'The harpoon line holds longer', prices: [80, 160, 280], step: 0.15 },
-  { id: 'cable', name: 'Ordnance', blurb: 'Rockets hit harder and reload faster', prices: [70, 140, 240], step: 0.1 },
+  { id: 'cable', name: 'Ordnance', blurb: 'Guns hit harder; BURST recharges faster', prices: [70, 140, 240], step: 0.1 },
   { id: 'plating', name: 'Plating', blurb: 'More hull', prices: [70, 150, 260], step: 0.2 },
   { id: 'turbo', name: 'Turbo', blurb: 'Boost lasts longer and recharges faster', prices: [60, 130, 220], step: 0.15 },
 ];

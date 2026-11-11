@@ -89,6 +89,8 @@ export const audio = {
   warn() { tone('square', 740, 740, 0.09, 0.07); tone('square', 740, 740, 0.09, 0.07, 0.16); },
   // the arsenal: each one has to be told apart with your eyes shut
   mg() { burst('highpass', 1800, 0.7, 0.045, 0.22); tone('square', 150, 70, 0.05, 0.12); },
+  minigun() { burst('highpass', 2600, 0.6, 0.03, 0.16); tone('square', 260, 180, 0.03, 0.07); },
+  cannon() { burst('lowpass', 1800, 0.5, 0.14, 0.5, 200); tone('sine', 150, 50, 0.16, 0.35); },
   shotgun() { burst('lowpass', 2600, 0.5, 0.2, 1.0, 180); tone('sine', 120, 40, 0.22, 0.5); tone('square', 900, 300, 0.05, 0.1, 0.24); },
   rocket() { burst('bandpass', 500, 1.2, 0.55, 0.5, 3200); tone('sawtooth', 90, 320, 0.4, 0.16); },
   boom(vol = 1) { burst('lowpass', 1400, 0.4, 0.5, vol, 60); tone('sine', 110, 28, 0.6, vol * 0.8); burst('highpass', 2500, 0.5, 0.12, vol * 0.3); },
