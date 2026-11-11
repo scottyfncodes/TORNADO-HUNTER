@@ -48,6 +48,60 @@
    "sha256": "db384007fa08cdc399cedeafbaa5e99a60b1009852196297b36ce827c98f056b",
    "task": "vfx.lightning"
   },
+  "assets/icons/apple-touch-icon.png": {
+   "format": "png",
+   "role": "icon",
+   "sha256": "04b788e232228c04ce5b55b7e0cf2c877c19d74e259557e9bb7df8fb9af13218",
+   "task": "icon.derivatives"
+  },
+  "assets/icons/favicon-16.png": {
+   "format": "png",
+   "role": "favicon",
+   "sha256": "84940aede9891cc04ee63ca3d26f9a4dd655225e4efdc4e656ab80d07c1e8e81",
+   "task": "icon.derivatives"
+  },
+  "assets/icons/favicon-32.png": {
+   "format": "png",
+   "role": "favicon",
+   "sha256": "eeabce04d4b8531ffb0a1f8aa149b461b6db51c06d645a43c76d82ac6f090785",
+   "task": "icon.derivatives"
+  },
+  "assets/icons/favicon.ico": {
+   "format": "ico",
+   "role": "favicon",
+   "sha256": "270fbb250fae5cbf39a99e49b7a8b95f2b2678ff85f8f4aace1a42c8b0caf0f5",
+   "task": "icon.derivatives"
+  },
+  "assets/icons/icon-1024.png": {
+   "format": "png",
+   "role": "icon_master",
+   "sha256": "2f8b52b41da0b3226757cf572e18f5e86d613b5d2a7496b4dc4e456e2f6d9171",
+   "task": "icon.derivatives"
+  },
+  "assets/icons/icon-192.png": {
+   "format": "png",
+   "role": "icon",
+   "sha256": "1ea7f91ee6a79791f9b8637fed76808c05ee7789d6985c219c1274adccc04154",
+   "task": "icon.derivatives"
+  },
+  "assets/icons/icon-512.png": {
+   "format": "png",
+   "role": "icon",
+   "sha256": "a9a6f64664873e1ca192c4ef3dc6e2a18f16e68168a35185da28ee6b14011db5",
+   "task": "icon.derivatives"
+  },
+  "assets/icons/icon-maskable-512.png": {
+   "format": "png",
+   "role": "icon",
+   "sha256": "de6038fecea4d891313c927ad6aee95fb90269eead6a9a6c72ac2e8dbc2a9714",
+   "task": "icon.derivatives"
+  },
+  "assets/icons/icon.svg": {
+   "format": "svg",
+   "role": "icon",
+   "sha256": "f4afe31883278f16c83192861944d48a11cbfad9481d69a46f6b8a3a9f243dc7",
+   "task": "icon.derivatives"
+  },
   "assets/materials/sky.sky.json": {
    "format": "json",
    "role": "lighting",

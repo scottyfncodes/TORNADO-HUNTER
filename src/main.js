@@ -154,6 +154,8 @@ function frame(now) {
 
 async function boot() {
   save.load(); resize();
+  // the identity's palette is the source of the interface colours
+  fetch('assets/brand/palette.json').then((r) => r.json()).then((p) => { const st = document.documentElement.style; for (const [k, v] of Object.entries({ bg: p.background, surface: p.surface, primary: p.primary, accent: p.accent, text: p.text, signal: p.signal, wheat: p.wheat })) if (v) st.setProperty('--' + k, v); }).catch(() => {});
   const fill = $('load-fill'), prog = (v) => { fill.style.transform = `scaleX(${v})`; };
   G.sky = new Sky(scene, camera); G.world = new World(scene, G.sky); G.fx = new Fx(scene, camera, G.world, G.sky.uniforms);
   await G.sky.load(); prog(0.2);

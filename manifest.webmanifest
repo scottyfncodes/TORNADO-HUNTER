@@ -2,13 +2,37 @@
   "name": "Tornado Hunter",
   "short_name": "Tornado Hunter",
   "description": "Tornado Hunter by HaveAnApp. Rope a tornado from a moving truck and tear it apart by driving.",
-  "start_url": "./",
+  "start_url": ".",
   "scope": "./",
   "display": "fullscreen",
-  "display_override": ["fullscreen", "standalone"],
+  "display_override": [
+    "fullscreen",
+    "standalone"
+  ],
   "orientation": "landscape",
   "background_color": "#0e1b1d",
   "theme_color": "#0e1b1d",
-  "categories": ["games"],
-  "icons": []
+  "categories": [
+    "games"
+  ],
+  "icons": [
+    {
+      "src": "assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
 }

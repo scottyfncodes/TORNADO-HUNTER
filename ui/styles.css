@@ -185,6 +185,9 @@ body:not(.playing) .pad, body:not(.playing) .coach { display: none; }
 #stick-nub { width: 56px; height: 56px; background: rgba(255, 197, 49, 0.9); border: 3px solid var(--ink); }
 #stick-base.on, #stick-nub.on { opacity: 1; }
 
+.load-logo { width: 100%; height: auto; margin-bottom: var(--s3); }
+.pause-logo { width: 160px; height: auto; }
+@media (max-height: 480px) { .pause-logo { display: none; } }
 #flash { position: fixed; inset: 0; z-index: 15; pointer-events: none; background: #fff; opacity: 0; }
 #loading { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: var(--bg); }
 .load-box { display: grid; gap: var(--s3); width: min(70vw, 280px); text-align: center; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; font-size: var(--t-sm); color: var(--muted); }
