@@ -19,6 +19,7 @@ h1, h2, h3, p, dl, dd { margin: 0; }
 button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; touch-action: manipulation; }
 [hidden] { display: none !important; }
 :focus-visible { outline: 3px solid var(--signal); outline-offset: 3px; }
+#stage { position: fixed; inset: 0; }
 #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; background: var(--bg); }
 .lbl { font-size: var(--t-xs); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
 b, .num { font-variant-numeric: tabular-nums; }
@@ -181,6 +182,8 @@ body:not(.playing) .pad, body:not(.playing) .coach { display: none; }
 .pad-btn small { font-size: 12px; letter-spacing: 0.04em; }
 .pad-btn kbd { font: inherit; font-size: 12px; opacity: 0.7; letter-spacing: 0.04em; }
 .pad-btn .fill { position: absolute; inset: 0; background: var(--surface-2); transform-origin: bottom; transform: scaleY(1); }
+.pad-btn:hover { border-color: #57807c; }
+.pad-btn.ready:hover { border-color: #ffffff; }
 .pad-btn.down { transform: scale(0.94); }
 .pad-btn.deny { animation: deny 0.18s steps(3); border-color: var(--accent); }
 @keyframes deny { 33% { transform: translateX(-5px); } 66% { transform: translateX(5px); } }

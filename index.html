@@ -22,14 +22,14 @@
 <link rel="stylesheet" href="ui/styles.css">
 </head>
 <body>
-<canvas id="view" aria-label="Tornado Hunter game view"></canvas>
+<section id="stage" aria-label="Game view"><canvas id="view" role="img" aria-label="Tornado Hunter: the chase, seen from behind your truck"></canvas></section>
 
 <div id="touch" aria-hidden="true">
   <div id="stick-zone"></div>
   <div id="stick-base"></div><div id="stick-nub"></div>
 </div>
 
-<div id="hud" hidden>
+<section id="hud" aria-label="Game controls and status" hidden>
   <div class="hud-left">
     <div class="plate hud-hull" id="hud-hull"><span class="lbl">Hull</span><div class="segs" id="hull-segs"></div></div>
     <div class="plate hud-speed" id="hud-speed"><b id="rig-mph">0</b><span class="lbl">mph</span></div>
@@ -40,7 +40,7 @@
   </div>
   <div class="hud-right">
     <div class="plate hud-data"><span class="lbl">Data</span><b id="hud-data">0</b></div>
-    <button class="plate icon-btn" id="btn-pause" aria-label="Pause"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 4h4v16H6zM14 4h4v16h-4z" fill="currentColor"/></svg></button>
+    <button class="plate icon-btn" id="btn-pause" aria-label="Pause and menu"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 4h4v16H6zM14 4h4v16h-4z" fill="currentColor"/></svg></button>
   </div>
   <div class="plate hud-bark" id="hud-bark" hidden><b id="bark-name"></b><span id="bark-text"></span></div>
   <div class="callout" id="hud-callout" hidden></div>
@@ -51,7 +51,7 @@
     <button class="pad-btn pad-gadget" id="btn-gadget" aria-label="Dorothy or harpoon"><span id="gadget-label">Dorothy</span><small id="gadget-hint"></small><i class="fill" id="gadget-fill"></i><kbd>E</kbd></button>
     <button class="pad-btn pad-action" id="btn-action" aria-label="Fire rocket"><span id="action-label">Rocket</span><small id="action-hint"></small><i class="fill" id="action-fill"></i><kbd>Space</kbd></button>
   </div>
-</div>
+</section>
 
 <main id="title" class="screen screen-title" hidden>
   <div class="title-block">
@@ -110,7 +110,7 @@
 </section>
 
 <div id="flash" aria-hidden="true"></div>
-<div id="loading" role="status"><div class="load-box"><img class="load-logo" src="assets/brand/logo.svg" alt="Tornado Hunter" width="280" height="73"><p>Spinning up the storm</p><div class="load-bar"><i id="load-fill"></i></div></div></div>
+<div id="loading" role="status" aria-label="Loading"><div class="load-box"><img class="load-logo" src="assets/brand/logo.svg" alt="Tornado Hunter" width="280" height="73"><p>Spinning up the storm</p><div class="load-bar"><i id="load-fill"></i></div></div></div>
 <noscript><p style="color:#f3ecd8;padding:24px">Tornado Hunter needs JavaScript and WebGL.</p></noscript>
 <script type="module" src="src/main.js"></script>
 </body>
