@@ -125,16 +125,17 @@ function gunCamera(dt, m) {
   camState.pos.copy(camera.position);
 }
 function viewCamera(dt, m) {
-  const now = m.cine ? 'cine' : m.view, r = m.rig;
-  if (now !== view.name) { // cuts to and from the cinematics stay cuts; wheel to gun and back is a swing
-    if (now !== 'cine' && view.name !== 'cine') { view.t = 0; view.pos.copy(camera.position).sub(_p.set(r.x, r.y, r.z)); view.quat.copy(camera.quaternion); } else view.t = 1;
-    if (now === 'drive' && view.name === 'gun') camState.init = false;
+  const gun = m.view === 'gun' && !m.cine, now = m.cine ? 'cine' : gun ? 'gun:' + m.gn.seatId : 'drive', r = m.rig;
+  if (now !== view.name) { // cuts to and from the cinematics stay cuts; wheel to gun, and one crew vehicle to the next, is a swing
+    const was = view.name; view.dur = now.startsWith('gun:') && now !== 'gun:rig' ? FEEL.seatBlend : FEEL.gunBlend;
+    if (now !== 'cine' && was !== 'cine') { view.t = 0; view.pos.copy(camera.position).sub(_p.set(r.x, r.y, r.z)); view.quat.copy(camera.quaternion); } else view.t = 1;
+    if (now === 'drive' && was !== 'cine') camState.init = false;
     view.name = now;
   }
-  G.fx.fp = now === 'gun'; if (now !== 'gun') m.gn.root.visible = false;
-  if (now === 'cine') cineCamera(dt, m); else if (now === 'gun') gunCamera(dt, m); else missionCamera(dt, m);
+  G.fx.fp = gun; if (!gun) m.gn.root.visible = false;
+  if (now === 'cine') cineCamera(dt, m); else if (gun) gunCamera(dt, m); else missionCamera(dt, m);
   if (view.t < 1) {
-    view.t = Math.min(1, view.t + dt / (G.fx.calm ? 0.1 : FEEL.gunBlend)); const k = view.t * view.t * (3 - 2 * view.t);
+    view.t = Math.min(1, view.t + dt / (G.fx.calm ? 0.1 : view.dur || FEEL.gunBlend)); const k = view.t * view.t * (3 - 2 * view.t);
     _l.set(r.x, r.y, r.z).add(view.pos); camera.position.lerpVectors(_l, camera.position, k); _q.copy(camera.quaternion); camera.quaternion.slerpQuaternions(view.quat, _q, k); camera.updateMatrixWorld();
   }
 }
@@ -183,7 +184,7 @@ function frame(now) {
     audio.beds({ prox: storm.alive ? prox : 0, storm: G.sky.storm, speed: Math.min(1.4, m.rig.speedFrac), throttle: Math.abs(m.rig.throttle), tension: m.line ? 0.6 : null, playing: !G.paused && !m.result, drift: m.rig.drifting ? 1 : Math.min(1, Math.abs(m.rig.slip || 0) / 14), boost: m.rig.boostT > 0, hail: G.weather.hail });
     if (m.result && !G.banked) { G.banked = true; G.unlockText = bank(m.result); input.setEnabled(false); document.body.classList.remove('playing'); }
     if (m.result && !G.resultShown && m.phaseT > (m.result.won ? 4.8 : 1.8)) { G.resultShown = true; G.hud.show(false); G.ui.results(m.result, G.unlockText); }
-    const g = window.__game; g.state = m.result ? 'over' : 'playing'; g.score = Math.round(m.data); g.data = g.score; g.time = +m.time.toFixed(2); g.phase = m.phase; g.hull = Math.round(m.rig.hull); g.stability = +m.stability.toFixed(3); g.stage = m.stage; g.bands = storm.bandsLeft; g.dist = Math.round(m.dist); g.speed = +Math.hypot(m.rig.vx, m.rig.vz).toFixed(1); g.mph = m.rig.mph; g.stormMph = m.stormMph; g.inZone = !!m.inZone; g.cine = !!m.cine; g.boost = +m.rig.boostCharge.toFixed(2); g.shot = m.stats.shot; g.close = m.stats.close; g.view = m.view; g.weapon = m.gn.weapon; g.rockets = m.gn.rockets; g.crits = m.stats.crits; g.locked = m.gn.locked; g.aim = m.gn.aim.kind; g.hail = +G.weather.hail.toFixed(2); g.x = Math.round(m.rig.x); g.z = Math.round(m.rig.z);
+    const g = window.__game; g.state = m.result ? 'over' : 'playing'; g.score = Math.round(m.data); g.data = g.score; g.time = +m.time.toFixed(2); g.phase = m.phase; g.hull = Math.round(m.rig.hull); g.stability = +m.stability.toFixed(3); g.stage = m.stage; g.bands = storm.bandsLeft; g.dist = Math.round(m.dist); g.speed = +Math.hypot(m.rig.vx, m.rig.vz).toFixed(1); g.mph = m.rig.mph; g.stormMph = m.stormMph; g.inZone = !!m.inZone; g.cine = !!m.cine; g.boost = +m.rig.boostCharge.toFixed(2); g.shot = m.stats.shot; g.close = m.stats.close; g.view = m.view; g.seat = m.gn.seatId; g.weapon = m.gn.weapon; g.rockets = m.gn.rockets; g.crits = m.stats.crits; g.locked = m.gn.locked; g.aim = m.gn.aim.kind; g.hail = +G.weather.hail.toFixed(2); g.x = Math.round(m.rig.x); g.z = Math.round(m.rig.z);
     G.rigVel = m.rig;
   } else if (G.attract) {
     const s = G.attract, t = TOWNS.pete, a = simT * 0.05; s.moveX = Math.cos(a); s.moveZ = Math.sin(a); s.moveSpeed = 9; if (dt > 0) { s.update(dt, simT); G.world.update(dt, s); G.world.events.length = 0; }

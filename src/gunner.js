@@ -2,8 +2,10 @@
 //   the machine gun (hold FIRE, hitscan, the seam on the band and dead-centre hits are critical)
 //   rockets (few of them, a lock-on reticle, one shot for anything armoured, a bite out of a band)
 //   the kill shot (the same launcher, locked on the critical core)
-// One aim, one camera rig and one autodrive serve all three. The truck is still a truck: whatever
+// One aim, one camera rig and one autodrive serve all of them. The truck is still a truck: whatever
 // the storm throws lands on it unless you shoot it down or take the wheel back.
+// The finale is three seats on three other vehicles (src/convoy.js): Winch's harpoon truck, Doc's
+// science bus, Sparks' rocket truck. `mount` is the convoy unit you are sitting on, or null for your own rig.
 import * as THREE from '../vendor/three.module.min.js';
 import { FEEL, PALETTE, WORLD } from './config.js';
 import { box, cyl, merge } from './geo.js';
@@ -60,10 +62,29 @@ function podModel() { // four tubes strapped in a rack; a rocket's nose shows in
   return g;
 }
 
+function harpModel() { // Winch's launcher: a pale barrel as thick as your arm, a barbed magenta head, the cable drum beside it
+  const P = [], g = new THREE.Group(), mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  P.push(box(0.2, 0.2, 0.6, AMBER, 0, 0, 0.05), box(0.205, 0.06, 0.2, INK, 0, 0, 0.15), box(0.21, 0.21, 0.03, INK, 0, 0, 0.36), cyl(0.075, 0.085, 1.2, CREAM, 0, 0.02, -0.8, 8, Z), cyl(0.092, 0.092, 0.06, INK, 0, 0.02, -0.3, 8, Z), cyl(0.092, 0.092, 0.06, INK, 0, 0.02, -1.3, 8, Z));
+  P.push(cyl(0.0, 0.1, 0.34, PALETTE.accent, 0, 0.02, -1.6, 4, -Z), box(0.3, 0.02, 0.1, PALETTE.accent, 0, 0.02, -1.42), box(0.02, 0.3, 0.1, PALETTE.accent, 0, 0.02, -1.42));
+  P.push(cyl(0.16, 0.16, 0.2, INK, 0.25, -0.02, 0.0, 10, 0, Z), cyl(0.125, 0.125, 0.16, CREAM, 0.25, -0.02, 0.0, 10, 0, Z), box(0.02, 0.02, 0.9, CREAM, 0.14, 0.06, -0.5));
+  for (const sx of [1, -1]) P.push(box(0.022, 0.022, 0.13, STEEL, sx * 0.085, 0.045, 0.42), cyl(0.021, 0.021, 0.15, INK, sx * 0.085, -0.015, 0.48, 6));
+  P.push(box(0.26, 0.035, 0.18, STEEL, 0, -0.12, 0), cyl(0.045, 0.055, 0.6, STEEL, 0, -0.42, 0, 7));
+  g.add(new THREE.Mesh(merge(P), mat)); g.userData = { muzzle: new THREE.Vector3(0, 0.02, -1.7), mat };
+  return g;
+}
+function rackModel() { // DOROTHY: six green sensor canisters in a hazard-striped tray, and the lever that lets them go
+  const P = [], g = new THREE.Group(), mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  P.push(box(0.62, 0.06, 0.5, INK, 0, -0.1, -0.1), box(0.64, 0.07, 0.04, HAZ, 0, 0.0, 0.15), box(0.64, 0.07, 0.04, HAZ, 0, 0.0, -0.35), box(0.04, 0.07, 0.5, HAZ, 0.3, 0.0, -0.1), box(0.04, 0.07, 0.5, HAZ, -0.3, 0.0, -0.1));
+  for (const x of [-0.19, 0, 0.19]) for (const z of [-0.22, 0.02]) P.push(cyl(0.075, 0.075, 0.26, PALETTE.signal, x, 0.05, z, 8), cyl(0.08, 0.08, 0.04, INK, x, 0.19, z, 8), cyl(0.03, 0.03, 0.03, CREAM, x, 0.22, z, 6));
+  P.push(box(0.05, 0.05, 0.3, STEEL, 0.4, 0.0, 0.2), cyl(0.035, 0.035, 0.2, AMBER, 0.4, 0.1, 0.34, 6), box(0.3, 0.035, 0.18, STEEL, 0, -0.16, 0), cyl(0.045, 0.055, 0.6, STEEL, 0, -0.46, 0, 7));
+  g.add(new THREE.Mesh(merge(P), mat)); g.userData = { muzzle: new THREE.Vector3(0, 0.2, -0.3), mat };
+  return g;
+}
+
 export class Gunner {
   constructor(mission, upgrades) {
     const G = mission.G; this.m = mission; this.G = G;
-    this.on = false; this.why = ''; this.weapon = 'mg'; this.yaw = 0; this.pitch = 0.2; this.eyeY = null;
+    this.on = false; this.why = ''; this.weapon = 'mg'; this.mount = null; this.seatId = 'rig'; this.yaw = 0; this.pitch = 0.2; this.eyeY = null;
     this.rocketMax = FEEL.rocketMax + upgrades.cable; this.rockets = Math.min(this.rocketMax, FEEL.rocketAmmo + upgrades.cable);
     this.reload = 0; this.shotT = 0; this.recoil = 0; this.kick = 0; this.flashT = 0; this.swapT = 1; this.spinV = 0; this.swayX = 0; this.swayY = 0;
     this.lock = null; this.lockT = 0; this.lockLost = 0; this.locked = false; this.wasFiring = false; this.lastRef = null; this.lastAz = 0; this.lastEl = 0;
@@ -71,14 +92,14 @@ export class Gunner {
     this.note = ''; this.noteT = 0; this.hitT = 0; this.stuckT = 0; this.backT = 0; this.weakT = Math.random() * 20; this.weak = new THREE.Vector3(); this.weakR = 6;
     // the weapon in front of you
     this.root = new THREE.Group(); this.root.visible = false; G.camera.add(this.root);
-    this.mg = mgModel(mission.gun.sound); this.pod = podModel(); this.root.add(this.mg, this.pod);
+    this.mg = mgModel(mission.gun.sound); this.pod = podModel(); this.harp = harpModel(); this.rack = rackModel(); this.models = { mg: this.mg, rocket: this.pod, harpoon: this.harp, dorothy: this.rack }; this.root.add(this.mg, this.pod, this.harp, this.rack);
     this.muzzleFlash = new THREE.Sprite(new THREE.SpriteMaterial({ map: G.fx.dustTex, color: '#ffd27a', blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false })); this.muzzleFlash.visible = false; this.root.add(this.muzzleFlash);
     // the seam: the one bright place on a band where a hit counts double
     const sm = (color, order) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: G.fx.dustTex, color, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false })); s.visible = false; s.renderOrder = order; G.scene.add(s); return s; };
     this.seam = sm(PALETTE.accent, 8); this.seamHot = sm('#fff1c4', 9);
   }
   dispose() {
-    this.G.camera.remove(this.root); this.G.scene.remove(this.seam, this.seamHot); this.root.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); this.mg.userData.mat.dispose(); this.pod.userData.mat.dispose();
+    this.G.camera.remove(this.root); this.G.scene.remove(this.seam, this.seamHot); this.root.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); for (const k in this.models) this.models[k].userData.mat.dispose();
     this.seam.material.dispose(); this.seamHot.material.dispose(); this.muzzleFlash.material.dispose();
     if (this.on) { this.on = false; this.G.input.setMode('drive'); this.G.fx.fp = false; }
   }
@@ -86,28 +107,29 @@ export class Gunner {
   get touch() { return this.G.input.usingTouch; }
 
   // ---- in and out ----
-  enter(why) {
-    const m = this.m, G = this.G; if (this.on) { this.why = why; if (why === 'kill') this.setWeapon('rocket'); return; }
-    this.on = true; this.why = why; this.lock = null; this.lockT = 0; this.locked = false; this.wasFiring = true; this.shotT = 0; this.eyeY = null; this.lastRef = null;
-    this.setWeapon(why === 'kill' ? 'rocket' : 'mg', true);
+  // why: auto / manual (your own turret), or harpoon / dorothy / kill (a seat on `unit`, another crew member's vehicle)
+  enter(why, unit = null) {
+    const m = this.m, G = this.G, was = this.on;
+    this.on = true; this.why = why; this.mount = unit; this.seatId = unit ? unit.role : 'rig'; this.lock = null; this.lockT = 0; this.locked = false; this.wasFiring = true; this.shotT = 0; this.eyeY = null; this.lastRef = null;
+    this.setWeapon(why === 'kill' ? 'rocket' : why === 'harpoon' || why === 'dorothy' ? why : 'mg', true); this.swapT = 0.35;
     // you arrive looking at what you came to shoot
-    this.placeSeam(0); this.eye(_o); _p.copy(why === 'kill' ? m.aimPoint(_w) : this.weak).sub(_o);
+    this.placeSeam(0); this.eye(_o); _p.copy(this.weak).sub(_o);
     this.yaw = Math.atan2(_p.x, _p.z); this.pitch = clamp(Math.atan2(_p.y, Math.hypot(_p.x, _p.z)), FEEL.gunPitchMin, FEEL.gunPitchMax);
-    m.rig.model.userData.turret.visible = false; G.input.setMode('gun'); G.audio.modeIn();
+    m.rig.model.userData.turret.visible = !!unit; if (was) G.input.reseat(); else G.input.setMode('gun'); G.audio.modeIn();
   }
   exit() {
-    if (!this.on) return; const m = this.m; this.on = false; this.lock = null; this.locked = false; this.seam.visible = this.seamHot.visible = false; this.root.visible = false;
+    if (!this.on) return; const m = this.m; this.on = false; this.mount = null; this.seatId = 'rig'; this.lock = null; this.locked = false; this.seam.visible = this.seamHot.visible = false; this.root.visible = false;
     m.rig.model.userData.turret.visible = true; m.rig.aim = this.yaw; this.G.input.setMode('drive'); this.G.audio.modeOut(); this.G.fx.fp = false;
   }
   setWeapon(w, quiet) { if (this.weapon === w && !quiet) return; this.weapon = w; this.swapT = quiet ? 1 : 0; this.lock = null; this.lockT = 0; this.locked = false; if (!quiet) this.G.audio.swap(); }
   swap() {
-    if (this.m.phase === 'kill') return false;
+    if (this.m.phase !== 'chase') return false;
     if (this.weapon === 'mg' && this.rockets <= 0) { this.say('NO ROCKETS'); this.G.audio.dry(); return false; }
     this.setWeapon(this.weapon === 'mg' ? 'rocket' : 'mg'); return true;
   }
 
   // where your eye is: above the turret mount, riding the truck
-  eye(out) { const r = this.m.rig; r.model.updateMatrixWorld(true); r.muzzle(out); out.y += FEEL.gunEyeHeight; return out; }
+  eye(out) { if (this.mount) return this.m.convoy.eyeOf(this.mount, out); const r = this.m.rig; r.model.updateMatrixWorld(true); r.muzzle(out); out.y += FEEL.gunEyeHeight; return out; }
   dir(out, yaw = this.yaw, pitch = this.pitch) { const c = Math.cos(pitch); return out.set(Math.sin(yaw) * c, Math.sin(pitch), Math.cos(yaw) * c); }
   bandGeo(out) { // centre, radius and height of the band you are working on
     const s = this.m.storm, b = s.band; if (!b || !s.alive) return null; s.spineAt(b.v, _w);
@@ -116,7 +138,7 @@ export class Gunner {
   // the seam drifts back and forth across the face of the band that is turned toward you
   placeSeam(dt) {
     const m = this.m, B = this.bandGeo(_bg); this.weakT += dt; if (!B) return false;
-    if (m.phase === 'kill' || m.phase === 'dorothy') { m.aimPoint(this.weak); this.weakR = Math.max(9, B.r * 0.6); return true; }
+    if (m.phase !== 'chase' && m.phase !== 'surge') { m.aimPoint(this.weak); this.weakR = Math.max(9, B.r * 0.6); return true; } // the finale: one glowing place to put the harpoon, then the rocket
     const face = Math.atan2(m.rig.z - B.cz, m.rig.x - B.cx), a = face + 0.6 * Math.sin(this.weakT * 0.8) + 0.22 * Math.sin(this.weakT * 2.1 + 1);
     this.weak.set(B.cx + Math.cos(a) * B.r, B.y, B.cz + Math.sin(a) * B.r); this.weakR = Math.max(6, B.r * 0.33); return true;
   }
@@ -125,7 +147,7 @@ export class Gunner {
   handle(dt, input) {
     const m = this.m, G = this.G, ph = m.phase;
     if (input.take('mode')) {
-      if (this.on) { if (ph === 'kill') { G.audio.deny(); G.hud.deny('btn-drive'); } else m.leaveGun(true); }
+      if (this.on) { if (ph !== 'chase') G.audio.deny(); else m.leaveGun(true); } // the finale seats are not yours to leave
       else if (ph === 'chase') m.enterGun('manual'); else G.audio.deny();
     }
     if (!this.on) return;
@@ -155,7 +177,7 @@ export class Gunner {
     }
     const B = this.bandGeo(_bg);
     if (B && dxz > 0.003) {
-      const kill = m.phase === 'kill', rr = B.r + 2 + (assist - 1) * 8, ox = o.x - B.cx, oz = o.z - B.cz, bq = 2 * (ox * d.x + oz * d.z), c = ox * ox + oz * oz - rr * rr, disc = bq * bq - 4 * dxz * c;
+      const kill = m.phase !== 'chase', rr = B.r + 2 + (assist - 1) * 8, ox = o.x - B.cx, oz = o.z - B.cz, bq = 2 * (ox * d.x + oz * d.z), c = ox * ox + oz * oz - rr * rr, disc = bq * bq - 4 * dxz * c;
       if (disc >= 0 && c > 0) {
         const t = (-bq - Math.sqrt(disc)) / (2 * dxz), y = o.y + d.y * t, hh = Math.max(10, t * 0.045) * assist * (kill ? 2.4 : 1);
         if (t > 3 && t < best && Math.abs(y - B.y) < hh) { best = t; out.kind = kill ? 'core' : 'band'; out.ref = s.band; _p.copy(o).addScaledVector(d, t); out.crit = _p.distanceTo(this.weak) < this.weakR * (assist > 1 ? 1.25 : 1); }
@@ -187,21 +209,23 @@ export class Gunner {
       this.lastRef = a.ref; this.lastAz = az; this.lastEl = el;
     } else this.lastRef = null;
     // rockets want a moment on the target; then they follow it
-    const rocket = this.weapon === 'rocket', lockable = rocket && (a.kind === 'haz' || a.kind === 'sat' || a.kind === 'core' || (a.kind === 'band' && m.inZone));
+    const rocket = this.weapon === 'rocket', locks = rocket || this.weapon === 'harpoon', lockable = locks && (a.kind === 'haz' || a.kind === 'sat' || a.kind === 'core' || (a.kind === 'band' && m.inZone));
     if (lockable) { if (this.lock && this.lock.ref === a.ref) this.lockT += dt; else { this.lock = { kind: a.kind, ref: a.ref }; this.lockT = 0; this.locked = false; } this.lockLost = 0; }
-    else if (this.lock) { this.lockLost += dt; if (this.lockLost > 0.3 || !rocket) { this.lock = null; this.lockT = 0; this.locked = false; } }
+    else if (this.lock) { this.lockLost += dt; if (this.lockLost > 0.3 || !locks) { this.lock = null; this.lockT = 0; this.locked = false; } }
     if (this.lock && this.lock.kind === 'haz' && this.lock.ref.state === 'gone') { this.lock = null; this.lockT = 0; this.locked = false; }
     const locked = !!this.lock && this.lockT >= FEEL.rocketLockSeconds; if (locked && !this.locked) G.audio.lock(); this.locked = locked;
     // the trigger
     const firing = input.firing || !!this.botFire, edge = firing && !this.wasFiring; this.wasFiring = firing;
     if (ph === 'kill') { if (edge) { if (locked) m.killShot(); else if (m.reload <= 0) { this.say('AIM AT THE CORE'); G.audio.deny(); G.hud.deny('btn-fire'); } } }
+    else if (ph === 'stagger') { if (edge && !m.harpoonBusy) { if (!locked) { this.say('AIM AT THE GLOW'); G.audio.deny(); G.hud.deny('btn-fire'); } else if (m.fireHarpoon()) { this.recoil = 1.6; this.kick += 0.03; } else G.hud.deny('btn-fire'); } }
+    else if (ph === 'rip') { if (edge) { this.recoil = 1; m.sendDorothy(); } }
     else if (ph !== 'chase') { /* nothing to shoot at between phases */ }
     else if (rocket) { if (edge) this.fireRocket(); }
     else if (firing && this.shotT <= 0) { this.shotT = m.gun.every; this.shoot(assist); }
     if (this.mg.userData.spin) { this.spinV += ((firing && !rocket ? 34 : 0) - this.spinV) * Math.min(1, dt * 6); this.mg.userData.spin.rotation.z += this.spinV * dt; }
     // the seam marker
-    const show = seam && m.storm.alive && (ph === 'chase' || ph === 'kill'); this.seam.visible = this.seamHot.visible = show;
-    if (show) { const pulse = 1 + 0.16 * Math.sin(this.weakT * (ph === 'kill' ? 16 : 9)), sz = this.weakR * 2.3 * pulse; this.seam.position.copy(this.weak); this.seam.scale.set(sz, sz, 1); this.seamHot.position.copy(this.weak); this.seamHot.scale.set(sz * 0.36, sz * 0.36, 1); this.seam.material.opacity = m.inZone || ph === 'kill' ? 0.95 : 0.4; }
+    const show = seam && m.storm.alive && (ph === 'chase' || ph === 'kill' || ph === 'stagger'); this.seam.visible = this.seamHot.visible = show;
+    if (show) { const pulse = 1 + 0.16 * Math.sin(this.weakT * (ph === 'chase' ? 9 : 16)), sz = this.weakR * 2.3 * pulse; this.seam.position.copy(this.weak); this.seam.scale.set(sz, sz, 1); this.seamHot.position.copy(this.weak); this.seamHot.scale.set(sz * 0.36, sz * 0.36, 1); this.seam.material.opacity = m.inZone || ph !== 'chase' ? 0.95 : 0.4; }
   }
   muzzlePoint(out) { return out.copy(_o).addScaledVector(this.dir(_e), this.weapon === 'mg' ? 2.0 : 1.4).add(_e.set(0, -0.42, 0)); }
 
@@ -302,22 +326,22 @@ export class Gunner {
     const m = this.m, r = m.rig, fx = this.G.fx; this.eye(_o);
     this.eyeY = this.eyeY === null ? _o.y : this.eyeY + (_o.y - this.eyeY) * Math.min(1, dt * 12); // the suspension takes the edge off the ground
     cam.position.set(_o.x, this.eyeY, _o.z);
-    const sh = fx.shakeAmt * 0.022 + (calm ? 0 : Math.max(0, r.speedFrac - 0.6) * 0.012); if (sh > 0) { cam.position.x += (Math.random() - 0.5) * sh; cam.position.y += (Math.random() - 0.5) * sh; cam.position.z += (Math.random() - 0.5) * sh; }
-    cam.rotation.set(this.pitch + (calm ? 0 : this.kick), this.yaw + Math.PI, calm ? 0 : -(r.lean || 0) * 0.5, 'YXZ');
+    const own = !this.mount, sh = fx.shakeAmt * 0.022 + (calm || !own ? 0 : Math.max(0, r.speedFrac - 0.6) * 0.012); if (sh > 0) { cam.position.x += (Math.random() - 0.5) * sh; cam.position.y += (Math.random() - 0.5) * sh; cam.position.z += (Math.random() - 0.5) * sh; }
+    cam.rotation.set(this.pitch + (calm ? 0 : this.kick), this.yaw + Math.PI, calm || !own ? 0 : -(r.lean || 0) * 0.5, 'YXZ');
     // the weapon: drops away and comes back on a swap, kicks on every round, lags the sights a touch
-    const k = this.swapT, drop = (1 - k) * (1 - k) * 0.7, rk = calm ? 0 : this.recoil, mgOn = this.weapon === 'mg', g = mgOn ? this.mg : this.pod, other = mgOn ? this.pod : this.mg;
-    other.visible = false; g.visible = true; this.root.visible = true;
+    const k = this.swapT, drop = (1 - k) * (1 - k) * 0.7, rk = calm ? 0 : this.recoil, mgOn = this.weapon === 'mg' || this.weapon === 'harpoon', g = this.models[this.weapon];
+    for (const key in this.models) this.models[key].visible = this.models[key] === g; this.root.visible = true;
     const tall = cam.aspect < 1; g.scale.setScalar(tall ? 0.6 : 1); // portrait: a narrow picture, so the weapon is drawn smaller to leave the same share of it clear
-    g.position.set((calm ? 0 : this.swayX) * 0.6, (mgOn ? -0.5 : -0.56) * (tall ? 1.25 : 1) - drop - (calm ? 0 : this.swayY) * 0.4, (mgOn ? -1.3 : -1.34) + rk * (mgOn ? 0.035 : 0.09)); g.rotation.set((mgOn ? 0.13 : 0.12) + rk * 0.012 - drop * 0.5, (calm ? 0 : this.swayX) * 0.5, 0);
-    if (!mgOn) this.pod.userData.tips.forEach((t, i) => { t.visible = m.phase === 'kill' ? i === 0 && m.reload <= 0 : i < this.rockets; });
-    const f = this.muzzleFlash; f.visible = this.flashT > 0 && k >= 1;
+    g.position.set((calm ? 0 : this.swayX) * 0.6, (g === this.rack ? -0.7 : mgOn ? -0.5 : -0.56) * (tall ? 1.25 : 1) - drop - (calm ? 0 : this.swayY) * 0.4, (mgOn ? -1.3 : -1.34) + rk * (mgOn ? 0.035 : 0.09)); g.rotation.set((mgOn ? 0.13 : 0.12) + rk * 0.012 - drop * 0.5, (calm ? 0 : this.swayX) * 0.5, 0);
+    if (g === this.pod) this.pod.userData.tips.forEach((t, i) => { t.visible = m.phase === 'kill' ? i === 0 && m.reload <= 0 : i < this.rockets; });
+    const f = this.muzzleFlash; f.visible = this.flashT > 0 && k >= 1 && g !== this.rack;
     if (f.visible) { f.position.copy(g.userData.muzzle).multiplyScalar(g.scale.x).applyEuler(g.rotation).add(g.position); const sz = (mgOn ? 0.5 : 1.1) * g.scale.x * (0.8 + Math.random() * 0.5); f.scale.set(sz, sz, 1); f.material.rotation = Math.random() * 6; }
     cam.updateMatrixWorld();
   }
 
   // tests only: an aimer that tracks the most urgent thing and holds the trigger
   bot(o) {
-    const m = this.m; let z = null, soon = 1e9; this.botFire = false; if (m.phase === 'kill') { _p.copy(this.weak).sub(o); this.botFire = this.locked && !this.wasFiring; }
+    const m = this.m; let z = null, soon = 1e9; this.botFire = false; if (m.phase !== 'chase') { _p.copy(this.weak).sub(o); this.botFire = (this.locked || m.phase === 'rip') && !this.wasFiring; }
     else {
       for (const h of m.hz) if (h && h.state === 'fly' && h.h.dur - h.h.t < soon && h.h.t > 0.25) { soon = h.h.dur - h.h.t; z = h; }
       if (this.G.bot === 'storm') z = null;

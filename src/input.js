@@ -132,6 +132,8 @@ export const input = {
     document.body.classList.toggle('gunning', m === 'gun');
     if (m !== 'gun' && document.pointerLockElement) document.exitPointerLock?.();
   },
+  // same controls, a different seat: everything held is let go and the guard starts again
+  reseat() { modeAt = now; dropHeld(); },
   get mode() { return mode; },
   tick(t) { now = t; for (const k in pressed) if (pressed[k] && t - pressed[k] > 0.3) pressed[k] = 0; },
   get usingTouch() { return touchSeen; },

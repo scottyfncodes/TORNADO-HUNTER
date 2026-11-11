@@ -8,9 +8,9 @@ An arcade chase-combat game in two seats (third person at the wheel, first perso
 
 1. **Chase (you drive).** The storm is already running. Dodge what it throws while the crew shoot wreckage out of the air. Get inside the danger zone.
 2. **Guns (you shoot).** Crossing into the zone puts you on the turret, first person, and the truck drives itself. Machine gun on the bright seam of the band for critical hits; shoot down what the storm throws before it lands on you; rockets for cars, tractors and satellite twisters. DRIVE takes the wheel back whenever you want it. Bigger storms shed outer bands first, surge and bolt, and you are back at the wheel to outrun the debris wall.
-3. **Harpoon.** Hook the weakened storm. It is dragged to a crawl.
-4. **DOROTHY.** A swarm of sensors is sucked in and swirls inside the funnel; the camera rides with them while the truck drives itself. The core goes critical.
-5. **Kill shot.** The turret again: hold the launcher on the glowing core until it locks, then one rocket.
+3. **Harpoon (Winch's truck).** The finale is a seat each: the camera swings across to Winch's harpoon truck. Hold the launcher on the glow until it locks, and hook the storm. It is dragged to a crawl.
+4. **DOROTHY (Doc's bus).** Pull the lever. A swarm of sensors is sucked in and swirls inside the funnel; the camera rides with them while the truck drives itself. The core goes critical.
+5. **Kill shot (Sparks' rocket truck).** Hold the launcher on the glowing core until it locks, then one rocket.
 
 Hail cores and lightning come and go over a fight: stones on the lens, a slick road, the distance closing in, and thunder that arrives when the distance says it should.
 
@@ -42,7 +42,7 @@ Then open `http://localhost:8000`. Any static host works.
 | `src/tornado.js` | The funnel, its bands and debris (shaders) |
 | `src/world.js` | Terrain, the baked ground texture, towns, farms and props |
 | `src/rig.js` | The vehicle and its arcade handling |
-| `src/convoy.js` | The crew's camper truck and bus that flank you |
+| `src/convoy.js` | The crew's vehicles: Winch's harpoon truck, Doc's science bus, Sparks' rocket truck, and the seats on them |
 | `src/main.js` | Boot, camera, state machine, frame loop |
 | `ui/styles.css` | The interface |
 | `assets/` | Terrain, sky, effects, brand and icons |

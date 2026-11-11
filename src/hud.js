@@ -8,6 +8,7 @@ import { FEEL } from './config.js';
 const $ = (id) => document.getElementById(id);
 const _v = new THREE.Vector3();
 // hit markers: a tick for a hit, a wider amber one for a critical, a green burst when it comes apart, grey when it did nothing
+const SEAT = { harpoon: 'Winch · harpoon truck', dorothy: 'Doc · science bus', rocket: 'Sparks · rocket truck' };
 const MARK = { hit: [1.0, 0.82, 130], crit: [1.5, 1.0, 190], kill: [1.95, 1.2, 320], weak: [0.8, 0.7, 110], far: [0.8, 0.7, 110] };
 
 export class Hud {
@@ -74,9 +75,9 @@ export class Hud {
       this.set('boost', Math.round(r.boostCharge * 20), (v) => { $('boost-fill').style.transform = `scaleY(${1 - v / 20})`; $('btn-boost').classList.toggle('ready', v >= 20); });
     }
     this.set('cine', !!m.cine, (v) => this.el.classList.toggle('cine', v));
-    this.set('gun', gun, (v) => { this.ret.hidden = !v; $('hud-speed').classList.toggle('auto', v); $('mph-lbl').textContent = v ? 'mph · auto' : 'mph'; if (!v) { for (const k of this.marks) { k.on = false; k.e.hidden = true; } this.targetT = 0; } });
+    this.set('gun', gun, (v) => { this.ret.hidden = !v; $('hud-speed').classList.toggle('auto', v); this.last.seat = null; $('rig-mph').hidden = false; $('mph-lbl').textContent = v ? 'mph · auto' : 'mph'; if (!v) { for (const k of this.marks) { k.on = false; k.e.hidden = true; } this.targetT = 0; } });
     if (gun) this.gunner(dt, m, g, camera);
-    const line = m.coachLine(), tone = /CATCH|CLOSER|OUTRUN|GET INSIDE|ARMOUR/.test(line) ? 'bad' : /FIRE|HARPOON IT|KILL|BOOST|TAP GUNS|SEND|SEAM|LOCK/.test(line) ? 'good' : '';
+    const line = m.coachLine(), tone = /CATCH|CLOSER|OUTRUN|GET INSIDE|ARMOUR/.test(line) ? 'bad' : /FIRE|GLOW|KILL|BOOST|TAP GUNS|RELEASE|SEAM|LOCK/.test(line) ? 'good' : '';
     this.set('coach', line, (v) => { $('hud-coach').textContent = v; }); this.set('coachTone', tone, (v) => { $('hud-coach').className = 'coach ' + v; });
     const call = m.calloutT > 0 && m.callout ? m.callout : null;
     this.set('callout', call ? call.text + call.tone : '', () => { const e = $('hud-callout'); e.hidden = !call; if (call) { e.textContent = call.text; e.className = 'callout ' + call.tone; } });
@@ -95,19 +96,21 @@ export class Hud {
 
   // ---- the sights ----
   gunner(dt, m, g, camera) {
-    const kill = m.phase === 'kill', rk = g.weapon === 'rocket', a = g.aim, W = window.innerWidth, H = window.innerHeight;
-    this.set('wpn', rk, (v) => { this.ret.classList.toggle('rk', v); });
+    const kill = m.phase !== 'chase', w = g.weapon, rk = w !== 'mg', locks = w === 'rocket' || w === 'harpoon', a = g.aim, W = window.innerWidth, H = window.innerHeight; // kill: any finale seat, where the pad is one button
+    this.set('wpn', rk, (v) => { this.ret.classList.toggle('rk', v); }); this.set('noaim', w === 'dorothy', (v) => { this.ret.classList.toggle('noaim', v); }); // DOROTHY is a lever, not a shot
+    // whose seat: your own speed while the truck drives itself, or the crew member and the vehicle you are sitting on
+    this.set('seat', SEAT[g.seatId] || '', (v) => { $('rig-mph').hidden = !!v; $('mph-lbl').textContent = v || 'mph · auto'; });
     // reticle: cream at rest, amber on something you can hurt, magenta on the seam (or a lock), dim when out of range
     const reach = a.kind === 'haz' || a.kind === 'sat' || a.kind === 'core' || (a.kind === 'band' && m.inZone);
     this.set('aim', !a.kind ? '' : !reach ? 'far' : g.locked || (a.crit && !rk) ? 'hot' : 'on', (v) => { this.ret.classList.toggle('on', v === 'on'); this.ret.classList.toggle('hot', v === 'hot'); this.ret.classList.toggle('far', v === 'far'); });
-    this.set('lock', rk ? Math.round(Math.min(1, g.lockT / FEEL.rocketLockSeconds) * 12) : 0, (v) => { this.ret.style.setProperty('--lock', v / 12); });
-    const note = g.noteT > 0 ? g.note : g.locked ? 'LOCKED' : rk && g.lock ? 'LOCKING' : '';
+    this.set('lock', locks ? Math.round(Math.min(1, g.lockT / FEEL.rocketLockSeconds) * 12) : 0, (v) => { this.ret.style.setProperty('--lock', v / 12); });
+    const note = g.noteT > 0 ? g.note : g.locked ? 'LOCKED' : locks && g.lock ? 'LOCKING' : '';
     this.set('note', note, (v) => { const e = $('ret-note'); e.hidden = !v; e.textContent = v; e.classList.toggle('hot', v === 'LOCKED'); });
     if (this.targetT > 0) { this.targetT -= dt; if (this.targetT <= 0) this.set('tOn', false, () => { $('ret-info').hidden = true; }); }
     // the pad
-    this.set('fLabel', kill ? 'Kill shot' : 'Fire', (v) => { $('fire-label').textContent = v; });
-    this.set('fHint', kill ? `${Math.ceil(m.killT)} s` : rk ? `ROCKET ${g.rockets}/${g.rocketMax}` : m.gun.name.toUpperCase(), (v) => { $('fire-hint').textContent = v; });
-    this.set('fState', kill ? (g.locked ? 3 : 2) : rk ? (g.locked ? 3 : g.rockets > 0 && g.reload <= 0 ? 1 : 0) : 1, (v) => { const b = $('btn-fire'); b.classList.toggle('ready', v === 1 || v === 2); b.classList.toggle('danger', v === 3); if (v === 3 && kill) this.onReady && this.onReady(); });
+    this.set('fLabel', w === 'harpoon' ? 'Harpoon' : w === 'dorothy' ? 'Dorothy' : kill ? 'Kill shot' : 'Fire', (v) => { $('fire-label').textContent = v; });
+    this.set('fHint', kill ? (m.phase === 'dorothy' ? 'AWAY' : `${Math.ceil(m.phase === 'stagger' ? m.staggerT : m.phase === 'rip' ? m.hookT : m.killT)} s`) : rk ? `ROCKET ${g.rockets}/${g.rocketMax}` : m.gun.name.toUpperCase(), (v) => { $('fire-hint').textContent = v; });
+    this.set('fState', kill ? (g.locked || w === 'dorothy' ? 3 : 2) : rk ? (g.locked ? 3 : g.rockets > 0 && g.reload <= 0 ? 1 : 0) : 1, (v) => { const b = $('btn-fire'); b.classList.toggle('ready', v === 1 || v === 2); b.classList.toggle('danger', v === 3); if (v === 3 && kill) this.onReady && this.onReady(); });
     this.set('sLabel', rk ? 'Gun' : 'Rockets', (v) => { $('swap-label').textContent = v; });
     this.set('sHint', kill ? '' : rk ? '' : `${g.rockets} LEFT`, (v) => { $('swap-hint').textContent = v; });
     this.set('sOff', !kill && !rk && g.rockets <= 0, (v) => { $('btn-swap').classList.toggle('off', v); });

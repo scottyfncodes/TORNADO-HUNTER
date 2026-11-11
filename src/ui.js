@@ -95,7 +95,7 @@ export class UI {
     body.appendChild(g);
     body.appendChild(el('h3', 'section-h', 'Fitted to every rig'));
     const kit = el('div', 'grid-4');
-    for (const [n, t] of [['Turret gun', 'Each rig mounts its own. Inside the danger zone you take it yourself while the truck drives: hit the bright seam on the band for critical damage, and shoot down what the storm throws.'], ['Rockets', 'A few in the rack, two more after every band. Hold the reticle on a target to lock. One rocket ends a car, a tractor or a satellite twister, and bites a chunk off a band.'], ['Shotgun', 'The crew fire it for you: the last-second save on whatever is about to hit, and it clears wrecks off the road.'], ['Harpoon + Dorothy', 'When the band is gone, hook the storm and send Dorothy up it. Then lock the launcher on the critical core: the kill shot.']]) kit.appendChild(this.card(n, t, { static: true }));
+    for (const [n, t] of [['Turret gun', 'Each rig mounts its own. Inside the danger zone you take it yourself while the truck drives: hit the bright seam on the band for critical damage, and shoot down what the storm throws.'], ['Rockets', 'A few in the rack, two more after every band. Hold the reticle on a target to lock. One rocket ends a car, a tractor or a satellite twister, and bites a chunk off a band.'], ['Shotgun', 'The crew fire it for you: the last-second save on whatever is about to hit, and it clears wrecks off the road.'], ['The finale, a seat each', 'When the last band is gone you swap vehicles: Winch\'s truck to harpoon the storm, Doc\'s bus to release Dorothy, Sparks\' rocket truck to lock the kill shot on the critical core.']]) kit.appendChild(this.card(n, t, { static: true }));
     body.appendChild(kit);
   }
   buyBtn(price, onBuy) {
@@ -104,11 +104,11 @@ export class UI {
     return b;
   }
   tab_crew(body, s) {
-    body.appendChild(el('h3', 'section-h', 'Pick two to ride with you'));
+    body.appendChild(el('h3', 'section-h', 'Everyone rolls out, a vehicle each. Pick two to lead: their perks apply'));
     const g = el('div', 'grid-2');
     for (const c of CREW) {
       const sel = s.loadout.crew.includes(c.id);
-      g.appendChild(this.card(c.name, c.perk, { sel, pickLabel: 'Aboard', tags: [['', c.role]], onClick: () => { if (sel) return; s.loadout.crew = [s.loadout.crew[1], c.id]; } }));
+      g.appendChild(this.card(c.name, c.perk, { sel, pickLabel: 'Leading', tags: [['', c.role], ['tag-pay', c.ride]], onClick: () => { if (sel) return; s.loadout.crew = [s.loadout.crew[1], c.id]; } }));
     }
     body.appendChild(g);
   }
@@ -131,7 +131,7 @@ export class UI {
     $('res-eyebrow').textContent = `${res.storm.name} · EF${res.storm.ef + res.rematch} · ${mm}:${ss}`;
     $('res-title').textContent = res.won ? 'Storm destroyed' : 'Rig wrecked';
     const st = res.stats;
-    $('res-sub').textContent = res.won ? `${st.shot} pieces of wreckage shot down, ${st.crits} critical hits, ${st.rockets} rocket${st.rockets === 1 ? '' : 's'}, ${st.close} close calls, one kill shot.` : st.snaps ? 'So close. On the gun, shoot down what it throws before it lands; rockets for cars and tractors. Or hit DRIVE and steer off the magenta circles.' : 'Get inside the danger zone and the turret is yours: shoot the bright seam on the band. Then harpoon, Dorothy, kill shot.';
+    $('res-sub').textContent = res.won ? `${st.shot} pieces of wreckage shot down, ${st.crits} critical hits, ${st.rockets} rocket${st.rockets === 1 ? '' : 's'}, ${st.close} close calls, one kill shot.` : st.snaps ? 'So close. On the gun, shoot down what it throws before it lands; rockets for cars and tractors. Or hit DRIVE and steer off the magenta circles.' : 'Get inside the danger zone and the turret is yours: shoot the bright seam on the band. Then the crew take over, a seat each: harpoon, Dorothy, kill shot.';
     const t = $('res-tally'); t.textContent = '';
     for (const [k, v] of res.lines) { t.appendChild(el('dt', '', k)); t.appendChild(el('dd', '', '+' + v)); }
     t.appendChild(el('dt', 'total', res.won ? 'Banked' : 'Salvaged')); t.appendChild(el('dd', 'total', '+' + res.data));
