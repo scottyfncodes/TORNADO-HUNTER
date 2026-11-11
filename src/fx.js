@@ -154,7 +154,7 @@ export class Fx {
     for (let i = 0; i < 5; i++) this.puff(x + (Math.random() - 0.5) * size * 0.7, y + (Math.random() - 0.3) * size * 0.5, z + (Math.random() - 0.5) * size * 0.7, size * (0.5 + Math.random() * 0.5), i % 2 ? '#2a2420' : '#6e5637', 0.9 + Math.random() * 0.5, 4);
   }
   // a rocket that homes on getTarget(out) and calls onHit(point)
-  rocket(from, getTarget, speed, onHit) { const r = this.rockets.find((e) => !e.on); if (!r) { onHit(getTarget(_a).clone()); return; } r.on = true; r.p.copy(from); r.get = getTarget; r.speed = speed; r.onHit = onHit; r.t = 0; r.m.visible = true; }
+  rocket(from, getTarget, speed, onHit) { const r = this.rockets.find((e) => !e.on); if (!r) { onHit(getTarget(_a).clone()); return null; } r.on = true; r.p.copy(from); r.get = getTarget; r.speed = speed; r.onHit = onHit; r.t = 0; r.m.visible = true; r.m.position.copy(from); return r; }
 
   // data bursts out, hangs, then flies to the rig; onGet fires as each one arrives
   shardBurst(x, y, z, n, target, onGet) {
@@ -164,12 +164,14 @@ export class Fx {
   anim(dur, step, done) { this.anims.push({ t: 0, dur, step, done }); }
 
   // probe pod: lobbed at the funnel, then spirals up it
-  launchPod(from, storm, onEaten) {
+  launchPod(from, storm, onEaten, dur = 1.15) {
     const start = from.clone(); this.pod.visible = true;
-    this.anim(1.15, (k) => {
+    this.anim(dur, (k) => {
       if (k < 0.45) { const u = k / 0.45; _a.set(storm.x, storm.groundY + 6, storm.z); this.pod.position.lerpVectors(start, _a, u); this.pod.position.y += Math.sin(u * Math.PI) * 14; }
-      else { const u = (k - 0.45) / 0.55, v = u * 0.4, r = storm.radiusAt(v) * (1.1 - u * 0.6), a = u * 14 * storm.spin; storm.spineAt(v, _a); this.pod.position.set(storm.x + _a.x + Math.cos(a) * r, storm.groundY + v * storm.height, storm.z + _a.z + Math.sin(a) * r); }
-      this.pod.rotation.y += 0.4; this.pod.scale.setScalar(1 + Math.sin(k * 40) * 0.2);
+      else { // caught by the inflow: round and up the outside of the funnel, then in. The long (cinematic) version stays outside where you can see it
+        const u = (k - 0.45) / 0.55, v = u * (dur > 2 ? 0.3 : 0.4), wide = dur > 2 ? 1.35 - u * u * 1.1 : 1.1 - u * 0.6, r = storm.radiusAt(v) * wide + (dur > 2 ? 6 * (1 - u) : 0), a0 = Math.atan2(start.z - storm.z, start.x - storm.x), a = a0 + u * (dur > 2 ? 9 : 14) * storm.spin; storm.spineAt(v, _a); this.pod.position.set(storm.x + _a.x + Math.cos(a) * r, storm.groundY + 6 + v * storm.height, storm.z + _a.z + Math.sin(a) * r); }
+      this.pod.rotation.y += 0.4; this.pod.scale.setScalar((dur > 2 ? 1.8 : 1) * (1 + Math.sin(k * 40) * 0.2));
+      if (dur > 2 && Math.random() < 0.5) { this.flashAt(this.pod.position.x + (Math.random() - 0.5) * 6, this.pod.position.y + (Math.random() - 0.5) * 6, this.pod.position.z + (Math.random() - 0.5) * 6, 3.5, '#62f58c', 0.25); }
     }, () => { this.pod.visible = false; onEaten(); });
   }
   launchHarpoon(from, getTarget, onHit) {

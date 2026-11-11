@@ -68,7 +68,7 @@ export const input = {
     dom.zone.addEventListener('pointermove', stickMove);
     dom.zone.addEventListener('pointerup', stickUp);
     dom.zone.addEventListener('pointercancel', stickUp);
-    bindButton(dom.action, 'action'); bindButton(dom.boost, 'boost'); bindButton(dom.gadget, 'gadget');
+    bindButton(dom.action, 'action'); bindButton(dom.boost, 'boost'); if (dom.gadget) bindButton(dom.gadget, 'gadget');
     // iOS: no rubber-banding, pinch or double-tap zoom on the play surface
     for (const ev of ['gesturestart', 'gesturechange', 'dblclick', 'contextmenu']) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
     document.addEventListener('touchmove', (e) => { if (enabled) e.preventDefault(); }, { passive: false });

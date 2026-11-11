@@ -114,6 +114,22 @@ function missionCamera(dt, m) {
   G.fovKick = Math.max(0, G.fovKick - dt * 16); const fov = Math.min(112, G.baseFov + G.fovKick + Math.min(1.1, sp) * FEEL.camFovSpeed + boost * 7);
   if (Math.abs(fov - camera.fov) > 0.05) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 7); camera.updateProjectionMatrix(); }
 }
+// phase 4 and the kill shot: the camera leaves the truck and rides with the sensors, or the rocket
+function cineCamera(dt, m) {
+  const s = m.storm, p = m.cine.pos, rocket = m.cine.kind === 'rocket';
+  _d.set(s.x - p.x, 0, s.z - p.z); const d = _d.length() || 1; _d.multiplyScalar(1 / d);
+  if (rocket) _p.set(p.x - _d.x * 11 - _d.z * 3, p.y + 3, p.z - _d.z * 11 + _d.x * 3);
+  else { // stand well outside the funnel, on the truck's side of it, and watch the sensors go round and up
+    const r = m.rig, ox = r.x - s.x, oz = r.z - s.z, od = Math.hypot(ox, oz) || 1, out = s.radiusAt(0.2) * 1.4 + 58;
+    _p.set(s.x + ox / od * out - oz / od * 22, s.groundY + 16 + (p.y - s.groundY) * 0.45, s.z + oz / od * out + ox / od * 22);
+  }
+  const gy = G.world.heightAt(_p.x, _p.z) + 2; if (_p.y < gy) _p.y = gy;
+  if (rocket) _l.set(p.x + _d.x * Math.min(d, 30), p.y, p.z + _d.z * Math.min(d, 30)); else _l.set(p.x * 0.7 + s.x * 0.3, p.y + 4, p.z * 0.7 + s.z * 0.3);
+  if (!m.cine.cut) { m.cine.cut = true; camera.position.copy(_p); camState.look.copy(_l); } // a hard cut to the new subject, then follow it
+  camera.position.lerp(_p, Math.min(1, dt * 7)); camState.look.lerp(_l, Math.min(1, dt * 9)); camera.lookAt(camState.look); camera.updateMatrixWorld();
+  const fov = G.baseFov + (rocket ? 14 : -8); if (Math.abs(fov - camera.fov) > 0.05) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 6); camera.updateProjectionMatrix(); }
+  camState.pos.copy(camera.position);
+}
 function attractCamera(dt, t) {
   const s = G.attract, a = t * 0.045 + 2.4, d = 330;
   camera.position.set(s.x + Math.cos(a) * d, s.groundY + 26, s.z + Math.sin(a) * d);
@@ -138,12 +154,12 @@ function frame(now) {
     const steps = dt > 0 ? (G.fast || 1) : 0, sdt = G.fast ? 1 / 60 : dt;
     for (let i = 0; i < steps; i++) { if (i) { simT += sdt; fx.update(sdt, simT); if (fx.stopT > 0) fx.stopT = 0; } m.update(sdt, simT, input.axes(), input); }
     storm = m.storm; prox = THREE.MathUtils.clamp(1 - (m.dist - 40) / 500, 0, 1); stormLevel = m.phase === 'won' ? 0 : 1;
-    missionCamera(dtBase, m);
+    if (m.cine) cineCamera(dtBase, m); else missionCamera(dtBase, m);
     if (!G.paused) G.hud.update(dtBase, m, camera, input.usingTouch);
-    audio.beds({ prox: storm.alive ? prox : 0, storm: G.sky.storm, speed: Math.min(1.4, m.rig.speedFrac), throttle: Math.abs(m.rig.throttle), tension: m.phase === 'rip' ? 0.6 : null, playing: !G.paused && !m.result, drift: m.rig.drifting ? 1 : Math.min(1, Math.abs(m.rig.slip || 0) / 14), boost: m.rig.boostT > 0 });
+    audio.beds({ prox: storm.alive ? prox : 0, storm: G.sky.storm, speed: Math.min(1.4, m.rig.speedFrac), throttle: Math.abs(m.rig.throttle), tension: m.line ? 0.6 : null, playing: !G.paused && !m.result, drift: m.rig.drifting ? 1 : Math.min(1, Math.abs(m.rig.slip || 0) / 14), boost: m.rig.boostT > 0 });
     if (m.result && !G.banked) { G.banked = true; G.unlockText = bank(m.result); input.setEnabled(false); document.body.classList.remove('playing'); }
     if (m.result && !G.resultShown && m.phaseT > (m.result.won ? 4.8 : 1.8)) { G.resultShown = true; G.hud.show(false); G.ui.results(m.result, G.unlockText); }
-    const g = window.__game; g.state = m.result ? 'over' : 'playing'; g.score = Math.round(m.data); g.data = g.score; g.time = +m.time.toFixed(2); g.phase = m.phase; g.hull = Math.round(m.rig.hull); g.stability = +m.stability.toFixed(3); g.stage = m.stage; g.bands = storm.bandsLeft; g.dist = Math.round(m.dist); g.speed = +Math.hypot(m.rig.vx, m.rig.vz).toFixed(1); g.mph = m.rig.mph; g.stormMph = m.stormMph; g.exposed = +m.exposed.toFixed(1); g.boost = +m.rig.boostCharge.toFixed(2); g.shot = m.stats.shot; g.close = m.stats.close; g.x = Math.round(m.rig.x); g.z = Math.round(m.rig.z);
+    const g = window.__game; g.state = m.result ? 'over' : 'playing'; g.score = Math.round(m.data); g.data = g.score; g.time = +m.time.toFixed(2); g.phase = m.phase; g.hull = Math.round(m.rig.hull); g.stability = +m.stability.toFixed(3); g.stage = m.stage; g.bands = storm.bandsLeft; g.dist = Math.round(m.dist); g.speed = +Math.hypot(m.rig.vx, m.rig.vz).toFixed(1); g.mph = m.rig.mph; g.stormMph = m.stormMph; g.inZone = !!m.inZone; g.cine = !!m.cine; g.boost = +m.rig.boostCharge.toFixed(2); g.shot = m.stats.shot; g.close = m.stats.close; g.x = Math.round(m.rig.x); g.z = Math.round(m.rig.z);
     G.rigVel = m.rig;
   } else if (G.attract) {
     const s = G.attract, t = TOWNS.pete, a = simT * 0.05; s.moveX = Math.cos(a); s.moveZ = Math.sin(a); s.moveSpeed = 9; if (dt > 0) { s.update(dt, simT); G.world.update(dt, s); G.world.events.length = 0; }

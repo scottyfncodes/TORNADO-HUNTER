@@ -1,21 +1,20 @@
 # Tornado Hunter
 
-Chase super tornadoes at 140 mph in an overpowered storm truck. Shoot down what they throw, break the shield, harpoon it, fire the kill shot.
+Chase super tornadoes at 140 mph in an overpowered storm truck. Guns, harpoon, Dorothy, kill shot.
 
 A third-person arcade chase-combat game for the phone in your pocket: one storm per sitting, a minute or two, no installs. Built with Three.js, runs in iPhone Safari and adds to the Home Screen.
 
 ## How it plays
 
-1. **Chase.** The storm is already running. Roads are fast; fields are the shortcut. Boost to close in.
-2. **Survive.** It throws cars, tractors and barn doors at where you are going. Your gunner shoots them down; you steer off the magenta circles.
-3. **Break the shield.** Stay in gun range and keep the rockets going. The debris shield around the storm comes apart.
-4. **Harpoon it.** With the core exposed, hook it. The storm is dragged to a crawl.
-5. **Kill shot.** One rocket into the hooked storm blows a band off.
-6. **Escape.** Outrun the wall of debris, then chase it down again. Three bands and it is gone.
+1. **Chase.** The storm is already running. Dodge what it throws; the guns shoot wreckage out of the air. Get inside the danger zone.
+2. **Guns.** In the zone the guns weaken the storm. Hit BURST to pour it on. Bigger storms shed outer bands first, surge and bolt.
+3. **Harpoon.** Hook the weakened storm. It is dragged to a crawl.
+4. **DOROTHY.** The camera rides with the sensors up the funnel while the truck drives itself. The core goes critical.
+5. **Kill shot.** One rocket.
 
-**Touch:** hold the left half of the screen to drive, slide to steer, pull back to brake, pull back while steering to drift. Right thumb: ROCKET (KILL SHOT on a hooked storm), BOOST, and HARPOON once the shield is down (before that the same button drops DOROTHY for double damage).
+**Touch:** hold the left half of the screen to drive, slide to steer, pull back to brake, pull back while steering to drift. Right thumb: BOOST, and one big button that is always the next step (BURST, HARPOON, DOROTHY, KILL SHOT).
 
-**Keyboard:** WASD or arrows, Space rocket, E Dorothy or harpoon, Shift boost, Esc or P pause.
+**Keyboard:** WASD or arrows, Space for the action button, Shift boost, Esc or P pause.
 
 ## Run it
 
