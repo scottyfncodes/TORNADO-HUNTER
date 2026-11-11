@@ -91,7 +91,7 @@ export class Mission {
     }
     if (this.gadget === 'anchor') {
       if (this.phase !== 'tethered' || !this.line || this.anchor) { this.G.audio.deny(); return false; }
-      this.anchor = { x: r.x, z: r.z, t: FEEL.anchorSeconds, L: this.line.L }; this.line = null; fx.setStake(true, r.x, r.z); this.G.audio.stake(); this.gadgetCd = FEEL.anchorCooldown; this.call('LINE STAKED', 'good', 1.2); return true;
+      this.anchor = { x: r.x, z: r.z, t: FEEL.anchorSeconds, L: this.line.L }; this.line = null; fx.hideCable(0); fx.setStake(true, r.x, r.z); this.G.audio.stake(); this.gadgetCd = FEEL.anchorCooldown; this.call('LINE STAKED', 'good', 1.2); return true;
     }
     return false;
   }

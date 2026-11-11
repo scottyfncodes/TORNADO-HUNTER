@@ -95,7 +95,7 @@ export class Sky {
     this.storm += (stormTarget - this.storm) * Math.min(1, dt * (stormTarget < this.storm ? 0.7 : 2));
     this.flash = Math.max(0, this.flash - dt * 3.2);
     const fl = this.flash * (0.6 + 0.4 * Math.sin(t * 70)); u.uFlash.value = fl; u.uStorm.value = this.storm;
-    const s = this.storm, dark = 1 - 0.3 * s - 0.2 * s * prox;
+    const s = this.storm, dark = 1 - 0.16 * s - 0.14 * s * prox;
     u.uTint.value.setRGB(dark * (1 - 0.06 * s), dark, dark * (1 - 0.03 * s));
     u.uFog.value.copy(this.clearHorizon).lerp(_stormFog, s * 0.85); this.scene.fog.color.copy(u.uFog.value);
     u.uFogNear.value = this.scene.fog.near = 260 - 120 * s * prox; u.uFogFar.value = this.scene.fog.far = 3000 - 1300 * s;

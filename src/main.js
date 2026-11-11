@@ -58,14 +58,14 @@ G.startMission = (def, opts = {}) => {
   G.world.reset(); G.fx.reset(); G.lastOpts = { def, opts };
   G.mission = new Mission(G, def, save.s.loadout, save.s.upgrades, opts);
   G.ui.hide(); G.hud.show(true); G.hud.begin(G.mission); G.state = 'playing'; G.paused = false; G.banked = false; G.resultShown = false;
-  document.body.classList.add('playing'); input.clear(); input.setEnabled(true); camState.init = false; audio.suspend(false);
+  document.body.classList.add('playing'); input.clear(); input.setEnabled(true); camState.init = false; audio.suspend(false); document.activeElement && document.activeElement.blur && document.activeElement.blur();
   if (!save.s.seenCoach) { save.s.seenCoach = true; save.write(); }
 };
 G.restart = () => { if (G.lastOpts) G.startMission(G.lastOpts.def, G.lastOpts.opts); };
 G.toHQ = () => { if (G.mission) { G.mission.dispose(); G.mission = null; } G.paused = false; spawnAttract(); G.ui.show('hq'); };
 G.setPaused = (on) => {
   if (G.state !== 'playing' && !G.paused) return; G.paused = on; input.setEnabled(!on); document.body.classList.toggle('playing', !on);
-  if (on) { G.ui.screens.pause.hidden = false; if (!input.usingTouch) $('p-resume').focus({ preventScroll: true }); } else { G.ui.screens.pause.hidden = true; input.clear(); }
+  if (on) { G.ui.screens.pause.hidden = false; if (!input.usingTouch) $('p-resume').focus({ preventScroll: true }); } else { G.ui.screens.pause.hidden = true; input.clear(); document.activeElement && document.activeElement.blur && document.activeElement.blur(); }
   audio.suspend(on);
 };
 function spawnAttract() {
@@ -109,7 +109,7 @@ function missionCamera(dt, m) {
   camState.pos.lerp(_p, Math.min(1, dt * 9)); camState.look.lerp(_l, Math.min(1, dt * 6));
   camera.position.copy(camState.pos);
   const sh = G.fx.shakeAmt * 0.035; if (sh > 0) { camera.position.x += (Math.random() - 0.5) * sh; camera.position.y += (Math.random() - 0.5) * sh; camera.position.z += (Math.random() - 0.5) * sh; }
-  camera.lookAt(camState.look);
+  camera.lookAt(camState.look); camera.updateMatrixWorld();
   G.fovKick = Math.max(0, G.fovKick - dt * 22); const fov = G.baseFov + G.fovKick + (r.boostT > 0 ? 4 : 0) + (teth ? 5 : 0);
   if (Math.abs(fov - camera.fov) > 0.05) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 10); camera.updateProjectionMatrix(); }
 }

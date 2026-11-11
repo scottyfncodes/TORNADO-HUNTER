@@ -85,18 +85,36 @@ export class World {
     progress(0.7);
     const map = new THREE.CanvasTexture(canvas); map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 4; map.flipY = false;
     const u = this.env.uniforms;
+    const shared = { uNoise: u.uNoise, uTint: u.uTint, uFog: u.uFog, uFogNear: u.uFogNear, uFogFar: u.uFogFar, uFlash: u.uFlash, uTor: u.uTor };
+    const lit = `c*=uTint*(1.0+uFlash); float td=distance(vW.xz,uTor.xy); c*=mix(0.5,1.0,smoothstep(uTor.z*0.5,uTor.z*2.8,td));
+          float f=smoothstep(uFogNear,uFogFar,distance(vW,cameraPosition)); c=mix(c,uFog,f); gl_FragColor=vec4(c,1.0);
+          #include <colorspace_fragment>`;
+    const head = `uniform sampler2D uNoise; uniform vec3 uTint,uFog,uTor; uniform float uFogNear,uFogFar,uFlash; varying vec3 vW;`;
     this.ground = new THREE.Mesh(g, new THREE.ShaderMaterial({
-      uniforms: { uMap: { value: map }, uNoise: u.uNoise, uTint: u.uTint, uFog: u.uFog, uFogNear: u.uFogNear, uFogFar: u.uFogFar, uFlash: u.uFlash, uTor: u.uTor },
+      uniforms: { uMap: { value: map }, ...shared },
       vertexShader: `varying vec2 vUv; varying vec3 vW; void main(){ vUv=uv; vec4 w=modelMatrix*vec4(position,1.0); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
-      fragmentShader: `uniform sampler2D uMap,uNoise; uniform vec3 uTint,uFog,uTor; uniform float uFogNear,uFogFar,uFlash; varying vec2 vUv; varying vec3 vW;
-        void main(){ vec3 c=texture2D(uMap,vUv).rgb; float d=texture2D(uNoise,vW.xz*0.045).r; float d2=texture2D(uNoise,vW.xz*0.006).r;
-          c*=0.74+0.34*d+0.16*d2; c*=uTint*(1.0+uFlash);
-          float td=distance(vW.xz,uTor.xy); c*=mix(0.42,1.0,smoothstep(uTor.z*0.5,uTor.z*2.8,td));
-          float f=smoothstep(uFogNear,uFogFar,distance(vW,cameraPosition)); c=mix(c,uFog,f);
-          gl_FragColor=vec4(c,1.0);
-          #include <colorspace_fragment>
-        }`,
+      fragmentShader: `${head} uniform sampler2D uMap; varying vec2 vUv;
+        void main(){ vec3 c=texture2D(uMap,vUv).rgb; float d=texture2D(uNoise,vW.xz*0.045).r; float d2=texture2D(uNoise,vW.xz*0.006).r; float d3=texture2D(uNoise,vW.xz*0.31).r;
+          c*=0.8+0.2*d+0.12*d2+0.16*d3; ${lit} }`,
     }));
+    // roads as their own draped strips: the ground texture is 1.5 m a texel, a road edge has to be sharper than that
+    const rp = [], rc = [], ri = [], col = (h) => { const k = new THREE.Color(h); return [k.r, k.g, k.b]; };
+    const strip = (x0, z0, x1, z1, half, mid, edge, lift) => {
+      const len = Math.hypot(x1 - x0, z1 - z0), n = Math.ceil(len / 20), dx = (x1 - x0) / len, dz = (z1 - z0) / len, px = -dz, pz = dx, cm = col(mid), ce = col(edge), base = rp.length / 3;
+      for (let i = 0; i <= n; i++) { const t = i / n * len, cx = x0 + dx * t, cz = z0 + dz * t; for (const [o, cc] of [[-half, ce], [-half * 0.72, cm], [half * 0.72, cm], [half, ce]]) { const x = cx + px * o, z = cz + pz * o; rp.push(x, this.heightAt(x, z) + lift, z); rc.push(cc[0], cc[1], cc[2]); } }
+      for (let i = 0; i < n; i++) for (let k = 0; k < 3; k++) { const a = base + i * 4 + k; ri.push(a, a + 4, a + 1, a + 1, a + 4, a + 5); }
+    };
+    for (let v = WORLD.roadOffset - WORLD.roadSpacing * 3; v < HALF; v += WORLD.roadSpacing) { strip(v, -HALF, v, HALF, WORLD.roadHalf, '#d2c29a', '#a8946a', 0.16); strip(-HALF, v, HALF, v, WORLD.roadHalf, '#d2c29a', '#a8946a', 0.17); }
+    strip(HW0.x, HW0.z, HW1.x, HW1.z, WORLD.highwayHalf, '#474d4e', '#3a3f40', 0.22);
+    for (const t of Object.values(TOWNS)) strip(t.x - 125, t.z, t.x + 125, t.z, 8, '#50575a', '#454b4d', 0.24);
+    for (let sd = 10; sd < HWL - 10; sd += 22) { const x = HW0.x + HWD.x * sd, z = HW0.z + HWD.z * sd; strip(x, z, x + HWD.x * 10, z + HWD.z * 10, 0.4, '#e8b93a', '#e8b93a', 0.3); }
+    const rgeo = new THREE.BufferGeometry(); rgeo.setAttribute('position', new THREE.Float32BufferAttribute(rp, 3)); rgeo.setAttribute('color', new THREE.Float32BufferAttribute(rc, 3)); rgeo.setIndex(ri);
+    this.roads = new THREE.Mesh(rgeo, new THREE.ShaderMaterial({
+      uniforms: shared, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+      vertexShader: `varying vec3 vC; varying vec3 vW; void main(){ vC=color; vec4 w=modelMatrix*vec4(position,1.0); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
+      fragmentShader: `${head} varying vec3 vC; void main(){ vec3 c=vC*(0.86+0.28*texture2D(uNoise,vW.xz*0.33).r); ${lit} }`,
+    }));
+    this.roads.frustumCulled = false; this.group.add(this.roads);
     this.ground.frustumCulled = false; this.group.add(this.ground);
     // a skirt so the edge of the world is never a hole
     const skirt = new THREE.Mesh(new THREE.PlaneGeometry(14000, 14000), new THREE.MeshBasicMaterial({ color: '#8a7a45' }));
@@ -159,7 +177,7 @@ export class World {
   bake(m, coast) {
     const S = 1024, base = document.createElement('canvas'); base.width = base.height = S;
     const bx = base.getContext('2d'), img = bx.createImageData(S, S), d = img.data;
-    const CROPS = [[203, 168, 74, 1.0, 10], [219, 183, 92, 0.9, 9], [203, 168, 74, 1.1, 12], [189, 169, 112, 1.3, 7], [124, 148, 70, 0, 0], [140, 166, 78, 0.8, 12], [118, 84, 54, 1.2, 14], [225, 190, 100, 1.0, 8], [131, 152, 76, 0, 0]];
+    const CROPS = [[214, 174, 70, 1.0, 12], [228, 190, 92, 0.9, 10], [205, 163, 62, 1.1, 14], [196, 176, 118, 1.3, 8], [112, 150, 66, 0, 0], [146, 176, 74, 0.8, 14], [126, 88, 56, 1.2, 16], [236, 200, 104, 1.0, 9], [128, 160, 72, 0, 0], [221, 182, 80, 1.0, 12]];
     const M = 257, at = (im, ix, iz, c = 0) => im.data[(iz * M + ix) * 4 + c];
     const H = this.heights, q = 256;
     for (let py = 0; py < S; py++) {
@@ -172,9 +190,9 @@ export class World {
         const crop = CROPS[(h * CROPS.length) | 0], dir = hash2(cx + 5 + sub, cz + 9) < 0.5;
         const row = crop[4] * Math.sin((dir ? wx : wz) * crop[3]);
         let r = crop[0] + row, g = crop[1] + row, b = crop[2] + row * 0.6;
-        const ex = ((wx + HALF) % q), ez = ((wz + HALF) % q); if (ex < 3 || ez < 3) { r *= 0.8; g *= 0.84; b *= 0.8; } // field tracks
-        const moist = (at(m.moisture, ix, iz) / 255 - 0.5) * 0.5; r *= 1 - moist * 0.5; b *= 1 - moist * 0.4;
-        const forest = at(m.forest, ix, iz) / 255 * 0.5; r += (84 - r) * forest; g += (112 - g) * forest; b += (58 - b) * forest;
+        const ex = ((wx + HALF) % q), ez = ((wz + HALF) % q); if (ex < 4 || ez < 4) { r *= 0.72; g *= 0.78; b *= 0.72; } // field tracks
+        const moist = (at(m.moisture, ix, iz) / 255 - 0.5) * 0.3; r *= 1 - moist * 0.5; b *= 1 - moist * 0.4;
+        const forest = at(m.forest, ix, iz) / 255 * 0.3; r += (84 - r) * forest; g += (112 - g) * forest; b += (58 - b) * forest;
         const dirt = at(m.splat, ix, iz, 0) / 255 * 0.7; r += (128 - r) * dirt; g += (100 - g) * dirt; b += (70 - b) * dirt;
         const bio = 0.07; r += (at(m.biomes, ix, iz, 0) - r) * bio; g += (at(m.biomes, ix, iz, 1) - g) * bio; b += (at(m.biomes, ix, iz, 2) - b) * bio;
         const cliff = at(m.cliff, ix, iz) / 255; r += (120 - r) * cliff; g += (118 - g) * cliff; b += (112 - b) * cliff;

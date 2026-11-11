@@ -29,6 +29,7 @@ function buildModel(def, envMap) {
   const wm = new THREE.MeshLambertMaterial({ vertexColors: true }); g.userData.wheels = [];
   for (const [sx, sz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) { const w = new THREE.Mesh(wheelGeo, wm); w.position.set(sx * (W / 2 + 0.12), wr, sz * L * 0.33); g.add(w); g.userData.wheels.push(w); }
   g.userData.muzzle = new THREE.Vector3(0, 2.6, -L * 0.28);
+  g.scale.setScalar(1.25); // chunky on purpose: it has to read at 40 px on a phone
   return g;
 }
 
@@ -37,7 +38,7 @@ export class Rig {
     this.def = def; this.mods = mods; this.scene = scene;
     this.model = buildModel(def, envMap); scene.add(this.model);
     const sh = new THREE.Mesh(new THREE.CircleGeometry(1, 20), new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: 0.32, depthWrite: false, fog: false }));
-    sh.rotation.x = -Math.PI / 2; sh.scale.set(def.wid * 0.9, def.len * 0.75, 1); sh.renderOrder = 1; scene.add(sh); this.shadow = sh;
+    sh.rotation.x = -Math.PI / 2; sh.scale.set(def.wid * 1.1, def.len * 0.95, 1); sh.renderOrder = 1; scene.add(sh); this.shadow = sh;
     this.x = 0; this.z = 0; this.y = 0; this.heading = 0; this.vx = 0; this.vz = 0; this.speed = 0;
     this.hullMax = FEEL.hullBase * def.hull * mods.hull; this.hull = this.hullMax;
     this.boostT = 0; this.boostCharge = 1; this.stun = 0; this.immune = 0; this.air = 0; this.vy = 0; this.surface = 0;
