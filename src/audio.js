@@ -1,6 +1,6 @@
 // All sound is synthesised with Web Audio: nothing to download, works offline, unlocks on the first tap.
 let ctx = null, master = null, muted = false;
-let wind, roar, rain, engine, cable;
+let wind, roar, rain, engine, cable, skid, rush;
 let noiseBuf = null;
 
 function makeNoise() {
@@ -43,7 +43,7 @@ export const audio = {
     master = ctx.createGain(); master.gain.value = muted ? 0 : 0.8;
     const comp = ctx.createDynamicsCompressor(); master.connect(comp).connect(ctx.destination);
     noiseBuf = makeNoise();
-    wind = noiseLoop('bandpass', 500, 0.7); roar = noiseLoop('lowpass', 120, 0.3); rain = noiseLoop('highpass', 3500, 0.2);
+    wind = noiseLoop('bandpass', 500, 0.7); roar = noiseLoop('lowpass', 120, 0.3); rain = noiseLoop('highpass', 3500, 0.2); skid = noiseLoop('bandpass', 1700, 5); rush = noiseLoop('bandpass', 900, 0.5);
     const o1 = ctx.createOscillator(), o2 = ctx.createOscillator(), ef = ctx.createBiquadFilter(), eg = ctx.createGain();
     o1.type = 'sawtooth'; o2.type = 'square'; o1.frequency.value = 55; o2.frequency.value = 27.5; ef.type = 'lowpass'; ef.frequency.value = 400; eg.gain.value = 0;
     o1.connect(ef); o2.connect(ef); ef.connect(eg).connect(master); o1.start(); o2.start(); engine = { o1, o2, ef, g: eg };
@@ -52,17 +52,20 @@ export const audio = {
   setMuted(m) { muted = m; if (master) master.gain.setTargetAtTime(m ? 0 : 0.8, ctx.currentTime, 0.05); },
   suspend(on) { if (ctx) { if (on) ctx.suspend(); else ctx.resume(); } },
   // continuous beds, set every frame. prox 0..1 (near the funnel), storm 0..1, speed 0..1, throttle 0..1, tension <0 slack .. >1 over
-  beds({ prox = 0, storm = 0, speed = 0, throttle = 0, tension = null, playing = false }) {
+  beds({ prox = 0, storm = 0, speed = 0, throttle = 0, tension = null, playing = false, drift = 0, boost = false }) {
     if (!ctx) return;
     const t = ctx.currentTime, k = 0.12;
-    wind.g.gain.setTargetAtTime(0.05 * storm + 0.22 * prox, t, k); wind.f.frequency.setTargetAtTime(380 + 900 * prox, t, k);
-    roar.g.gain.setTargetAtTime(0.9 * prox * prox, t, k); roar.f.frequency.setTargetAtTime(90 + 160 * prox, t, k);
-    rain.g.gain.setTargetAtTime(0.035 * storm, t, 0.4);
-    engine.g.gain.setTargetAtTime(playing ? 0.035 + 0.05 * throttle : 0, t, 0.08);
-    engine.o1.frequency.setTargetAtTime(48 + 110 * speed, t, 0.06); engine.o2.frequency.setTargetAtTime(24 + 55 * speed, t, 0.06);
-    engine.ef.frequency.setTargetAtTime(300 + 1400 * speed, t, 0.1);
+    wind.g.gain.setTargetAtTime(0.04 * storm + 0.2 * prox, t, k); wind.f.frequency.setTargetAtTime(380 + 900 * prox, t, k);
+    roar.g.gain.setTargetAtTime(0.85 * prox * prox, t, k); roar.f.frequency.setTargetAtTime(90 + 160 * prox, t, k);
+    rain.g.gain.setTargetAtTime(0.03 * storm, t, 0.4);
+    // the engine: pitch tracks speed, opens up on boost; air rushing past is half the feeling of going fast
+    engine.g.gain.setTargetAtTime(playing ? 0.03 + 0.045 * throttle + (boost ? 0.03 : 0) : 0, t, 0.08);
+    engine.o1.frequency.setTargetAtTime(46 + 120 * speed + (boost ? 26 : 0), t, 0.06); engine.o2.frequency.setTargetAtTime(23 + 60 * speed + (boost ? 13 : 0), t, 0.06);
+    engine.ef.frequency.setTargetAtTime(300 + 1500 * speed + (boost ? 900 : 0), t, 0.1);
+    rush.g.gain.setTargetAtTime(playing ? 0.1 * speed * speed : 0, t, 0.15); rush.f.frequency.setTargetAtTime(500 + 1300 * speed, t, 0.15);
+    skid.g.gain.setTargetAtTime(playing ? 0.07 * drift : 0, t, 0.05);
     if (tension === null || tension < 0) cable.g.gain.setTargetAtTime(0, t, 0.05);
-    else { cable.g.gain.setTargetAtTime(tension > 1 ? 0.11 : 0.035, t, 0.05); cable.o.frequency.setTargetAtTime(tension > 1 ? 880 + 300 * Math.min(1, tension - 1) : 150 + 150 * tension, t, 0.05); }
+    else { cable.g.gain.setTargetAtTime(0.06, t, 0.05); cable.o.frequency.setTargetAtTime(160 + 520 * Math.min(1, tension), t, 0.05); }
   },
   tick() { tone('square', 880, 880, 0.04, 0.05); },
   ui() { tone('triangle', 520, 780, 0.07, 0.08); },
@@ -84,6 +87,15 @@ export const audio = {
   thump() { tone('sine', 140, 30, 0.6, 0.9); burst('lowpass', 800, 0.5, 0.4, 0.5, 80); },
   stake() { burst('bandpass', 500, 3, 0.1, 0.5); tone('square', 80, 60, 0.15, 0.2); },
   warn() { tone('square', 740, 740, 0.09, 0.07); tone('square', 740, 740, 0.09, 0.07, 0.16); },
+  // the arsenal: each one has to be told apart with your eyes shut
+  mg() { burst('highpass', 1800, 0.7, 0.045, 0.22); tone('square', 150, 70, 0.05, 0.12); },
+  shotgun() { burst('lowpass', 2600, 0.5, 0.2, 1.0, 180); tone('sine', 120, 40, 0.22, 0.5); tone('square', 900, 300, 0.05, 0.1, 0.24); },
+  rocket() { burst('bandpass', 500, 1.2, 0.55, 0.5, 3200); tone('sawtooth', 90, 320, 0.4, 0.16); },
+  boom(vol = 1) { burst('lowpass', 1400, 0.4, 0.5, vol, 60); tone('sine', 110, 28, 0.6, vol * 0.8); burst('highpass', 2500, 0.5, 0.12, vol * 0.3); },
+  crack() { burst('highpass', 2200, 0.8, 0.09, 0.35); tone('square', 420, 120, 0.09, 0.12); },
+  gust() { burst('bandpass', 300, 0.8, 1.2, 0.5, 1400); },
+  dorothy() { tone('sine', 880, 1760, 0.18, 0.12); tone('sine', 1320, 2640, 0.22, 0.1, 0.1); tone('sine', 1760, 3520, 0.3, 0.08, 0.2); },
+  stagger() { tone('sawtooth', 520, 90, 0.9, 0.2); burst('lowpass', 900, 0.6, 0.8, 0.6, 80); },
   win() {
     [262, 330, 392, 523].forEach((f, i) => tone('triangle', f, f, 1.4, 0.14, 0.35 + i * 0.12));
     for (let i = 0; i < 5; i++) tone('sine', 2600 + (i % 2) * 500, 3400 + (i % 3) * 300, 0.09, 0.05, 2.2 + i * 0.16); // the meadowlark

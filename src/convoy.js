@@ -4,7 +4,7 @@ import * as THREE from '../vendor/three.module.min.js';
 import { box, cyl, merge } from './geo.js';
 
 const INK = '#1b2224', CHROME = '#c9cdca', GLASS = '#16262a', AMBER = '#ffc531';
-const HOLD = 215, FLEE = 125;
+const HOLD = 150, FLEE = 90;
 
 function wheels(P, track, zs, r) { for (const z of zs) for (const sx of [1, -1]) P.push(cyl(r, r, 0.5, '#15191a', sx * track, r, z, 10, 0, Math.PI / 2), cyl(r * 0.5, r * 0.5, 0.54, CHROME, sx * track, r, z, 6, 0, Math.PI / 2)); }
 
@@ -49,8 +49,8 @@ export class Convoy {
     for (const u of this.units) {
       const p = this.slot(u, rig), sd = Math.hypot(u.x - storm.x, u.z - storm.z), td = Math.hypot(p.x - storm.x, p.z - storm.z);
       let want = 0, dx = p.x - u.x, dz = p.z - u.z, dist = Math.hypot(dx, dz);
-      if (storm.alive && sd < FLEE) { dx = u.x - storm.x; dz = u.z - storm.z; dist = 60; want = 30; }            // it is coming: run
-      else if (!storm.alive || td > HOLD) want = dist < 1.5 ? Math.max(0, Math.hypot(rig.vx, rig.vz) * 0.98) : Math.min(42, Math.hypot(rig.vx, rig.vz) + dist * 1.4); // keep station
+      if (storm.alive && sd < FLEE) { dx = u.x - storm.x; dz = u.z - storm.z; dist = 60; want = 55; }            // it is coming: run
+      else if (!storm.alive || td > HOLD) want = dist < 1.5 ? Math.max(0, Math.hypot(rig.vx, rig.vz) * 0.98) : Math.min(98, Math.hypot(rig.vx, rig.vz) + dist * 1.4); // keep station
       u.speed += (want - u.speed) * Math.min(1, dt * 3);
       if (u.speed > 0.5) {
         const hd = dist > 3 ? Math.atan2(dx, dz) : rig.heading; let d = hd - u.heading; d = Math.atan2(Math.sin(d), Math.cos(d)); u.heading += d * Math.min(1, dt * 4);

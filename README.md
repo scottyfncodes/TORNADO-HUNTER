@@ -1,21 +1,21 @@
 # Tornado Hunter
 
-You rope a tornado from a moving truck and tear it apart by driving.
+Chase super tornadoes at 140 mph in an overpowered storm truck. Shoot down what they throw, rocket the core, rip them apart.
 
-A third-person arcade storm-combat game for the phone in your pocket: one storm per sitting, three to five minutes, no installs. Built with Three.js, runs in iPhone Safari and adds to the Home Screen.
+A third-person arcade chase-combat game for the phone in your pocket: one storm per sitting, a minute or two, no installs. Built with Three.js, runs in iPhone Safari and adds to the Home Screen.
 
 ## How it plays
 
-1. **Chase.** Drive to the funnel. Roads are fast; fields are direct.
-2. **Probe.** Get dangerously close and feed it a sensor pod. A band of rotation lights up.
-3. **Harpoon.** Fire a cable into the exposed band.
-4. **Wind.** Swing around the tornado on the cable, against its spin. Keep the line taut, not tight.
-5. **Snap.** Rip the band off. The storm bolts. Do it again.
-6. **Finish.** With every band gone, drive straight through the eye.
+1. **Chase.** The storm is already running. Roads are fast; fields are the shortcut. Boost to close in.
+2. **Survive.** It throws cars, tractors and barn doors at where you are going. Your gunner shoots them down; you steer off the magenta circles.
+3. **Open it.** Get inside its inflow and drop DOROTHY. The core is exposed for nine seconds.
+4. **Hit it.** Rockets into the open core until it staggers.
+5. **Rip it.** Harpoon the staggered storm and floor it. A band tears off.
+6. **Escape.** Outrun the wall of debris, then chase it down again. Three bands and it is gone.
 
-**Touch:** hold the left half of the screen to drive, slide to steer, pull back to brake. One big button on the right does whatever is possible right now (probe, harpoon, cut). Boost and gadget sit beside it.
+**Touch:** hold the left half of the screen to drive, slide to steer, pull back to brake, pull back while steering to drift. Right thumb: ROCKET, BOOST, and DOROTHY (which becomes HARPOON when the storm staggers).
 
-**Keyboard:** WASD or arrows, Space to act, Shift to boost, E for the gadget, Esc or P to pause.
+**Keyboard:** WASD or arrows, Space rocket, E Dorothy or harpoon, Shift boost, Esc or P pause.
 
 ## Run it
 
@@ -31,9 +31,9 @@ Then open `http://localhost:8000`. Any static host works.
 
 | Path | What |
 |---|---|
-| `docs/GAME_DESIGN.md` | The design of record: vision, the tether fight, storms, crew, roadmap |
+| `docs/GAME_DESIGN.md` | The design of record: the chase-combat loop, driving, arsenal, storms, what was cut |
 | `src/config.js` | Every tuning number, colour and data table |
-| `src/combat.js` | The mission rules: probe, harpoon, tension, strain, attacks, finisher |
+| `src/combat.js` | The mission: storm AI, wreckage, guns, DOROTHY, rockets, harpoon, surge |
 | `src/tornado.js` | The funnel, its bands and debris (shaders) |
 | `src/world.js` | Terrain, the baked ground texture, towns, farms and props |
 | `src/rig.js` | The vehicle and its arcade handling |

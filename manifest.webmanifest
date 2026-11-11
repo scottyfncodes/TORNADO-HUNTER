@@ -1,7 +1,7 @@
 {
   "name": "Tornado Hunter",
   "short_name": "Tornado Hunter",
-  "description": "Tornado Hunter by HaveAnApp. Rope a tornado from a moving truck and tear it apart by driving.",
+  "description": "Tornado Hunter by HaveAnApp. Chase super tornadoes at 140 mph, shoot down the wreckage, rocket the core and rip them apart.",
   "start_url": ".",
   "scope": "./",
   "display": "fullscreen",
