@@ -97,10 +97,13 @@ export class World {
         void main(){ vec3 c=texture2D(uMap,vUv).rgb; float d=texture2D(uNoise,vW.xz*0.045).r; float d2=texture2D(uNoise,vW.xz*0.006).r; float d3=texture2D(uNoise,vW.xz*0.31).r;
           c*=0.8+0.2*d+0.12*d2+0.16*d3; ${lit} }`,
     }));
+    if (this.env.low) { // weak GPU: one texture read a pixel instead of four
+      this.ground.material.fragmentShader = `${head} uniform sampler2D uMap; varying vec2 vUv; void main(){ vec3 c=texture2D(uMap,vUv).rgb*1.04; ${lit} }`;
+    }
     // roads as their own draped strips: the ground texture is 1.5 m a texel, a road edge has to be sharper than that
     const rp = [], rc = [], ri = [], col = (h) => { const k = new THREE.Color(h); return [k.r, k.g, k.b]; };
     const strip = (x0, z0, x1, z1, half, mid, edge, lift) => {
-      const len = Math.hypot(x1 - x0, z1 - z0), n = Math.ceil(len / 20), dx = (x1 - x0) / len, dz = (z1 - z0) / len, px = -dz, pz = dx, cm = col(mid), ce = col(edge), base = rp.length / 3;
+      const len = Math.hypot(x1 - x0, z1 - z0), n = Math.ceil(len / (this.env.low ? 48 : 20)), dx = (x1 - x0) / len, dz = (z1 - z0) / len, px = -dz, pz = dx, cm = col(mid), ce = col(edge), base = rp.length / 3;
       for (let i = 0; i <= n; i++) { const t = i / n * len, cx = x0 + dx * t, cz = z0 + dz * t; for (const [o, cc] of [[-half, ce], [-half * 0.72, cm], [half * 0.72, cm], [half, ce]]) { const x = cx + px * o, z = cz + pz * o; rp.push(x, this.heightAt(x, z) + lift, z); rc.push(cc[0], cc[1], cc[2]); } }
       for (let i = 0; i < n; i++) for (let k = 0; k < 3; k++) { const a = base + i * 4 + k; ri.push(a, a + 4, a + 1, a + 1, a + 4, a + 5); }
     };
@@ -112,7 +115,7 @@ export class World {
     this.roads = new THREE.Mesh(rgeo, new THREE.ShaderMaterial({
       uniforms: shared, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
       vertexShader: `varying vec3 vC; varying vec3 vW; void main(){ vC=color; vec4 w=modelMatrix*vec4(position,1.0); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
-      fragmentShader: `${head} varying vec3 vC; void main(){ vec3 c=vC*(0.86+0.28*texture2D(uNoise,vW.xz*0.33).r); ${lit} }`,
+      fragmentShader: this.env.low ? `${head} varying vec3 vC; void main(){ vec3 c=vC; ${lit} }` : `${head} varying vec3 vC; void main(){ vec3 c=vC*(0.86+0.28*texture2D(uNoise,vW.xz*0.33).r); ${lit} }`,
     }));
     this.roads.frustumCulled = false; this.group.add(this.roads);
     this.ground.frustumCulled = false; this.group.add(this.ground);
@@ -245,7 +248,7 @@ export class World {
     }
   }
   // distance culling for vegetation (frustum culling does the rest); detail 0..1 shortens the range on weak GPUs
-  cull(camera, detail = 1) { const cx = camera.position.x, cz = camera.position.z; for (const c of this.chunks) if (c.range) c.mesh.visible = Math.hypot(c.x - cx, c.z - cz) < c.range * detail + 360; }
+  cull(camera, detail = 1) { const cx = camera.position.x, cz = camera.position.z; for (const c of this.chunks) if (c.range) c.mesh.visible = Math.hypot(c.x - cx, c.z - cz) < c.range * detail + (detail < 1 ? 280 : 360); }
   place(p, rx = 0, rz = 0, s = p.scale) { dummy.position.set(p.x, p.y, p.z); dummy.rotation.set(rx, p.rot, rz); dummy.scale.setScalar(s); dummy.updateMatrix(); p.mesh.setMatrixAt(p.i, dummy.matrix); p.mesh.instanceMatrix.needsUpdate = true; }
   reset() { for (const p of this.props) if (p.state !== 0) { p.state = 0; p.x = p.bx; p.y = p.by; p.z = p.bz; this.place(p); p.mesh.frustumCulled = true; } this.flying.length = 0; this.events.length = 0; }
 

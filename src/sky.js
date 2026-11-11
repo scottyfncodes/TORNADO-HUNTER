@@ -5,8 +5,8 @@ import { noiseTexture } from './geo.js';
 const S = 'assets/materials/';
 
 export class Sky {
-  constructor(scene, camera) {
-    this.scene = scene; this.camera = camera; this.storm = 1; this.flash = 0; this.flashT = 0;
+  constructor(scene, camera, low = false) {
+    this.scene = scene; this.camera = camera; this.low = low; this.storm = 1; this.flash = 0; this.flashT = 0;
     const noise = noiseTexture(128, 11);
     // one set of uniforms every weather shader shares
     this.uniforms = {
@@ -33,7 +33,7 @@ export class Sky {
     this.clearAmbient = new THREE.Color().setRGB(info.ambient_rgb[0], info.ambient_rgb[1], info.ambient_rgb[2], THREE.SRGBColorSpace);
     const u = this.uniforms;
     this.dome = new THREE.Mesh(new THREE.SphereGeometry(6000, 32, 16), new THREE.ShaderMaterial({
-      side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false,
+      side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false, defines: this.low ? { LOW: 1 } : {},
       uniforms: { uSky: { value: eq }, uNoise: u.uNoise, uTime: u.uTime, uStorm: u.uStorm, uFlash: u.uFlash, uCloud: u.uCloud, uCloudLit: u.uCloudLit, uTor: u.uTor },
       vertexShader: `varying vec3 vDir; void main(){ vDir=normalize(position); vec4 p=projectionMatrix*viewMatrix*vec4(position+cameraPosition,1.0); gl_Position=p.xyww; }`,
       fragmentShader: `uniform sampler2D uSky,uNoise; uniform float uTime,uStorm,uFlash; uniform vec3 uCloud,uCloudLit,uTor; varying vec3 vDir;
@@ -41,7 +41,12 @@ export class Sky {
           vec2 uv=vec2(atan(d.z,d.x)/6.2831853+0.5, asin(clamp(d.y,-1.0,1.0))/3.14159265+0.5);
           vec3 clear=texture2D(uSky,uv).rgb;
           vec2 cp=d.xz/max(0.08,d.y+0.12);
-          float n=texture2D(uNoise,cp*0.11+vec2(uTime*0.006,uTime*0.004)).r; float n2=texture2D(uNoise,cp*0.37-vec2(uTime*0.011,0.0)).r;
+          float n=texture2D(uNoise,cp*0.11+vec2(uTime*0.006,uTime*0.004)).r;
+          #ifdef LOW
+          float n2=n;
+          #else
+          float n2=texture2D(uNoise,cp*0.37-vec2(uTime*0.011,0.0)).r;
+          #endif
           float edge=mix(1.25,0.075,uStorm);
           float cover=smoothstep(edge-0.03,edge+0.10,d.y+(n-0.5)*0.11+(n2-0.5)*0.04);
           vec3 cloud=mix(uCloud,uCloudLit,n*0.65+n2*0.35);

@@ -29,7 +29,7 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 const quality = { scale: Math.min(window.devicePixelRatio || 1, 2), min: 0.45, max: Math.min(window.devicePixelRatio || 1, 2), acc: 0, n: 0, good: 0, detail: 1 };
 { // a software rasteriser (or a very old GPU) starts on the low tier instead of discovering it the slow way
   const gl = renderer.getContext(), ext = gl.getExtension('WEBGL_debug_renderer_info'), name = ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : '';
-  if (/swiftshader|llvmpipe|software/i.test(name)) { quality.scale = 0.6; quality.max = 0.8; quality.detail = 0.3; }
+  if (/swiftshader|llvmpipe|software/i.test(name)) { quality.scale = 0.4; quality.min = 0.34; quality.max = 0.6; quality.detail = 0.3; G.low = true; }
 }
 function resize() {
   const w = window.innerWidth, h = window.innerHeight; renderer.setPixelRatio(quality.scale); renderer.setSize(w, h, false);
@@ -157,7 +157,7 @@ async function boot() {
   // the identity's palette is the source of the interface colours
   fetch('assets/brand/palette.json').then((r) => r.json()).then((p) => { const st = document.documentElement.style; for (const [k, v] of Object.entries({ bg: p.background, surface: p.surface, primary: p.primary, accent: p.accent, text: p.text, signal: p.signal, wheat: p.wheat })) if (v) st.setProperty('--' + k, v); }).catch(() => {});
   const fill = $('load-fill'), prog = (v) => { fill.style.transform = `scaleX(${v})`; };
-  G.sky = new Sky(scene, camera); G.world = new World(scene, G.sky); G.fx = new Fx(scene, camera, G.world, G.sky.uniforms);
+  G.sky = new Sky(scene, camera, !!G.low); G.sky.low = !!G.low; G.world = new World(scene, G.sky); G.fx = new Fx(scene, camera, G.world, G.sky.uniforms);
   await G.sky.load(); prog(0.2);
   await G.world.load((v) => prog(0.2 + v * 0.6));
   await G.fx.load(); prog(0.95);
