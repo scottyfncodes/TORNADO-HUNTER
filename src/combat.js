@@ -3,6 +3,7 @@ import * as THREE from '../vendor/three.module.min.js';
 import { FEEL, PALETTE, CREW } from './config.js';
 import { Storm } from './tornado.js';
 import { TOWNS } from './world.js';
+import { Convoy } from './convoy.js';
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3();
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -21,11 +22,12 @@ export class Mission {
     };
     this.town = TOWNS[def.id]; this.pay = def.pay;
     const w = G.world, sx = this.town.x + this.town.from[0] * def.start, sz = this.town.z + this.town.from[1] * def.start;
-    this.storm = new Storm(G.scene, G.sky.uniforms, def, w); this.storm.place(sx, sz); this.startDist = def.start;
+    this.storm = new Storm(G.scene, G.sky.uniforms, def, w, { low: !!G.low }); this.storm.place(sx, sz); this.startDist = def.start;
     // rig: off to one side of the storm's path, on a road, pointed at it
     const ang = Math.atan2(-this.town.from[1], -this.town.from[0]) + 0.95, rx0 = sx + Math.cos(ang) * 430, rz0 = sz + Math.sin(ang) * 430;
     const rx = clamp(w.nearestRoadLine(rx0), -1300, 1300), rz = clamp(rz0, -1400, 1400);
     this.rig = G.makeRig(); this.rig.place(rx, rz, Math.atan2(sx - rx, sz - rz), w);
+    this.convoy = new Convoy(G.scene, w, G.fx.dustTex); this.convoy.place(this.rig);
     this.phase = 'intro'; this.time = 0; this.phaseT = 0; this.data = 0; this.dataShown = 0; this.result = null; this.pickups = 0;
     this.line = null; this.line2 = null; this.anchor = null; this.reload = 0; this.probeBusy = false; this.harpoonBusy = false;
     this.attackT = 5; this.surge = 0; this.lunge = 0; this.bolt = 0; this.sats = []; this.reversePending = false; this.reversed = false;
@@ -33,7 +35,7 @@ export class Mission {
     this.stage = 0; this.bark = null; this.barkT = 0; this.callout = null; this.calloutT = 0; this.stats = { snaps: 0, lineSnaps: 0, hits: 0, probes: 0 };
     this.say('start'); this.spawnSats();
   }
-  dispose() { this.storm.dispose(); for (const s of this.sats) { s.storm.dispose(); this.G.scene.remove(s.mark); } this.rig.dispose(); this.G.fx.reset(); }
+  dispose() { this.storm.dispose(); this.convoy.dispose(); for (const s of this.sats) { s.storm.dispose(); this.G.scene.remove(s.mark); } this.rig.dispose(); this.G.fx.reset(); }
 
   say(key, who) { const c = who || this.crew[(Math.random() * this.crew.length) | 0]; if (!c) return; this.bark = { name: c.name, text: c.barks[key] }; this.barkT = 3.6; }
   call(text, tone = 'warn', dur = 1.6) { this.callout = { text, tone }; this.calloutT = dur; }
@@ -166,7 +168,7 @@ export class Mission {
     const over = this.phase === 'won' || this.phase === 'lost';
     if (this.phase === 'intro' && this.phaseT > 0.4) { this.phase = 'hunt'; this.phaseT = 0; }
     const dx = r.x - s.x, dz = r.z - s.z, dist = Math.hypot(dx, dz) || 0.01; this.dist = dist; const nx = dx / dist, nz = dz / dist;
-    r.aim = Math.atan2(-dx, -dz);
+    r.aim = Math.atan2(-dx, -dz); r.alert = dist < 380 && s.alive ? 1 : 0;
 
     // ---- input ----
     if (!over) {
@@ -256,6 +258,7 @@ export class Mission {
     } else if (this.anchor && b) fx.setRing(s.x, s.z, this.anchor.L, -s.spin, 0.5, PALETTE.primary);
     else if (this.phase === 'hunt' && !this.probeBusy && dist < this.p.probeRange * 2.2) fx.setRing(s.x, s.z, this.p.probeRange, 1, 0.35 + 0.25 * Math.sin(t * 5), PALETTE.signal);
     else if (!this.harpoonBusy) { fx.hideRing(); if (!this.line) fx.hideCable(0); }
+    this.convoy.update(dt, t, r, s);
     w.update(dt, s);
     for (const e of w.events) { if (e.kind === 'rip') { fx.puff(e.x, e.y + 3, e.z, e.big ? 22 : 9, '#b89a58', 1.2); if (e.big && dist < 500) { G.audio.smash(); fx.shake(3); } } else if (e.kind === 'land' && Math.hypot(e.x - r.x, e.z - r.z) < 120) fx.puff(e.x, e.y + 1, e.z, 7); }
     w.events.length = 0;

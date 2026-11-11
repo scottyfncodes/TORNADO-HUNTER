@@ -37,6 +37,7 @@ Then open `http://localhost:8000`. Any static host works.
 | `src/tornado.js` | The funnel, its bands and debris (shaders) |
 | `src/world.js` | Terrain, the baked ground texture, towns, farms and props |
 | `src/rig.js` | The vehicle and its arcade handling |
+| `src/convoy.js` | The crew's camper truck and bus that flank you |
 | `src/main.js` | Boot, camera, state machine, frame loop |
 | `ui/styles.css` | The interface |
 | `assets/` | Terrain, sky, effects, brand and icons |

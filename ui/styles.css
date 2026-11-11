@@ -57,6 +57,10 @@ b, .num { font-variant-numeric: tabular-nums; }
 .haveanapp-byline__by { color: inherit; text-decoration: none; white-space: nowrap; display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; padding: 0 8px; }
 .haveanapp-byline__by:hover, .haveanapp-byline__by:focus-visible { text-decoration: underline; }
 
+.title-block, .panel { position: relative; }
+.title-block::before, .panel::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 8px; background: repeating-linear-gradient(135deg, var(--primary) 0 12px, var(--ink) 12px 24px); }
+.title-block { padding-top: calc(var(--s5) + 8px); }
+.panel { padding-top: calc(var(--s5) + 4px); }
 .screen-hq { background: rgba(14, 27, 29, 0.93); gap: var(--s3); }
 .hq-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s2) var(--s3); flex-wrap: wrap; }
 .hq-head h2 { font-family: var(--display); font-weight: 400; font-size: var(--t-xl); line-height: 1; }
