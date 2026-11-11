@@ -118,6 +118,8 @@ Each talks on the radio during the fight (short barks on a plate, never blocking
 | **Could frustrate** | Choices that are secretly mandatory, or that you cannot feel. |
 | **Simplified** | Every perk changes a number the player touches every second (range, sweet zone, boost, pickup). No crew levelling in the MVP. |
 
+**The convoy.** The rest of the crew rides in a camper truck and a converted bus that flank your rig on the chase, plough through the same fences you do, stop short of the funnel and run if it comes at them. They are company and atmosphere, not units to command.
+
 **Challenged:** the brief asks for a *convoy* of vehicles and AI teammates taking contextual commands. On a phone, with two thumbs already driving, a command wheel is a pause menu in disguise. The MVP puts the crew **in your rig** and gives the "second unit" job to the Ground Anchor. A real AI wingman (a second truck that holds a line for you) is the first thing on the roadmap, because the anchor already proves the mechanic it would use.
 
 ---
@@ -221,7 +223,9 @@ Everything else is in the world: the ring on the ground, the chevrons, the cable
 - **The tornado** is the only soft, curved thing on screen. A dark, twisting funnel under a rotating wall cloud, wrapped in orbiting debris, with its bands glowing in radar colours. It leans into its travel and narrows as it loses bands.
 - **Sky.** A green-black storm shelf overhead with a strip of clear morning at the horizon, so silhouettes always have something bright behind them. When the storm dies the shelf tears open and the whole sky goes to that morning blue. The clearing is the reward.
 - **Light.** Low warm sun under the cloud base, cold fill from above, lightning as the only flash.
-- **Interface.** Riveted instrument plates with one clipped corner, 2 px keylines, slab buttons with a hard drop edge. Alfa Slab One for names and verdicts (wood type from a rodeo handbill). Barlow Semi Condensed for everything you read at speed (the lettering of American highway signs). No glow, no glass, no gradients.
+- **Vehicles.** Storm-chaser trucks built in a garage: lifted and boxy, a roof light bar that wig-wags when the storm is close, a bull bar, a whip antenna, and in the bed a hazard-striped cradle of probe canisters under a red beacon. Headlights stay on in the gloom. The look borrows the vocabulary of 1990s chase vehicles; the liveries and names are our own.
+- **The funnel's base** boils with a low, dark skirt of dirt, so the storm always looks like it is chewing the ground.
+- **Interface.** Riveted instrument plates with one clipped corner, 2 px keylines, slab buttons with a hard drop edge. One strip of yellow-and-black hazard tape per panel, the same as the cradle on the rig. Alfa Slab One for names and verdicts (wood type from a rodeo handbill). Barlow Semi Condensed for everything you read at speed (the lettering of American highway signs). No glow, no glass, no gradients.
 - **Motion.** The storm never stops; the interface never drifts. Only the action button may flash. Shake is reserved for hits and snaps. Reduced-motion turns shake and flashes off.
 
 ---

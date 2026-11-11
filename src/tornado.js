@@ -57,7 +57,7 @@ function ringMaterial(shared) {
     vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
     fragmentShader: `uniform float uTime,uProgress,uState,uAlpha; uniform vec3 uColor; varying vec2 vUv;
       void main(){ float seg=fract(vUv.x*18.0+uTime*0.25); float edge=smoothstep(0.5,0.42,abs(vUv.y-0.5));
-        float shroud=step(0.5,seg)*0.22;
+        float shroud=step(0.5,seg)*0.13;
         float lit=step(seg,0.12+0.88*uProgress); float live=mix(0.42,1.0,lit)*(0.85+0.15*sin(uTime*9.0));
         float a=mix(shroud,live,step(0.5,uState))*edge*uAlpha;
         vec3 c=mix(vec3(0.55,0.62,0.6),uColor*(1.0+0.6*lit),step(0.5,uState));
@@ -106,13 +106,19 @@ export class Storm {
     this.mat = funnelMaterial(shared, { height: def.height, r0: def.r0, r1: def.r1, pow: this.pow, wob: this.wob });
     this.funnel = new THREE.Mesh(funnelGeo, this.mat); this.funnel.frustumCulled = false; this.funnel.renderOrder = 2; this.group.add(this.funnel);
     this.debris = debrisMesh(shared, this.mat.uniforms, this.mini ? 24 : 150); this.group.add(this.debris);
+    // the dirt it is chewing: a low, wide, dark skirt around the base (skipped on weak GPUs: it is a lot of pixels)
+    if (!this.mini && !opts.low) {
+      this.skirtMat = funnelMaterial(shared, { height: 44 + def.r0, r0: def.r0 * 1.9 + 9, r1: def.r0 * 3.0 + 22, pow: 0.75, wob: 2.5 });
+      const su = this.skirtMat.uniforms; su.uColA.value.set('#1c1712'); su.uColB.value.set('#5a4733'); su.uDust.value.set('#6e5637'); su.uCloud.value.set('#2a221a');
+      this.skirt = new THREE.Mesh(funnelGeo, this.skirtMat); this.skirt.frustumCulled = false; this.skirt.renderOrder = 2; this.group.add(this.skirt);
+    }
     this.bands = [];
     if (!this.mini) for (const v of BAND_V[def.bands]) {
       const mesh = new THREE.Mesh(ringGeo, ringMaterial(shared)); mesh.frustumCulled = false; mesh.renderOrder = 3; this.group.add(mesh);
       this.bands.push({ v, mesh, exposed: false, strain: 0, gone: false, burst: 0 });
     }
   }
-  dispose() { this.scene.remove(this.group); this.mat.dispose(); for (const b of this.bands) b.mesh.material.dispose(); this.debris.material.dispose(); this.debris.geometry.dispose(); }
+  dispose() { this.scene.remove(this.group); this.mat.dispose(); if (this.skirtMat) this.skirtMat.dispose(); for (const b of this.bands) b.mesh.material.dispose(); this.debris.material.dispose(); this.debris.geometry.dispose(); }
   get band() { return this.bands.find((b) => !b.gone) || null; }
   get bandsLeft() { let n = 0; for (const b of this.bands) if (!b.gone) n++; return n; }
   get eatRadius() { return this.def.r0 * this.thin * 1.5 + 6; }
@@ -144,6 +150,7 @@ export class Storm {
     if (!this.alive) { this.cut = Math.min(1.1, this.cut + dt * 0.5); this.fade = Math.max(0, 1 - Math.max(0, this.cut - 0.6) * 2.5); if (this.cut >= 1.1) this.visible = false; }
     this.group.visible = this.visible; this.group.position.set(this.x, this.groundY, this.z);
     u.uSpin.value = this.spin; u.uThin.value = this.thin; u.uLean.value.copy(this.lean); u.uFade.value = this.fade; u.uCut.value = this.cut;
+    if (this.skirtMat) { const su = this.skirtMat.uniforms; su.uSpin.value = this.spin; su.uThin.value = 0.55 + 0.45 * this.thin; su.uLean.value.set(0, 0); su.uFade.value = this.fade * 0.82; su.uCut.value = Math.min(1, this.cut * 2.2); }
     this.spineAt(1, this.topOffset);
     for (const b of this.bands) {
       const m = b.mesh, mu = m.material.uniforms;
