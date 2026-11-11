@@ -37,6 +37,8 @@ export class Mission {
 
   say(key, who) { const c = who || this.crew[(Math.random() * this.crew.length) | 0]; if (!c) return; this.bark = { name: c.name, text: c.barks[key] }; this.barkT = 3.6; }
   call(text, tone = 'warn', dur = 1.6) { this.callout = { text, tone }; this.calloutT = dur; }
+  // danger close pays: a miss by a truck length is worth something
+  closeCall() { if (this.result) return; this.stats.close = (this.stats.close || 0) + 1; this.earn(3); this.call('CLOSE CALL', 'good', 0.7); this.G.fx.shake(5); this.G.audio.tick(); }
   windSeconds() { return FEEL.bandWindSeconds * this.def.windMul * (1 + this.rematch * 0.2) / this.p.wind; }
   earn(n) { this.data += n * this.p.dataMul; }
 
@@ -117,14 +119,14 @@ export class Mission {
       for (let i = 0; i < n; i++) {
         const lead = dur * (0.75 + i * 0.3), x = r.x + r.vx * lead + (i ? (Math.random() - 0.5) * 26 : 0), z = r.z + r.vz * lead + (i ? (Math.random() - 0.5) * 26 : 0), d = dur + i * 0.22;
         s.spineAt(0.25, _a); fx.chunk({ x: s.x + _a.x, y: s.groundY + s.height * 0.25, z: s.z + _a.z }, { x, y: fx.ground(x, z), z }, d);
-        fx.telegraph(x, z, 9, d, (e) => { fx.puff(e.x, fx.ground(e.x, e.z) + 2, e.z, 16, '#b89a58', 1.1); this.G.audio.impact(); if (Math.hypot(r.x - e.x, r.z - e.z) < 8.5) this.hurt(FEEL.dmgDebris); else if (Math.hypot(r.x - e.x, r.z - e.z) < 40) fx.shake(4); });
+        fx.telegraph(x, z, 9, d, (e) => { fx.puff(e.x, fx.ground(e.x, e.z) + 2, e.z, 16, '#b89a58', 1.1); this.G.audio.impact(); const d = Math.hypot(r.x - e.x, r.z - e.z); if (d < 8.5) this.hurt(FEEL.dmgDebris); else if (d < 17) this.closeCall(); else if (d < 40) fx.shake(4); });
       }
       this.G.audio.whistle(dur);
     } else if (kind === 'lightning') {
       const dur = tele(1.35), lock = dur - 0.55;
       fx.telegraph(r.x, r.z, 11, dur, (e) => {
         const y = fx.ground(e.x, e.z); fx.lightning.play(e.x, y, e.z, 120, 170, { ground: true, fps: 30 }); fx.lightning.play(e.x + 6, y, e.z - 4, 90, 150, { ground: true, fps: 36, rot: 0.1 });
-        this.G.sky.strike(1); fx.flash(0.7); this.G.audio.thunder(); fx.shake(6); if (Math.hypot(r.x - e.x, r.z - e.z) < 10.5) this.hurt(FEEL.dmgLightning);
+        this.G.sky.strike(1); fx.flash(0.7); this.G.audio.thunder(); fx.shake(6); const d = Math.hypot(r.x - e.x, r.z - e.z); if (d < 10.5) this.hurt(FEEL.dmgLightning); else if (d < 20) this.closeCall();
       }, { lock, track: (e, dt) => { const k = Math.min(1, dt * 5); e.x += (r.x + r.vx * 0.25 - e.x) * k; e.z += (r.z + r.vz * 0.25 - e.z) * k; } });
       this.G.audio.warn();
     } else if (kind === 'lunge') {
@@ -168,9 +170,9 @@ export class Mission {
 
     // ---- input ----
     if (!over) {
-      if (input.take('action', FEEL.inputBuffer)) { if (!this.action()) G.audio.deny(); }
-      if (input.take('boost')) { if (r.boost()) { G.audio.boost(); fx.shake(3); G.kickFov(); } else G.audio.deny(); }
-      if (input.take('gadget')) this.useGadget();
+      if (input.take('action', FEEL.inputBuffer)) { if (!this.action()) { G.audio.deny(); G.hud.deny('btn-action'); } }
+      if (input.take('boost')) { if (r.boost()) { G.audio.boost(); fx.shake(3); G.kickFov(); } else { G.audio.deny(); G.hud.deny('btn-boost'); } }
+      if (input.take('gadget')) { if (!this.useGadget()) G.hud.deny('btn-gadget'); }
     }
 
     // ---- storm movement ----
@@ -224,6 +226,7 @@ export class Mission {
     // ---- rig ----
     r.update(dt, axes, w, ax, az);
     if (r.landed) { r.landed = false; fx.puff(r.x, r.y + 1, r.z, 10); G.audio.impact(); }
+    if (r.launch) for (let i = 0; i < 4; i++) fx.puff(r.x - Math.sin(r.heading) * (2.5 + i) + (Math.random() - 0.5) * 2, r.y + 0.6, r.z - Math.cos(r.heading) * (2.5 + i) + (Math.random() - 0.5) * 2, 4 + i, r.surface === 2 ? '#8d9392' : '#cdb27a', 0.6, 2);
     for (const e of w.collideRig(r)) { if (e.kind === 'smash') { G.audio.smash(); fx.shake(2); fx.puff(e.x, e.y + 1.5, e.z, 6, e.type === 'bale' ? '#d9b45a' : '#cdb27a', 0.6); } else { G.audio.impact(); fx.shake(5); if (e.dmg && !over) this.hurt(e.dmg); } }
     if (!over && this.p.regen && r.hull > 0 && r.hull < r.hullMax) r.hull = Math.min(r.hullMax, r.hull + this.p.regen * dt);
     const spd = Math.hypot(r.vx, r.vz);

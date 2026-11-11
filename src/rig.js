@@ -27,7 +27,7 @@ function buildModel(def, envMap) {
   g.add(turret); g.userData.turret = turret;
   const wr = tank ? 0.82 : buggy ? 0.72 : 0.66, wheelGeo = merge([cyl(wr, wr, 0.5, '#1a1f20', 0, 0, 0, 10, 0, Math.PI / 2), cyl(wr * 0.5, wr * 0.5, 0.54, def.trim, 0, 0, 0, 6, 0, Math.PI / 2)]);
   const wm = new THREE.MeshLambertMaterial({ vertexColors: true }); g.userData.wheels = [];
-  for (const [sx, sz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) { const w = new THREE.Mesh(wheelGeo, wm); w.position.set(sx * (W / 2 + 0.12), wr, sz * L * 0.33); g.add(w); g.userData.wheels.push(w); }
+  for (const [sx, sz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) { const w = new THREE.Mesh(wheelGeo, wm); w.position.set(sx * (W / 2 + 0.12), wr, sz * L * 0.33); w.rotation.order = 'YXZ'; w.userData.front = sz > 0; g.add(w); g.userData.wheels.push(w); }
   g.userData.muzzle = new THREE.Vector3(0, 2.6, -L * 0.28);
   g.scale.setScalar(1.25); // chunky on purpose: it has to read at 40 px on a phone
   return g;
@@ -57,7 +57,8 @@ export class Rig {
     this.immune = Math.max(0, this.immune - dt); this.stun = Math.max(0, this.stun - dt);
     if (this.boostT > 0) this.boostT -= dt; else this.boostCharge = Math.min(1, this.boostCharge + dt / (FEEL.boostRecharge / this.mods.recharge));
     let steer = axes.steer, thr = axes.throttle; if (this.stun > 0 || this.dead) { steer = 0; thr = 0; }
-    this.throttle = thr; this.surface = world.surfaceAt(this.x, this.z);
+    this.launch = thr > 0 && this.throttle <= 0 && Math.abs(this.speed) < 6; // the frame the throttle goes down from rest
+    this.throttle = thr; this.steerIn = steer; this.surface = world.surfaceAt(this.x, this.z);
     const grounded = this.air <= 0;
     // heading first, then split velocity into the new forward/side so momentum carries through a turn
     let fx = Math.sin(this.heading), fz = Math.cos(this.heading), vF = this.vx * fx + this.vz * fz;
@@ -81,7 +82,7 @@ export class Rig {
     const gy = world.heightAt(this.x, this.z);
     if (this.air > 0) { this.vy -= 24 * dt; this.y += this.vy * dt; this.air += dt; if (this.y <= gy) { this.y = gy; this.air = 0; this.vy = 0; this.landed = true; } }
     else this.y = gy;
-    this.squat += ((thr > 0 && vF < this.topSpeed - 2 ? -0.07 : thr < 0 && vF > 2 ? 0.08 : 0) - this.squat) * Math.min(1, dt * 8);
+    this.squat += ((thr > 0 && vF < this.topSpeed - 2 ? -0.09 : thr < 0 && vF > 2 ? 0.1 : 0) - this.squat) * Math.min(1, dt * 14);
     this.lean = (this.lean || 0) + ((-steer * Math.min(1, Math.abs(vF) / 20) * 0.09 - vS * 0.012) - (this.lean || 0)) * Math.min(1, dt * 7);
     this.wheelSpin += vF * dt / 0.66;
     this.sync(world, dt);
@@ -92,7 +93,8 @@ export class Rig {
     world.normalAt(this.x, this.z, _n); if (this.air > 0) _n.set(0, 1, 0);
     _q.setFromUnitVectors(_up, _n); m.quaternion.copy(_q);
     _e.set(this.squat + (this.air > 0 ? Math.sin(this.air * 5) * 0.4 : 0), this.heading, this.lean || 0, 'YXZ'); _q.setFromEuler(_e); m.quaternion.multiply(_q);
-    for (const w of m.userData.wheels) w.rotation.x = this.wheelSpin;
+    this.steerVis = (this.steerVis || 0) + ((this.steerIn || 0) - (this.steerVis || 0)) * Math.min(1, (dt || 0.016) * 14);
+    for (const w of m.userData.wheels) { w.rotation.x = this.wheelSpin; if (w.userData.front) w.rotation.y = -this.steerVis * 0.5; }
     m.userData.turret.rotation.y = this.aim - this.heading;
     this.shadow.position.set(this.x, world.heightAt(this.x, this.z) + 0.12, this.z); this.shadow.rotation.z = this.heading; this.shadow.material.opacity = 0.32 * (this.air > 0 ? 0.5 : 1);
     m.visible = !(this.immune > 0 && this.hull > 0 && Math.floor(this.immune * 20) % 2 === 0);

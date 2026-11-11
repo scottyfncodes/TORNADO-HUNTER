@@ -12,6 +12,7 @@ export class Hud {
     this.flashEl = $('flash'); this.flashV = 0;
   }
   set(key, val, fn) { if (this.last[key] !== val) { this.last[key] = val; fn(val); } }
+  deny(id) { const b = $(id); b.classList.remove('deny'); void b.offsetWidth; b.classList.add('deny'); }
   show(on) { this.el.hidden = !on; if (!on) this.last = {}; }
   flash(strength, color) { this.flashV = Math.max(this.flashV, strength * 0.7); this.flashEl.style.background = color || '#ffffff'; }
 
