@@ -50,7 +50,10 @@ export const FEEL = {
   shotgunRange: 22,           // m
   shotgunReload: 4,         // s
   staggerSeconds: 7,          // s the core stays exposed after the shield breaks: land the harpoon
-  hookSeconds: 8,             // s the line holds a hooked storm
+  hookSeconds: 15,            // s the line holds a hooked storm: time to drive Doc's bus to its foot and set DOROTHY down
+  hookedSpeed: 0.04,          // share of its speed a hooked storm keeps: pinned, near enough
+  dropMargin: 17,             // m outside the funnel's wall where DOROTHY is set down
+  dmgTooClose: 12,            // driving the bus into the wall
   hookRecover: 0.5,           // share of shield it rebuilds if the line lets go before the kill shot
   dorothyBoost: 2,            // shield damage multiplier while DOROTHY is in the funnel
   staggerRecover: 0.4,        // share of shield it rebuilds if you miss the harpoon window
@@ -148,7 +151,7 @@ export const RIGS = [
 
 export const CREW = [
   { id: 'doc', name: 'Doc Vane', role: 'Scientist', ride: 'Science bus · Dorothy', perk: 'DOROTHY weakens the storm further, and you get 3 more seconds for the kill shot.',
-    barks: { start: 'It is doing a hundred and climbing. I was right. Note that I was right.', seat: 'My bus, my dials. Pull the lever and nothing else.', probe: 'The swarm is away! Reading it now!', snap: 'Structure is gone! It is coming apart!', hurt: 'That was not in the model!', win: 'Textbook. My textbook.' } },
+    barks: { start: 'It is doing a hundred and climbing. I was right. Note that I was right.', seat: 'You drive. Right to its foot. Closer than you think is sensible.', probe: 'The swarm is away! Reading it now!', snap: 'Structure is gone! It is coming apart!', hurt: 'That was not in the model!', win: 'Textbook. My textbook.' } },
   { id: 'winch', name: 'Winch Okafor', role: 'Harpooner', ride: 'Harpoon truck', perk: 'More time to land the harpoon, and the line holds 2 seconds longer.',
     barks: { start: 'Cable is greased. Do not embarrass it.', seat: 'My truck, my cable. Put it in the bright part.', probe: 'Sensors away.', snap: 'She let go! Floor it!', hurt: 'Easy on my rig!', win: 'Steel beats weather. Every time.' } },
   { id: 'sparks', name: 'Sparks Marín', role: 'Engineer', ride: 'Rocket truck · kill shot', perk: 'The hull slowly repairs. Boost recharges 35% faster.',
@@ -156,6 +159,9 @@ export const CREW = [
   { id: 'june', name: 'June Bug', role: 'Gunner', ride: 'Your rig · turret', perk: 'Guns reach 30% further and hit harder. 20% more Data.',
     barks: { start: 'Guns are hot. Nobody tell my mom.', probe: 'It ate it! It totally ate it!', snap: 'Data everywhere! Grabbing it!', hurt: 'Incoming! I said incoming!', win: 'Best. Tuesday. Ever.' } },
 ];
+
+// Doc's science bus, when you are the one driving it: heavy, steady, hard to push around
+export const BUS = { id: 'bus', name: 'Science bus', gun: { name: '', dps: 0, range: 1, every: 1, sound: 'mg' }, speed: 0.92, accel: 1.05, turn: 0.88, hull: 1, resist: 0.45, boost: 1, body: '#d9cfae', trim: '#3d7f86', len: 6.8, wid: 2.4, hgt: 1.5 };
 
 // kept so old saves load; the gadget slot was retired with the tether fight
 export const GADGETS = [{ id: 'anchor', name: 'Ground Anchor' }, { id: 'thumper', name: 'Thumper' }];

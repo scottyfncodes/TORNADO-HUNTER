@@ -1,6 +1,6 @@
 # TORNADO HUNTER: Game Design
 
-*Design of record. Version 2.4: five phases, a crew member and a vehicle for each, and weather. Tuning numbers live in `src/config.js`.*
+*Design of record. Version 2.5: five phases, a crew member and a vehicle for each (DOROTHY is driven to the funnel's foot), and weather. Tuning numbers live in `src/config.js`.*
 
 ---
 
@@ -10,11 +10,11 @@ You drive an overpowered storm truck at 140 mph after a super tornado doing a hu
 
 1. **Chase (the wheel).** Close on the storm. It throws cars, tractors and barn doors at where you are going; you dodge, and the crew shoot wreckage out of the air.
 2. **Guns (the turret).** Cross into the storm's danger zone and you are on the gun, first person, while the truck drives itself. You aim and you fire: the machine gun on the band, rockets for anything armoured. Whatever you do not shoot down lands on the truck.
-3. **Harpoon (Winch's truck).** The camera swings across to the harpoon truck. Lock the launcher on the glow and hook the weakened storm. It is dragged from a hundred miles an hour to a crawl.
-4. **DOROTHY (Doc's bus).** Across to the science bus. Pull the lever and release the swarm: eighty green sensors. The camera leaves the truck and rides with them as they are dragged in, sucked round and up, and keep swirling inside the funnel until it dies; the truck drives itself. The storm weakens further and its core goes critical.
+3. **Harpoon (Winch's truck).** The camera swings across to the harpoon truck. Lock the launcher on the glow and hook the weakened storm. It is pinned: from a hundred miles an hour to walking pace, which is what makes the next part possible.
+4. **DOROTHY (Doc's bus).** You take the wheel of the science bus and drive it right up to the foot of the pinned funnel. DOROTHY is set down there, and you deploy her: eighty green sensors. The camera leaves the truck and rides with them as they are dragged in, sucked round and up, and keep swirling inside the funnel until it dies; the truck drives itself. The storm weakens further and its core goes critical.
 5. **Kill shot (Sparks' rocket truck).** Across again. Hold the launcher on the glowing core until it locks. One rocket. The camera rides with it.
 
-Every phase belongs to someone. The chase and the turret are your rig, with June Bug. The finale is three hand-offs in a row, a vehicle each, and you sit in each seat in turn.
+Every phase belongs to someone. The chase and the turret are your rig, with June Bug. The finale is three hand-offs in a row, a vehicle each, and you take each seat in turn: two guns, and one steering wheel.
 
 **Driving feels like driving and shooting feels like shooting** because they are never the same moment: one seat at a time, one swing of the camera between them.
 
@@ -53,8 +53,8 @@ Kept from version 1: the three storms and their names, the bands as the storm's 
 | **1 Chase** | At the wheel, third person. Close the gap. Roads are faster; fields are the shortcut. The storm jukes every few seconds and throws wreckage; the crew shoot it down, you steer off the magenta circles. A ring on the ground marks the danger zone. | 5 to 15 s each time |
 | **2 Guns** | Crossing into the zone (185 to 240 m, by storm) swings the camera onto the turret in a third of a second and the autodrive takes the truck. You shoot the band: the strength bar drains, the band cracks at two thirds, fails at one third, breaks. The storm keeps throwing, and on the gun the sky is your job. DRIVE takes the wheel back at any time. | 10 to 25 s per band |
 | **Outer bands** | A band shot off bursts and you are back at the wheel: a wall of debris rolls out for you to outrun, the storm bolts, two rockets are handed up. Back to phase 1. | 8 to 12 s |
-| **3 Harpoon** | The last band gone to gunfire, the storm is WEAKENED for 7 s and the camera swings to Winch's harpoon truck, which closes to range and holds. Keep the launcher on the glow for 0.4 s, LOCKED, fire. Hooked, the storm crawls, and the line holds for 8 s. | 1 to 7 s |
-| **4 DOROTHY** | Across to Doc's bus, the canisters racked in front of you. One button, no aiming: DOROTHY. The camera cuts outside the funnel and follows the sensors up it for 3.4 s; the truck circles on its own and cannot be hurt. The funnel thins and the core glows. | 3.4 s |
+| **3 Harpoon** | The last band gone to gunfire, the storm is WEAKENED for 7 s and the camera swings to Winch's harpoon truck, which closes to range and holds. Keep the launcher on the glow for 0.4 s, LOCKED, fire. Hooked, the storm is pinned at about 5 mph (4% of its speed) and the line holds for 15 s. | 1 to 7 s |
+| **4 DOROTHY** | Third person again, at the wheel of Doc's bus (heavier than your rig, hard to push around); your own rig drives itself. A green ring marks the foot of the funnel, 17 m outside its wall, and the coach line counts the metres. The inflow pulls and shakes harder the closer you get. Cross the ring and DOROTHY goes over the tailgate, the brakes come on, and the button reads DEPLOY. Drive on into the wall and it throws you back out and costs a little hull. Press DEPLOY: Doc takes the bus and runs, and the camera cuts outside the funnel and follows the sensors up it for 3.4 s; the truck circles on its own and cannot be hurt. The funnel thins and the core glows. | 3.4 s |
 | **5 Kill shot** | Sparks' rocket truck, launcher up, you have 8 s. Hold the reticle on the glow for 0.4 s: LOCKED. One rocket, followed by the camera, and the storm comes apart: slow motion, explosions up the column, the sky tears open to blue. | 1 to 3 s |
 
 Simulated fight lengths: a gunner who never misses the seam takes Skinny Pete in about 45 seconds, The Sisters and Big Agnes in about 90. A gunner who never misses takes no damage on the gun at all. One who lags the target and never touches the rockets takes Pete in about 65 seconds with a third of the hull left, and is a coin toss on the last band of the two big storms: they want the rockets and the wheel. A person will take longer.
@@ -63,7 +63,7 @@ Simulated fight lengths: a gunner who never misses the seam takes Skinny Pete in
 
 | | |
 |---|---|
-| **Scripted** | Crossing into the danger zone puts you on your own gun. A band shot off puts you back at the wheel. The storm weakened puts you on Winch's harpoon truck, the hook puts you on Doc's bus, a critical core puts you on Sparks' rocket truck. Miss a window and you are back at your own wheel. |
+| **Scripted** | Crossing into the danger zone puts you on your own gun. A band shot off puts you back at the wheel. The storm weakened puts you on Winch's harpoon truck, the hook puts you at the wheel of Doc's bus, a critical core puts you on Sparks' rocket truck. Miss a window and you are back at your own wheel. |
 | **Manual** | GUNS (the action button during a chase) takes the turret anywhere, and the autodrive closes the range for you, slower than you would. DRIVE gives the wheel back; it stays yours for at least four seconds, and until you leave the zone and come back in. |
 | **The swing** | 0.3 s to your own gun, 0.45 s across to another vehicle, measured from the truck so the world never stops moving. The plate that shows your speed shows whose seat it is instead (WINCH · HARPOON TRUCK), and its owner says a line. No cut, no fade, no loading. Cuts are kept for the two cinematics. Calm mode shortens it to 0.1 s. |
 | **Nothing carries over** | Every finger and key held through a change is dropped, and the new seat ignores input for a third of a second: the thumb that pressed GUNS does not fire, the thumb that was aiming does not steer. |
@@ -127,8 +127,8 @@ Protecting the truck and hurting the storm are different jobs done by different 
 | **The rig's gun** | you, on the turret (hold FIRE). At the wheel the crew fire it at wreckage only, at three quarters of your rate | weakens the band; shoots wreckage out of the air | nothing reaches the storm from outside the zone; bullets barely mark a satellite twister |
 | **Rockets** | you, on the turret (swap, hold the reticle on a target 0.4 s to lock, FIRE) | one rocket ends a car, a tractor or a satellite twister and anything within 17 m of it; takes 18% off a band | 3 in the rack (4 at most), 2 more after every band |
 | **Shotgun** | the crew, automatically | the last-second save: blasts whatever is about to hit you, and clears wrecks off the road | 22 m range, 4 s between shots (6.4 s while you are on the gun) |
-| **Harpoon** | you, from Winch's harpoon truck (phase 3) | hooks the weakened storm and drags it to a crawl; the line runs from his truck, and your rig is free | only on a weakened storm; 7 s window; needs a lock |
-| **DOROTHY** | you, from Doc's science bus (phase 4) | a swarm of sensors, sucked up to swirl inside the funnel, weakens it further and turns the core critical | only on a hooked storm |
+| **Harpoon** | you, from Winch's harpoon truck (phase 3) | hooks the weakened storm and pins it at walking pace, so the bus can reach its foot; the line runs from his truck, and your rig is free | only on a weakened storm; 7 s window; needs a lock |
+| **DOROTHY** | you, driving Doc's science bus to the funnel's foot, then DEPLOY (phase 4) | a swarm of sensors, sucked up to swirl inside the funnel, weakens it further and turns the core critical | only on a hooked storm |
 | **The kill shot** | you, from Sparks' rocket truck (phase 5) | the launcher, locked on the critical core | one job, one shot; it does not come out of the rack |
 
 ### Knowing a shot landed
