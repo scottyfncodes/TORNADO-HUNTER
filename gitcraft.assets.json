@@ -1,0 +1,234 @@
+{
+ "assets": {
+  "assets/brand/logo.svg": {
+   "format": "svg",
+   "role": "logo",
+   "sha256": "86f22e289bddc9810c4a317aaf38a241f3b1bdf5a2058d795de2296695382ca4",
+   "task": "foundation.identity"
+  },
+  "assets/brand/palette.json": {
+   "format": "json",
+   "role": "palette",
+   "sha256": "f97835d3861054fa9561d19591306e9f6299f3e8ffe0cd5a14af5d754d42c8c7",
+   "task": "foundation.identity"
+  },
+  "assets/fx/energy_atlas.json": {
+   "format": "json",
+   "role": "atlas (TexturePacker hash: Phaser, PixiJS)",
+   "sha256": "b11c6d2e6e99bdd25f5b8bb411efdcc64fd48789e83ec67b7728fbc175289de2",
+   "task": "vfx.energy"
+  },
+  "assets/fx/energy_flipbook.json": {
+   "format": "json",
+   "role": "flipbook_meta",
+   "sha256": "4f532bf569de5e6b93ff056ab962fda3c3a174134df3d82ffa1915a2153ac4b3",
+   "task": "vfx.energy"
+  },
+  "assets/fx/energy_flipbook.png": {
+   "format": "png",
+   "role": "flipbook",
+   "sha256": "d8071d6609c497e0c0459d3b13ee0a0ba2e465a72d30e08dd77c4e2ea838d097",
+   "task": "vfx.energy"
+  },
+  "assets/fx/lightning_atlas.json": {
+   "format": "json",
+   "role": "atlas (TexturePacker hash: Phaser, PixiJS)",
+   "sha256": "fdaa7a5084d3c2e6b6df8b538b7610f4ba5c811f71354db565b72900c6e810f9",
+   "task": "vfx.lightning"
+  },
+  "assets/fx/lightning_flipbook.json": {
+   "format": "json",
+   "role": "flipbook_meta",
+   "sha256": "a4aa5a67a00aefd821cfb0384d4628bc4bac8fcc66fed615811667a3eb1758e5",
+   "task": "vfx.lightning"
+  },
+  "assets/fx/lightning_flipbook.png": {
+   "format": "png",
+   "role": "flipbook",
+   "sha256": "db384007fa08cdc399cedeafbaa5e99a60b1009852196297b36ce827c98f056b",
+   "task": "vfx.lightning"
+  },
+  "assets/icons/apple-touch-icon.png": {
+   "format": "png",
+   "role": "icon",
+   "sha256": "04b788e232228c04ce5b55b7e0cf2c877c19d74e259557e9bb7df8fb9af13218",
+   "task": "icon.derivatives"
+  },
+  "assets/icons/favicon-16.png": {
+   "format": "png",
+   "role": "favicon",
+   "sha256": "84940aede9891cc04ee63ca3d26f9a4dd655225e4efdc4e656ab80d07c1e8e81",
+   "task": "icon.derivatives"
+  },
+  "assets/icons/favicon-32.png": {
+   "format": "png",
+   "role": "favicon",
+   "sha256": "eeabce04d4b8531ffb0a1f8aa149b461b6db51c06d645a43c76d82ac6f090785",
+   "task": "icon.derivatives"
+  },
+  "assets/icons/favicon.ico": {
+   "format": "ico",
+   "role": "favicon",
+   "sha256": "270fbb250fae5cbf39a99e49b7a8b95f2b2678ff85f8f4aace1a42c8b0caf0f5",
+   "task": "icon.derivatives"
+  },
+  "assets/icons/icon-1024.png": {
+   "format": "png",
+   "role": "icon_master",
+   "sha256": "2f8b52b41da0b3226757cf572e18f5e86d613b5d2a7496b4dc4e456e2f6d9171",
+   "task": "icon.derivatives"
+  },
+  "assets/icons/icon-192.png": {
+   "format": "png",
+   "role": "icon",
+   "sha256": "1ea7f91ee6a79791f9b8637fed76808c05ee7789d6985c219c1274adccc04154",
+   "task": "icon.derivatives"
+  },
+  "assets/icons/icon-512.png": {
+   "format": "png",
+   "role": "icon",
+   "sha256": "a9a6f64664873e1ca192c4ef3dc6e2a18f16e68168a35185da28ee6b14011db5",
+   "task": "icon.derivatives"
+  },
+  "assets/icons/icon-maskable-512.png": {
+   "format": "png",
+   "role": "icon",
+   "sha256": "de6038fecea4d891313c927ad6aee95fb90269eead6a9a6c72ac2e8dbc2a9714",
+   "task": "icon.derivatives"
+  },
+  "assets/icons/icon.svg": {
+   "format": "svg",
+   "role": "icon",
+   "sha256": "f4afe31883278f16c83192861944d48a11cbfad9481d69a46f6b8a3a9f243dc7",
+   "task": "icon.derivatives"
+  },
+  "assets/materials/sky.sky.json": {
+   "format": "json",
+   "role": "lighting",
+   "sha256": "df922ed97b1558dd4d222f7183daf1617aa79b7b922da716298ebcee253c4281",
+   "task": "world.sky"
+  },
+  "assets/materials/sky_equirect.png": {
+   "format": "png",
+   "role": "equirect",
+   "sha256": "8d8558c0de80fdf38c15ca0189fc789d0a5235c5b666ad6af17fa0e9eaa6ca57",
+   "task": "world.sky"
+  },
+  "assets/materials/sky_nx.png": {
+   "format": "png",
+   "role": "cube:nx",
+   "sha256": "9f03ca4e8ed06d2371bd2c12bfeb2f662e3841036935c3b2780776f492d6e121",
+   "task": "world.sky"
+  },
+  "assets/materials/sky_ny.png": {
+   "format": "png",
+   "role": "cube:ny",
+   "sha256": "b5e7d0b437dd9b8aa4c0f99d256868e80118e8273953c7e9e6c83802841d6011",
+   "task": "world.sky"
+  },
+  "assets/materials/sky_nz.png": {
+   "format": "png",
+   "role": "cube:nz",
+   "sha256": "d55db6a908456cee8a8ae86a17d0319a8ee70fb9664b14e04b939f4eb5c779c9",
+   "task": "world.sky"
+  },
+  "assets/materials/sky_px.png": {
+   "format": "png",
+   "role": "cube:px",
+   "sha256": "c35282caee05e42f128c5a02dd10988b998a938bc62163dcebee7fd3e4e0cac9",
+   "task": "world.sky"
+  },
+  "assets/materials/sky_py.png": {
+   "format": "png",
+   "role": "cube:py",
+   "sha256": "5c3fa59803061ba939b28b91d5066262821eef7c2bfa919995ccfeeca2d86b37",
+   "task": "world.sky"
+  },
+  "assets/materials/sky_pz.png": {
+   "format": "png",
+   "role": "cube:pz",
+   "sha256": "0c49c10f8df6db76c087e3435b4c1e62773186855facad1ce0b9fa71741ada1d",
+   "task": "world.sky"
+  },
+  "assets/models/terrain.glb": {
+   "format": "glb",
+   "role": "mesh",
+   "sha256": "d685b65ed12f5f71a9a8ab8eff00d187b7f913582beae2a18cf0df57de4b263b",
+   "task": "world.terrain"
+  },
+  "assets/models/terrain_beach.png": {
+   "format": "png",
+   "role": "mask:beach",
+   "sha256": "6f2f8d6ed792adf3b916cba0e22b123528146e9c9ddc5e618365abc1a225cf4c",
+   "task": "world.terrain"
+  },
+  "assets/models/terrain_biomes.png": {
+   "format": "png",
+   "role": "biome_map",
+   "sha256": "353d1383f30d158afab81d5cb761e889750498796a1e7a711fb5e4eb2ec14c83",
+   "task": "world.terrain"
+  },
+  "assets/models/terrain_cliff.png": {
+   "format": "png",
+   "role": "mask:cliff",
+   "sha256": "18e6a77263bf6c2830ae3b7adf7803d15cc36b02746f207d82b4f4e341ea2a56",
+   "task": "world.terrain"
+  },
+  "assets/models/terrain_coastline.json": {
+   "format": "json",
+   "role": "coastline",
+   "sha256": "a8afbbd477be38ea1cf39e2b0eec89708c60f5f2c0dcc4ec3262287aa8885f58",
+   "task": "world.terrain"
+  },
+  "assets/models/terrain_forest.png": {
+   "format": "png",
+   "role": "mask:forest",
+   "sha256": "c2c68f5e68cc13148221dbee65adac597bd77dc9899973d56bd17fe4388e0a8c",
+   "task": "world.terrain"
+  },
+  "assets/models/terrain_height16.png": {
+   "format": "png",
+   "role": "heightmap",
+   "sha256": "15cca88a6cd9790092323d2cc215b13c034e3211274da5f12ff4057d8820f482",
+   "task": "world.terrain"
+  },
+  "assets/models/terrain_moisture.png": {
+   "format": "png",
+   "role": "mask:moisture",
+   "sha256": "c02f9873c23c450ffc2d4b38f0b6d814fab20d5329c7c705f9bda05106237969",
+   "task": "world.terrain"
+  },
+  "assets/models/terrain_normal.png": {
+   "format": "png",
+   "role": "normal_map",
+   "sha256": "aa49e77cb341c25540de8468f134f190c3cfdc1c42d5dfa3714e83b078a92880",
+   "task": "world.terrain"
+  },
+  "assets/models/terrain_scatter.json": {
+   "format": "json",
+   "role": "scatter",
+   "sha256": "6161263a144f30503cb2d900f56cbb9805908c15eaf3add2a58e0af7ed321431",
+   "task": "world.terrain"
+  },
+  "assets/models/terrain_slope.png": {
+   "format": "png",
+   "role": "mask:slope",
+   "sha256": "091e9373ba6a096eec718c90440965a68a8e336b0b025fa25c2a5b8da30a119f",
+   "task": "world.terrain"
+  },
+  "assets/models/terrain_splat.png": {
+   "format": "png",
+   "role": "splatmap",
+   "sha256": "a5272f8f9e3581b8735e135c2b2bce1a661d1a550823b3d69c6f97d129c0b4c1",
+   "task": "world.terrain"
+  },
+  "assets/models/terrain_water.png": {
+   "format": "png",
+   "role": "mask:water",
+   "sha256": "f102c904d607fc02b42f9ee47cbfd4d1316ab207b81eaf99adcc4ba1fdfb6182",
+   "task": "world.terrain"
+  }
+ },
+ "owner": "integration",
+ "schema": "gitcraft-assets/1"
+}

@@ -1,0 +1,20 @@
+{
+ "sun_direction_yup": [
+  0.9744,
+  0.2079,
+  0.0853
+ ],
+ "sun_elevation_deg": 12,
+ "sun_azimuth_deg": 95,
+ "engine": "analytic",
+ "ambient_rgb": [
+  0.3156,
+  0.4701,
+  0.7822
+ ],
+ "horizon_rgb": [
+  0.5848,
+  0.5947,
+  0.645
+ ]
+}

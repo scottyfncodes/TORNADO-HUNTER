@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tornado Hunter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Rope a tornado from a moving truck and tear it apart by driving. A storm rodeo for your phone.">
+<meta name="author" content="HaveAnApp">
+<meta name="theme-color" content="#0e1b1d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tornado Hunter">
+<link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/icons/favicon.ico" sizes="48x48">
+<link rel="icon" href="assets/icons/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="assets/icons/favicon-16.png" type="image/png" sizes="16x16">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" sizes="180x180">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preload" href="fonts/alfa-slab-one-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/barlow-semi-condensed-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="ui/styles.css">
+</head>
+<body>
+<canvas id="view" aria-label="Tornado Hunter game view"></canvas>
+
+<div id="touch" aria-hidden="true">
+  <div id="stick-zone"></div>
+  <div id="stick-base"></div><div id="stick-nub"></div>
+</div>
+
+<div id="hud" hidden>
+  <div class="plate hud-hull" id="hud-hull"><span class="lbl">Hull</span><div class="segs" id="hull-segs"></div></div>
+  <div class="plate hud-storm" id="hud-storm">
+    <div class="row"><span class="storm-name" id="storm-name">Skinny Pete</span><span class="ef" id="storm-ef">EF1</span><span class="pips" id="band-pips"></span></div>
+    <div class="eta" id="hud-eta"><span class="lbl" id="town-name">Hadley</span><div class="eta-bar"><i id="eta-fill"></i></div></div>
+    <div class="gauge" id="hud-gauge" hidden>
+      <div class="gauge-top"><span class="lbl">Strain</span><div class="strain-bar"><i id="strain-fill"></i></div><b id="strain-pct">0%</b></div>
+      <div class="tension"><span class="t-slack">Slack</span><span class="t-sweet">Taut</span><span class="t-over">Snap</span><i id="tension-needle"></i></div>
+      <span class="xfire" id="xfire" hidden>Crossfire ×2</span>
+    </div>
+  </div>
+  <div class="hud-right">
+    <div class="plate hud-data"><span class="lbl">Data</span><b id="hud-data">0</b></div>
+    <button class="plate icon-btn" id="btn-pause" aria-label="Pause"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 4h4v16H6zM14 4h4v16h-4z" fill="currentColor"/></svg></button>
+  </div>
+  <div class="plate hud-bark" id="hud-bark" hidden><b id="bark-name"></b><span id="bark-text"></span></div>
+  <div class="callout" id="hud-callout" hidden></div>
+  <div class="coach" id="hud-coach"></div>
+  <div class="storm-arrow" id="storm-arrow" hidden><svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M12 2l9 18H3z" fill="currentColor"/></svg></div>
+  <div class="pad">
+    <button class="pad-btn pad-boost" id="btn-boost" aria-label="Boost"><span>Boost</span><i class="fill" id="boost-fill"></i><kbd>Shift</kbd></button>
+    <button class="pad-btn pad-gadget" id="btn-gadget" aria-label="Gadget"><span id="gadget-label">Anchor</span><i class="fill" id="gadget-fill"></i><kbd>E</kbd></button>
+    <button class="pad-btn pad-action" id="btn-action" aria-label="Action"><span id="action-label">Probe</span><small id="action-hint"></small><kbd>Space</kbd></button>
+  </div>
+</div>
+
+<main id="title" class="screen screen-title" hidden>
+  <div class="title-block">
+    <h1 class="wordmark"><img src="ui/wordmark.svg" alt="Tornado Hunter" width="340" height="102"></h1>
+    <p class="tagline">Rope it. Wind it. Rip it apart.</p>
+    <button class="slab slab-primary" id="btn-start">Start the chase</button>
+    <button class="slab slab-quiet" id="btn-hq" hidden>Headquarters</button>
+    <p class="hint" id="title-hint">Hold to drive. Slide to steer. One button does the rest.</p>
+  </div>
+  <p class="haveanapp-byline" data-haveanapp><span>Tornado Hunter <a class="haveanapp-byline__by" href="https://haveanapp.com" rel="noopener" target="_blank">by HaveAnApp</a></span></p>
+</main>
+
+<section id="hq" class="screen screen-hq" hidden aria-label="Headquarters">
+  <header class="hq-head">
+    <h2>Headquarters</h2>
+    <div class="hq-meta"><span class="chip" id="hq-rank">Rookie</span><span class="chip chip-data"><span class="lbl">Data</span><b id="hq-data">0</b></span></div>
+  </header>
+  <nav class="tabs" role="tablist">
+    <button role="tab" class="tab" data-tab="storms" aria-selected="true">Storms</button>
+    <button role="tab" class="tab" data-tab="rig" aria-selected="false">Rig &amp; kit</button>
+    <button role="tab" class="tab" data-tab="crew" aria-selected="false">Crew</button>
+    <button role="tab" class="tab" data-tab="shop" aria-selected="false">Workshop</button>
+  </nav>
+  <div class="hq-body" id="hq-body"></div>
+  <footer class="hq-foot">
+    <p class="loadout" id="hq-loadout"></p>
+    <button class="slab slab-primary" id="btn-roll">Roll out</button>
+  </footer>
+</section>
+
+<section id="results" class="screen screen-results" hidden aria-label="Mission results">
+  <div class="panel">
+    <p class="eyebrow" id="res-eyebrow"></p>
+    <h2 id="res-title"></h2>
+    <p class="res-sub" id="res-sub"></p>
+    <dl class="tally" id="res-tally"></dl>
+    <p class="unlock" id="res-unlock" hidden></p>
+    <div class="btn-row"><button class="slab slab-primary" id="res-primary"></button><button class="slab slab-quiet" id="res-secondary"></button></div>
+  </div>
+</section>
+
+<section id="pause" class="screen screen-pause" hidden aria-label="Paused">
+  <div class="panel">
+    <img class="pause-logo" src="assets/brand/logo.svg" alt="" width="200" height="52">
+    <h2>Paused</h2>
+    <div class="btn-col">
+      <button class="slab slab-primary" id="p-resume">Resume</button>
+      <button class="slab slab-quiet" id="p-restart">Restart storm</button>
+      <button class="slab slab-quiet" id="p-sound" aria-pressed="true">Sound on</button>
+      <button class="slab slab-quiet" id="p-calm" aria-pressed="false">Screen shake on</button>
+      <button class="slab slab-quiet" id="p-quit">Headquarters</button>
+    </div>
+    <p class="keys">Arrows or WASD drive · Space acts · Shift boosts · E gadget · Esc pauses</p>
+    <p class="haveanapp-byline" data-haveanapp>Tornado Hunter <a class="haveanapp-byline__by" href="https://haveanapp.com" rel="noopener" target="_blank">by HaveAnApp</a></p>
+  </div>
+</section>
+
+<div id="flash" aria-hidden="true"></div>
+<div id="loading" role="status"><div class="load-box"><img class="load-logo" src="assets/brand/logo.svg" alt="Tornado Hunter" width="280" height="73"><p>Spinning up the storm</p><div class="load-bar"><i id="load-fill"></i></div></div></div>
+<noscript><p style="color:#f3ecd8;padding:24px">Tornado Hunter needs JavaScript and WebGL.</p></noscript>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
