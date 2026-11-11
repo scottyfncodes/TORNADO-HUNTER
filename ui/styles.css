@@ -205,7 +205,69 @@ body:not(.playing) .pad, body:not(.playing) .coach { display: none; }
 .touch .pad-btn kbd { display: none; }
 @media (pointer: coarse) { .pad-btn kbd { display: none; } }
 
+.pad-fire { right: 0; bottom: 0; width: 124px; height: 124px; font-size: var(--t-md); color: var(--text); }
+.pad-fire.down { background: #fff1c2; border-color: var(--primary); color: var(--ink); }
+.pad-swap { right: 138px; bottom: 6px; width: 88px; height: 88px; color: var(--text); border-color: var(--wheat); }
+.pad-drive { right: 150px; bottom: 104px; width: 64px; height: 64px; color: var(--text); }
+.pad-btn.off { opacity: 0.4; }
+.pad-btn.gone { visibility: hidden; }
+body:not(.gunning) .gun-only, body.gunning .drive-only { display: none; }
+
+/* ---- the turret: sights, hit markers, what is coming at you ---- */
+.hud-speed.auto { border-color: var(--signal); }
+.hud-speed.auto .lbl { color: var(--signal); }
+.stab-bar.hit i { filter: brightness(1.45); }
+.gunning .callout { top: max(27%, calc(118px + var(--st))); }
+.reticle { left: 50%; top: 50%; width: 0; height: 0; }
+.reticle > * { position: absolute; }
+.ret, .hitmark { left: -40px; top: -40px; overflow: visible; }
+.ret path, .ret circle, .hitmark path { fill: none; stroke-linecap: square; }
+.ret-ink path { stroke: var(--ink); stroke-width: 5.4; opacity: 0.7; }
+.ret-line path { stroke: var(--text); stroke-width: 2.4; }
+.ret .ret-dot { fill: var(--text); stroke: var(--ink); stroke-width: 1; }
+.ret-rk, .reticle.rk .ret-mg { display: none; }
+.reticle.rk .ret-rk { display: block; }
+.ret .ret-dia { stroke: var(--text); stroke-width: 2.2; }
+.ret .ret-lock { stroke: var(--primary); stroke-width: 3; stroke-linecap: butt; stroke-dasharray: 119.4; stroke-dashoffset: calc(119.4px * (1 - var(--lock, 0))); transform: rotate(-90deg); }
+.reticle.on .ret-line path, .reticle.on .ret-dia { stroke: var(--primary); }
+.reticle.on .ret-dot { fill: var(--primary); }
+.reticle.hot .ret-line path, .reticle.hot .ret-dia, .reticle.hot .ret-lock { stroke: var(--accent); }
+.reticle.hot .ret-dot { fill: var(--accent); }
+.reticle.far .ret-line path, .reticle.far .ret-dia { stroke: var(--muted); }
+.hitmark { opacity: 0; filter: drop-shadow(0 1px 0 var(--ink)) drop-shadow(0 -1px 0 var(--ink)); }
+.hitmark path { stroke: var(--text); stroke-width: 3.2; }
+.hitmark.crit path { stroke: var(--primary); stroke-width: 4.4; }
+.hitmark.kill path { stroke: var(--signal); stroke-width: 4.8; }
+.hitmark.weak path, .hitmark.far path { stroke: var(--muted); stroke-width: 2.6; }
+.ret-info { left: 0; top: 36px; transform: translateX(-50%); display: grid; gap: 3px; justify-items: stretch; min-width: 104px; padding: 3px 6px 5px; background: rgba(14, 27, 29, 0.8); border-radius: 2px; text-align: center; }
+.ret-info span { font-size: var(--t-xs); font-weight: 700; letter-spacing: 0.1em; line-height: 1.2; white-space: nowrap; color: var(--text); }
+.ret-bar { height: 6px; background: #2a3d3d; border-radius: 1px; overflow: hidden; }
+.ret-bar i { display: block; height: 100%; background: var(--text); transform-origin: left; }
+.ret-info.mid .ret-bar i { background: var(--primary); }
+.ret-info.low .ret-bar i { background: var(--accent); }
+.ret-info.low span { color: var(--accent); }
+.ret-info.dead span { color: var(--signal); }
+.ret-note { left: 0; top: -58px; transform: translateX(-50%); padding: 1px 6px; background: rgba(14, 27, 29, 0.8); border-radius: 2px; font-size: var(--t-xs); font-weight: 700; letter-spacing: 0.12em; line-height: 1.4; white-space: nowrap; color: var(--primary); }
+.ret-note.hot { color: var(--accent); }
+.marks { inset: 0; }
+.marks i { position: absolute; left: -15px; top: -15px; width: 30px; height: 30px; will-change: transform; }
+.marks i::before { content: ""; position: absolute; inset: 5px; border: 3px solid var(--accent); transform: rotate(45deg); box-shadow: 0 0 0 1.5px var(--ink), inset 0 0 0 1.5px var(--ink); }
+.marks i.big::before { inset: 1px; border-width: 4px; }
+.marks i.big::after { content: ""; position: absolute; inset: 11px; background: var(--accent); transform: rotate(45deg); box-shadow: 0 0 0 1.5px var(--ink); }
+.marks i.urgent::before { border-color: #fff1c2; animation: ready 0.24s steps(2) infinite; }
+.marks i.off::before { inset: auto; left: 4px; top: 2px; border: 11px solid transparent; border-top: 0; border-bottom: 20px solid var(--accent); transform: none; box-shadow: none; filter: drop-shadow(0 2px 0 var(--ink)); }
+.marks i.off::after { display: none; }
+.marks i.off.urgent::before { border-color: transparent; border-bottom-color: #fff1c2; }
+
+/* hail on the lens */
+#lens { position: fixed; inset: 0; z-index: 6; pointer-events: none; overflow: hidden; }
+#lens i { position: absolute; left: 0; top: 0; width: 64px; height: 64px; opacity: 0; will-change: opacity; background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cg stroke='%23eaf6f7' stroke-width='1.3' stroke-linecap='round' opacity='.8'%3E%3Cpath d='M32 32L9 21M32 32l21-19M32 32l25 13M32 32L21 57M32 32l8 27M32 32L5 40M32 32l2-27'/%3E%3C/g%3E%3Ccircle cx='32' cy='32' r='15' fill='%23dff1f3' opacity='.22'/%3E%3Ccircle cx='32' cy='32' r='6.5' fill='%23fff' opacity='.7'/%3E%3C/svg%3E"); }
+body:not(.playing) #lens { display: none; }
+
 #touch { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
+#aim-zone { position: absolute; inset: 0; pointer-events: none; touch-action: none; }
+.playing.gunning #aim-zone { pointer-events: auto; cursor: crosshair; }
+.playing.gunning #stick-zone { pointer-events: none; }
 #stick-zone { position: absolute; left: 0; top: 0; bottom: 0; width: 50%; pointer-events: none; touch-action: none; }
 .playing #stick-zone { pointer-events: auto; }
 #stick-base, #stick-nub { position: absolute; left: 0; top: 0; border-radius: 50%; opacity: 0; will-change: transform; }
@@ -264,4 +326,4 @@ body:not(.playing) .pad, body:not(.playing) .coach { display: none; }
 @media (min-width: 621px) and (max-width: 900px) { .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* the smallest landscape phones: slimmer plates so nothing touches */
 @media (min-width: 621px) and (max-width: 760px) { .segs i { width: 6px; } .hud-storm { width: min(280px, 38vw); padding-right: var(--s3); } .storm-mph { display: none; } .hud-data .lbl { display: none; } }
-@media (prefers-reduced-motion: reduce) { .screen { animation: none; } .pad-action.ready, .pad-action.danger { animation: none; } .slab { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .screen { animation: none; } .pad-btn.ready, .pad-btn.danger, .marks i.urgent::before { animation: none; } .slab { transition: none; } }

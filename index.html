@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>Tornado Hunter</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Chase super tornadoes at 150 mph in an overpowered storm truck. Shoot down the wreckage, rocket the core, rip it apart.">
+<meta name="description" content="Chase super tornadoes at 140 mph in an overpowered storm truck. Drive in, take the turret, shoot down what it throws, rocket the core.">
 <meta name="author" content="HaveAnApp">
 <meta name="theme-color" content="#0e1b1d">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -22,17 +22,21 @@
 <link rel="stylesheet" href="ui/styles.css">
 </head>
 <body>
-<section id="stage" aria-label="Game view"><canvas id="view" role="img" aria-label="Tornado Hunter: the chase, seen from behind your truck"></canvas></section>
+<section id="stage" aria-label="Game view"><canvas id="view" role="img" aria-label="Tornado Hunter: the chase, seen from behind your truck or down the sights of its turret"></canvas></section>
 
 <div id="touch" aria-hidden="true">
   <div id="stick-zone"></div>
+  <div id="aim-zone"></div>
   <div id="stick-base"></div><div id="stick-nub"></div>
 </div>
 
+<div id="lens" aria-hidden="true"></div>
+
 <section id="hud" aria-label="Game controls and status" hidden>
+  <div class="marks" id="marks" aria-hidden="true"></div>
   <div class="hud-left">
     <div class="plate hud-hull" id="hud-hull"><span class="lbl">Hull</span><div class="segs" id="hull-segs"></div></div>
-    <div class="plate hud-speed" id="hud-speed"><b id="rig-mph">0</b><span class="lbl">mph</span></div>
+    <div class="plate hud-speed" id="hud-speed"><b id="rig-mph">0</b><span class="lbl" id="mph-lbl">mph</span></div>
   </div>
   <div class="plate hud-storm" id="hud-storm">
     <div class="row"><span class="storm-name" id="storm-name">Skinny Pete</span><span class="ef" id="storm-ef">EF1</span><span class="storm-mph"><b id="storm-mph">0</b> mph</span><span class="pips" id="band-pips"></span></div>
@@ -46,9 +50,19 @@
   <div class="callout" id="hud-callout" hidden></div>
   <div class="coach" id="hud-coach"></div>
   <div class="storm-arrow" id="storm-arrow" hidden><svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M12 2l9 18H3z" fill="currentColor"/></svg></div>
+  <div class="reticle" id="reticle" aria-hidden="true" hidden>
+    <svg class="ret ret-mg" viewBox="-40 -40 80 80" width="80" height="80"><g class="ret-ink"><path d="M0-26V-11M0 26V11M-26 0H-11M26 0H11"/></g><g class="ret-line"><path d="M0-26V-11M0 26V11M-26 0H-11M26 0H11"/></g><circle class="ret-dot" r="2.2"/></svg>
+    <svg class="ret ret-rk" viewBox="-40 -40 80 80" width="80" height="80"><g class="ret-ink"><path d="M-30-18V-30H-18M18-30H30V-18M30 18V30H18M-18 30H-30V18"/></g><g class="ret-line"><path d="M-30-18V-30H-18M18-30H30V-18M30 18V30H18M-18 30H-30V18"/></g><circle class="ret-lock" r="19"/><path class="ret-dia" d="M0-7L7 0L0 7L-7 0Z"/></svg>
+    <svg class="hitmark" id="hitmark" viewBox="-40 -40 80 80" width="80" height="80"><path d="M-22-22L-10-10M22-22L10-10M-22 22L-10 10M22 22L10 10"/></svg>
+    <div class="ret-info" id="ret-info" hidden><span id="ret-label"></span><div class="ret-bar"><i id="ret-fill"></i></div></div>
+    <div class="ret-note" id="ret-note" hidden></div>
+  </div>
   <div class="pad">
-    <button class="pad-btn pad-boost" id="btn-boost" aria-label="Boost"><span>Boost</span><i class="fill" id="boost-fill"></i><kbd>Shift</kbd></button>
-    <button class="pad-btn pad-action" id="btn-action" aria-label="Action: burst, harpoon, Dorothy, kill shot"><span id="action-label">Burst</span><small id="action-hint"></small><i class="fill" id="action-fill"></i><kbd>Space</kbd></button>
+    <button class="pad-btn pad-boost drive-only" id="btn-boost" aria-label="Boost"><span>Boost</span><i class="fill" id="boost-fill"></i><kbd>Shift</kbd></button>
+    <button class="pad-btn pad-action drive-only" id="btn-action" aria-label="Action: take the turret, harpoon, Dorothy"><span id="action-label">Guns</span><small id="action-hint"></small><i class="fill" id="action-fill"></i><kbd>Space</kbd></button>
+    <button class="pad-btn pad-drive gun-only" id="btn-drive" aria-label="Take the wheel"><span>Drive</span><kbd>F</kbd></button>
+    <button class="pad-btn pad-swap gun-only" id="btn-swap" aria-label="Switch weapon"><span id="swap-label">Rockets</span><small id="swap-hint"></small><kbd>Q</kbd></button>
+    <button class="pad-btn pad-fire gun-only" id="btn-fire" aria-label="Fire"><span id="fire-label">Fire</span><small id="fire-hint"></small><kbd>Space</kbd></button>
   </div>
 </section>
 
@@ -58,7 +72,7 @@
     <p class="tagline">Chase it. Hook it. Kill shot.</p>
     <button class="slab slab-primary" id="btn-start">Start the chase</button>
     <button class="slab slab-quiet" id="btn-hq" hidden>Headquarters</button>
-    <p class="hint" id="title-hint">Hold to drive. Slide to steer. Guns, harpoon, Dorothy, kill shot.</p>
+    <p class="hint" id="title-hint">Hold to drive. Slide to steer. In range you take the turret: drag to aim, hold to fire.</p>
   </div>
   <p class="haveanapp-byline" data-haveanapp><span>Tornado Hunter <a class="haveanapp-byline__by" href="https://haveanapp.com" rel="noopener" target="_blank">by HaveAnApp</a></span></p>
 </main>
@@ -103,7 +117,7 @@
       <button class="slab slab-quiet" id="p-calm" aria-pressed="false">Screen shake on</button>
       <button class="slab slab-quiet" id="p-quit">Headquarters</button>
     </div>
-    <p class="keys">WASD or arrows drive · brake while turning to drift · Space is the action button · Shift boost · Esc pause</p>
+    <p class="keys">At the wheel: WASD or arrows drive, brake while turning to drift, Shift boost, Space takes the turret. On the gun: mouse or arrows aim, hold click or Space to fire, Q swaps weapon, F takes the wheel. Esc pauses.</p>
     <p class="haveanapp-byline" data-haveanapp>Tornado Hunter <a class="haveanapp-byline__by" href="https://haveanapp.com" rel="noopener" target="_blank">by HaveAnApp</a></p>
   </div>
 </section>

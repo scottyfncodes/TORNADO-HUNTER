@@ -83,7 +83,7 @@ export class Rig {
     this.x = 0; this.z = 0; this.y = 0; this.heading = 0; this.vx = 0; this.vz = 0; this.speed = 0;
     this.hullMax = FEEL.hullBase * def.hull * mods.hull; this.hull = this.hullMax;
     this.boostT = 0; this.boostCharge = 1; this.stun = 0; this.immune = 0; this.air = 0; this.vy = 0; this.surface = 0;
-    this.pitch = 0; this.roll = 0; this.squat = 0; this.wheelSpin = 0; this.aim = 0; this.throttle = 0; this.dead = false;
+    this.gripMul = 1; this.pitch = 0; this.roll = 0; this.squat = 0; this.wheelSpin = 0; this.aim = 0; this.throttle = 0; this.dead = false;
   }
   dispose() { this.scene.remove(this.model); this.scene.remove(this.shadow); }
   place(x, z, heading, world) { this.x = x; this.z = z; this.heading = heading; this.vx = this.vz = this.speed = 0; this.y = world.heightAt(x, z); this.sync(world, 0); }
@@ -132,7 +132,7 @@ export class Rig {
         if (thr > 0) { if (vF < top) vF = Math.min(top, vF + acc * thr * dt); else vF -= Math.min(vF - top, 12 * dt); }
         else if (thr < 0) { if (vF > 0.5) vF -= FEEL.rigBrake * -thr * dt; else vF = Math.max(-FEEL.rigReverseSpeed, vF - 14 * -thr * dt); }
         else vF -= Math.sign(vF) * Math.min(Math.abs(vF), 7 * dt);
-        vS *= Math.exp(-FEEL.rigGripRecover * dt);
+        vS *= Math.exp(-FEEL.rigGripRecover * this.gripMul * dt); // hail on the road: the tail steps out a little further
       }
     }
     this.vx = fx * vF + rx * vS + ax * dt; this.vz = fz * vF + rz * vS + az * dt; this.speed = vF; this.slip = vS;

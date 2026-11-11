@@ -32,7 +32,7 @@ export class UI {
   }
   show(name) {
     for (const k in this.screens) this.screens[k].hidden = k !== name;
-    if (name === 'title') { const first = save.firstRun(); $('btn-start').textContent = first ? 'Start the chase' : 'Play'; $('btn-hq').hidden = true; $('title-hint').textContent = first ? 'Hold to drive. Slide to steer. Guns, harpoon, Dorothy, kill shot.' : `${rankFor(save.s.bands)} · ${Math.round(save.s.data)} Data banked`; }
+    if (name === 'title') { const first = save.firstRun(); $('btn-start').textContent = first ? 'Start the chase' : 'Play'; $('btn-hq').hidden = true; $('title-hint').textContent = first ? 'Hold to drive. Slide to steer. In range you take the turret: drag to aim, hold to fire.' : `${rankFor(save.s.bands)} · ${Math.round(save.s.data)} Data banked`; }
     if (name === 'hq') { if (!stormOpen(STORMS.find((s) => s.id === save.s.loadout.storm) || STORMS[0])) save.s.loadout.storm = 'pete'; this.renderHQ(); }
     this.G.onScreen(name);
     const focus = { title: 'btn-start', hq: 'btn-roll', results: 'res-primary', pause: 'p-resume' }[name]; if (focus && !this.G.input.usingTouch) $(focus).focus({ preventScroll: true });
@@ -95,7 +95,7 @@ export class UI {
     body.appendChild(g);
     body.appendChild(el('h3', 'section-h', 'Fitted to every rig'));
     const kit = el('div', 'grid-4');
-    for (const [n, t] of [['Guns', 'Each rig mounts its own. They shoot wreckage out of the air on sight, and once you are inside the danger zone they work on the storm. BURST pours it on.'], ['Shotgun', 'The last-second save: blasts whatever is about to hit you, and clears wrecks off the road.'], ['Harpoon', 'When the guns have weakened the storm, hook it. It is dragged to a crawl.'], ['Dorothy + rocket', 'Send Dorothy up the hooked funnel to weaken it further, then one rocket is the kill shot.']]) kit.appendChild(this.card(n, t, { static: true }));
+    for (const [n, t] of [['Turret gun', 'Each rig mounts its own. Inside the danger zone you take it yourself while the truck drives: hit the bright seam on the band for critical damage, and shoot down what the storm throws.'], ['Rockets', 'A few in the rack, two more after every band. Hold the reticle on a target to lock. One rocket ends a car, a tractor or a satellite twister, and bites a chunk off a band.'], ['Shotgun', 'The crew fire it for you: the last-second save on whatever is about to hit, and it clears wrecks off the road.'], ['Harpoon + Dorothy', 'When the band is gone, hook the storm and send Dorothy up it. Then lock the launcher on the critical core: the kill shot.']]) kit.appendChild(this.card(n, t, { static: true }));
     body.appendChild(kit);
   }
   buyBtn(price, onBuy) {
@@ -131,7 +131,7 @@ export class UI {
     $('res-eyebrow').textContent = `${res.storm.name} · EF${res.storm.ef + res.rematch} · ${mm}:${ss}`;
     $('res-title').textContent = res.won ? 'Storm destroyed' : 'Rig wrecked';
     const st = res.stats;
-    $('res-sub').textContent = res.won ? `${st.shot} pieces of wreckage shot down, ${st.bursts} bursts, ${st.close} close calls, one kill shot.` : st.snaps ? 'So close. Magenta circles mark where things land: steer off them and let the gunner work.' : 'Get inside the danger zone and stay there so the guns can weaken it. Then harpoon, Dorothy, kill shot.';
+    $('res-sub').textContent = res.won ? `${st.shot} pieces of wreckage shot down, ${st.crits} critical hits, ${st.rockets} rocket${st.rockets === 1 ? '' : 's'}, ${st.close} close calls, one kill shot.` : st.snaps ? 'So close. On the gun, shoot down what it throws before it lands; rockets for cars and tractors. Or hit DRIVE and steer off the magenta circles.' : 'Get inside the danger zone and the turret is yours: shoot the bright seam on the band. Then harpoon, Dorothy, kill shot.';
     const t = $('res-tally'); t.textContent = '';
     for (const [k, v] of res.lines) { t.appendChild(el('dt', '', k)); t.appendChild(el('dd', '', '+' + v)); }
     t.appendChild(el('dt', 'total', res.won ? 'Banked' : 'Salvaged')); t.appendChild(el('dd', 'total', '+' + res.data));

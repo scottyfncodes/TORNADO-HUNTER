@@ -6,7 +6,7 @@ const S = 'assets/materials/';
 
 export class Sky {
   constructor(scene, camera, low = false) {
-    this.scene = scene; this.camera = camera; this.low = low; this.storm = 1; this.flash = 0; this.flashT = 0;
+    this.scene = scene; this.camera = camera; this.low = low; this.storm = 1; this.flash = 0; this.flashT = 0; this.vis = 1; this.ice = 0; this.calm = false; // vis: fog distance multiplier (hail); ice: 0..1 hail in the air
     const noise = noiseTexture(128, 11);
     // one set of uniforms every weather shader shares
     this.uniforms = {
@@ -99,11 +99,14 @@ export class Sky {
     const u = this.uniforms; u.uTime.value = t;
     this.storm += (stormTarget - this.storm) * Math.min(1, dt * (stormTarget < this.storm ? 0.7 : 2));
     this.flash = Math.max(0, this.flash - dt * 3.2);
-    const fl = this.flash * (0.6 + 0.4 * Math.sin(t * 70)); u.uFlash.value = fl; u.uStorm.value = this.storm;
+    // one stroke and a fainter return stroke, never a strobe; calm mode gets a single soft pulse
+    const fl = this.calm ? this.flash * 0.4 : this.flash * (0.78 + 0.22 * Math.sin(t * 30)); u.uFlash.value = fl; u.uStorm.value = this.storm;
     const s = this.storm, dark = 1 - 0.16 * s - 0.14 * s * prox;
     u.uTint.value.setRGB(dark * (1 - 0.06 * s), dark, dark * (1 - 0.03 * s));
-    u.uFog.value.copy(this.clearHorizon).lerp(_stormFog, s * 0.85); this.scene.fog.color.copy(u.uFog.value);
-    u.uFogNear.value = this.scene.fog.near = 260 - 120 * s * prox; u.uFogFar.value = this.scene.fog.far = 3000 - 1300 * s;
+    u.uFog.value.copy(this.clearHorizon).lerp(_stormFog, s * 0.85).lerp(_iceFog, this.ice * 0.55); this.scene.fog.color.copy(u.uFog.value);
+    // hail closes the distance in; a lightning flash throws it open again for a moment, and whatever was out there shows
+    const see = (1 - (1 - this.vis) * (1 - Math.min(1, fl * 1.4))) * (1 + fl * 0.5);
+    u.uFogNear.value = this.scene.fog.near = (260 - 120 * s * prox) * (0.4 + 0.6 * see); u.uFogFar.value = this.scene.fog.far = (3000 - 1300 * s) * see;
     this.hemi.intensity = (2.2 - 0.5 * s) * (1 + fl * 2.5); this.hemi.color.copy(this.clearAmbient).lerp(_stormSky, s);
     this.sun.intensity = 2.4 - 0.9 * s;
     if (tor) {
@@ -117,4 +120,4 @@ export class Sky {
     const st = this.rain.material.uniforms.uStreak.value, wv = this.rain.material.uniforms.uWind.value; if (mover) st.set(wv.x * 2.6 - mover.vx * 0.055, -2.6, wv.z * 2.6 - mover.vz * 0.055); else st.set(wv.x * 2.6, -2.6, wv.z * 2.6);
   }
 }
-const _stormFog = new THREE.Color('#42585a'), _stormSky = new THREE.Color('#7fa6a2'), _w = new THREE.Vector3();
+const _iceFog = new THREE.Color('#93a8a6'), _stormFog = new THREE.Color('#42585a'), _stormSky = new THREE.Color('#7fa6a2'), _w = new THREE.Vector3();

@@ -1,6 +1,6 @@
 # TORNADO HUNTER: Game Design
 
-*Design of record. Version 2.2: the chase-combat overhaul in five phases. Tuning numbers live in `src/config.js`.*
+*Design of record. Version 2.3: five phases in two seats (the wheel and the turret), and weather. Tuning numbers live in `src/config.js`.*
 
 ---
 
@@ -8,11 +8,13 @@
 
 You drive an overpowered storm truck at 140 mph after a super tornado doing a hundred and jinking like it knows you are there. A fight has five phases:
 
-1. **Chase.** Close on the storm. It throws cars, tractors and barn doors at where you are going; you dodge, and the guns shoot wreckage out of the air.
-2. **Guns.** Get inside the storm's danger zone and stay there. In the zone the guns work on the storm itself until it weakens.
-3. **Harpoon.** Hook the weakened storm. It is dragged from a hundred miles an hour to a crawl.
+1. **Chase (the wheel).** Close on the storm. It throws cars, tractors and barn doors at where you are going; you dodge, and the crew shoot wreckage out of the air.
+2. **Guns (the turret).** Cross into the storm's danger zone and you are on the gun, first person, while the truck drives itself. You aim and you fire: the machine gun on the band, rockets for anything armoured. Whatever you do not shoot down lands on the truck.
+3. **Harpoon.** Back at the wheel. Hook the weakened storm. It is dragged from a hundred miles an hour to a crawl.
 4. **DOROTHY.** Send the sensors. The camera leaves the truck and rides with them as they are sucked round and up the funnel; the truck drives itself. The storm weakens further and its core goes critical.
-5. **Kill shot.** One rocket. The camera rides with it.
+5. **Kill shot (the turret).** Hold the launcher on the glowing core until it locks. One rocket. The camera rides with it.
+
+**Driving feels like driving and shooting feels like shooting** because they are never the same moment: one seat at a time, one swing of the camera between them.
 
 Bigger storms shed their outer bands to gunfire first: each one answers with a wall of debris and a bolt, and you chase again. Phases 3 to 5 happen once, on the last band, as the finale.
 
@@ -46,14 +48,29 @@ Kept from version 1: the three storms and their names, the bands as the storm's 
 | Beat | What happens | Typical length |
 |---|---|---|
 | **Hunt** | A rolling start: you are already doing 90 mph on a road, the funnel 330 m ahead and running. | 5 s |
-| **1 Chase** | Close the gap. Roads are faster; fields are the shortcut. The storm jukes every few seconds and throws wreckage; the guns shoot it down, you steer off the magenta circles. A ring on the ground marks the danger zone. | 5 to 15 s each time |
-| **2 Guns** | Inside the zone (185 to 240 m, by storm) the ring turns green and the guns go to work on the storm. The strength bar drains. BURST pours it on for 2.6 s. Wreckage still comes first, so the more it throws the slower it weakens. | 12 to 30 s per band |
-| **Outer bands** | A band shot off bursts, a wall of debris rolls out for you to outrun, the storm bolts. Back to phase 1. | 8 to 12 s |
-| **3 Harpoon** | The last band gone to gunfire, the storm is WEAKENED for 7 s. The button reads HARPOON. Hooked, it crawls, and holds for 8 s. | 1 to 7 s |
+| **1 Chase** | At the wheel, third person. Close the gap. Roads are faster; fields are the shortcut. The storm jukes every few seconds and throws wreckage; the crew shoot it down, you steer off the magenta circles. A ring on the ground marks the danger zone. | 5 to 15 s each time |
+| **2 Guns** | Crossing into the zone (185 to 240 m, by storm) swings the camera onto the turret in a third of a second and the autodrive takes the truck. You shoot the band: the strength bar drains, the band cracks at two thirds, fails at one third, breaks. The storm keeps throwing, and on the gun the sky is your job. DRIVE takes the wheel back at any time. | 10 to 25 s per band |
+| **Outer bands** | A band shot off bursts and you are back at the wheel: a wall of debris rolls out for you to outrun, the storm bolts, two rockets are handed up. Back to phase 1. | 8 to 12 s |
+| **3 Harpoon** | The last band gone to gunfire, the storm is WEAKENED for 7 s and you have the wheel. The button reads HARPOON. Hooked, it crawls, and holds for 8 s. | 1 to 7 s |
 | **4 DOROTHY** | The button reads DOROTHY. The camera cuts outside the funnel and follows the sensors up it for 3.4 s; the truck circles on its own and cannot be hurt. The funnel thins and the core glows. | 3.4 s |
-| **5 Kill shot** | The button reads KILL SHOT; you have 8 s. One rocket, followed by the camera, and the storm comes apart: slow motion, explosions up the column, the sky tears open to blue. | 1 to 3 s |
+| **5 Kill shot** | The turret again, launcher up, you have 8 s. Hold the reticle on the glow for 0.4 s: LOCKED. One rocket, followed by the camera, and the storm comes apart: slow motion, explosions up the column, the sky tears open to blue. | 1 to 3 s |
 
-Simulated fight lengths for a tidy player: Skinny Pete about 55 seconds, The Sisters about 80, Big Agnes about 95. A person will take longer.
+Simulated fight lengths: a gunner who never misses the seam takes Skinny Pete in about 45 seconds, The Sisters and Big Agnes in about 90. A gunner who never misses takes no damage on the gun at all. One who lags the target and never touches the rockets takes Pete in about 65 seconds with a third of the hull left, and is a coin toss on the last band of the two big storms: they want the rockets and the wheel. A person will take longer.
+
+### Seats and how you change them
+
+| | |
+|---|---|
+| **Scripted** | Crossing into the danger zone puts you on the gun. A band shot off, or the storm weakened, puts you back at the wheel. A critical core puts you on the launcher. |
+| **Manual** | GUNS (the action button during a chase) takes the turret anywhere, and the autodrive closes the range for you, slower than you would. DRIVE gives the wheel back; it stays yours for at least four seconds, and until you leave the zone and come back in. |
+| **The swing** | 0.3 s, measured from the truck so the world never stops moving. No cut, no fade, no loading. Cuts are kept for the two cinematics. Calm mode shortens it to 0.1 s. |
+| **Nothing carries over** | Every finger and key held through a change is dropped, and the new seat ignores input for a fifth of a second: the thumb that pressed GUNS does not fire, the thumb that was aiming does not steer. |
+
+### Autodrive
+
+It holds the truck at 70% of the danger zone's radius: straight at the storm when it is far, alongside it at range, wide and off the throttle when it is close. It merges onto a road that runs its way, steers round buildings, trees, wrecks and satellite twisters, backs out if it is wedged, and never uses more than 92% of top speed or the boost. It does not dodge what the storm throws. That is the gunner's job, or a reason to take the wheel.
+
+The storm is a little kinder to a truck that cannot weave: it throws about 30% less often, a debris field is the two pieces that would have hit rather than four with a gap, and its lightning trails a truck at speed. In exchange the crew's shotgun reloads 60% slower.
 
 Miss the harpoon window and the storm recovers 40% of its strength; let the line go before the kill shot and it recovers 50%. A mistake costs seconds, never the fight.
 
@@ -105,35 +122,61 @@ Protecting the truck and hurting the storm are different jobs done by different 
 
 | Weapon | Who fires | Job | Limits |
 |---|---|---|---|
-| **The rig's gun** | the crew, automatically; you call BURST | shoots incoming wreckage out of the air; inside the danger zone, weakens the storm | wreckage always comes first; nothing reaches the storm from outside the zone |
-| **Shotgun** | the crew, automatically | the last-second save: blasts whatever is about to hit you, and clears wrecks off the road | 22 m range, 4 s between shots |
+| **The rig's gun** | you, on the turret (hold FIRE). At the wheel the crew fire it at wreckage only, at three quarters of your rate | weakens the band; shoots wreckage out of the air | nothing reaches the storm from outside the zone; bullets barely mark a satellite twister |
+| **Rockets** | you, on the turret (swap, hold the reticle on a target 0.4 s to lock, FIRE) | one rocket ends a car, a tractor or a satellite twister and anything within 17 m of it; takes 18% off a band | 3 in the rack (4 at most), 2 more after every band |
+| **Shotgun** | the crew, automatically | the last-second save: blasts whatever is about to hit you, and clears wrecks off the road | 22 m range, 4 s between shots (6.4 s while you are on the gun) |
 | **Harpoon** | you (phase 3) | hooks the weakened storm and drags it to a crawl | only on a weakened storm; 7 s window |
 | **DOROTHY** | you (phase 4) | sensors sucked up the funnel weaken it further and turn the core critical | only on a hooked storm |
-| **Rocket launcher** | you (phase 5) | the kill shot | one job, one shot |
+| **The kill shot** | you, on the turret (phase 5) | the launcher, locked on the critical core | one job, one shot; it does not come out of the rack |
 
-**Each rig mounts a different gun.** The Mule's machine gun is the all-rounder. The Bulldog's minigun does 35% more damage but reaches 15% less far, so it has to sit deeper in the zone. The Whippet's autocannon fires slow, heavy shots from 30% further out. They sound and look different.
+### Knowing a shot landed
+
+The old guns fired themselves and it was hard to tell they were doing anything. Now every round answers back, in this order of loudness:
+
+| | You see | You hear |
+|---|---|---|
+| **A hit** | a cream tick on the reticle, sparks at the impact, the target flashes white | a dry tick (a deeper thump on the storm) |
+| **A critical** | a wider amber tick, a white-hot flash and a spray of sparks | a bright two-note ring |
+| **A kill** | a green burst on the reticle; the thing comes apart in its own colours, tumbling, with a halo and smoke | a crunch, and an explosion for anything armoured |
+| **No effect** | a small grey tick and a word: OUT OF RANGE, or ARMOURED: USE A ROCKET | a dull plink |
+
+Critical hits are something you aim for, not a dice roll: on the storm it is the **seam**, a bright magenta point that drifts back and forth across the face of the band turned toward you (2.2 times the damage); on wreckage it is dead centre.
+
+Damage shows on the target as well as in a bar. Wreckage chars as it is hit, trails smoke from 30% damage and burns from 65%. The band's lit segments go out as it weakens, it turns from wheat to amber under two thirds and flickers magenta under one third, the funnel thins with it, and each threshold is a crack you hear. Under the reticle a small plate names whatever you are hitting and shows what is left of it, cream then amber then magenta; it goes away a second after you stop.
+
+The reticle is the weapon: an open cross for the gun, corner brackets with a ring that closes into a lock for the launcher. It is cream at rest, amber on something you can hurt, magenta on the seam or a lock, grey out of range. Each piece of wreckage in the air carries a magenta bracket (double for armour, flashing in its last 0.8 s), and an arrow on the edge of the screen when it is out of frame.
+
+**Each rig mounts a different gun.** The Mule's machine gun is the all-rounder. The Bulldog's minigun does 35% more damage but sprays. The Whippet's autocannon fires slow, heavy, dead-straight shots. They sound different and you see a different weapon in front of you: a jacketed barrel, six barrels in a turning cage, one long barrel with a slotted brake.
 
 **Not built yet:** COLD FRONT (briefly stops the storm juking) and CORKSCREW (an alternative to rockets for a rotating core). Both are designed as swaps for the DOROTHY slot and wait until the core loop has been played by people.
 
 | | |
 |---|---|
-| **Fun** | The guns hammering away while you thread wreckage inside the zone; the storm slamming to a crawl on the hook; watching DOROTHY go up it; the rocket. |
-| **Could frustrate** | A game that plays itself; losing control during a cinematic; guns that seem to do nothing because you are outside the zone. |
-| **Simplified** | Two buttons. The zone is a ring on the ground that changes colour, and the coach line counts the metres. The cinematic is short and you cannot be hurt during it. The guns fire themselves; where the truck is decides what they can hit. Getting into the zone, staying in it, calling the burst, the harpoon, DOROTHY and the kill shot are yours. |
+| **Fun** | Riding the seam with the gun while a tractor climbs out of the funnel at you; one rocket taking two pieces of a debris field; the storm slamming to a crawl on the hook; watching DOROTHY go up it; the lock tone and the kill shot. |
+| **Could frustrate** | Being taken off the wheel when you wanted it; a thumb that cannot hold a small target; taking hits you could not see coming. |
+| **Simplified** | The seat change is scripted at the moments it is obvious and one button otherwise. Touch aiming is helped three ways: targets are half as wide again as they look, the sights slow down on a target, and they ride along with it at half its speed. On the critical core they hold for everyone. The autodrive does the driving, never the dodging. |
 
 ---
 
 ## 5. Controls and HUD
 
-**Landscape iPhone, two thumbs, two buttons.**
+**Landscape iPhone, two thumbs.** Portrait works too.
+
+At the wheel:
 
 - **Left thumb, anywhere on the left half:** hold to drive, slide to steer, pull back to brake. Pull back *while* steering to drift.
-- **Right thumb:** BOOST, and one large button that is always the next thing to do: BURST, then HARPOON, then DOROTHY, then KILL SHOT.
-- **Keyboard:** WASD or arrows, Space for the action button, Shift boost, Esc or P pause.
+- **Right thumb:** BOOST, and one large button that is always the next thing to do: GUNS, then HARPOON, then DOROTHY.
 
-**HUD.** Left: hull, and your speed in mph. Centre: the storm's name, its speed, a pip per band, and one bar: the storm's strength while the guns work on it, then the countdown for whichever step comes next (weakened, hooked, critical). The plate's border turns green while you are inside the danger zone. During the DOROTHY and kill-shot shots the controls fade out. Under it, one line of coaching for this moment. Right: data and pause. The bottom centre of the screen is kept empty because that is where your truck is.
+On the gun:
 
-Checked at 667×375, 844×390 and 932×430: nothing overlaps, every target is at least 44 px, no text under 12 px.
+- **Either thumb, anywhere:** drag to aim. A drag the height of the screen turns the gun about 80 degrees.
+- **Right thumb:** hold FIRE (124 px, where the action button was). The thumb on FIRE can slide to aim, so one hand can track and shoot. Beside it ROCKETS / GUN (88 px) swaps weapon and DRIVE (64 px) takes the wheel.
+
+**Keyboard and mouse:** WASD or arrows drive, Space takes the turret, Shift boost. On the gun the mouse aims (click once to capture it) or the arrows do, click or Space fires, Q swaps weapon, F takes the wheel. Esc or P pause.
+
+**HUD.** Left: hull, and your speed in mph (the plate turns green and reads AUTO while the truck drives itself). Centre: the storm's name, its speed, a pip per band, and one bar: the storm's strength while the guns work on it, then the countdown for whichever step comes next (weakened, hooked, critical). The plate's border turns green while you are inside the danger zone. During the DOROTHY and kill-shot shots the controls fade out. Under it, one line of coaching for this moment. Right: data and pause. The bottom centre of the screen is kept empty because that is where your truck is, or your gun. On the gun the centre carries the reticle, the hit marker and the target plate, and nothing else; hail never lands a star in the middle of the lens.
+
+Checked at 667×375, 844×390 and 390×844: nothing overlaps, every target is at least 44 px, no text under 12 px.
 
 ---
 
@@ -158,11 +201,22 @@ The difficulty is what the storm does to you while you hold the zone: the more i
 - **Crosswinds** are called a second ahead with an arrow, then shove the truck sideways for a second and a half.
 - **Lightning** tracks you, locks, strikes.
 - **The debris wall** after every rip.
-- **Satellite twisters** (The Sisters), each marked on the ground.
+- **Satellite twisters** (The Sisters), each marked on the ground. A rocket takes one down.
 
 Every one of these is announced before it lands. Nothing does damage without a telegraph of at least 0.9 seconds.
 
-Everything is pooled: 16 thrown objects, 28 tracers, 4 rockets, 72 dust sprites, 10 flashes. Weak GPUs get a lower-detail tier automatically.
+### Weather
+
+Two things come and go over a fight. Neither does damage; both change what the next thirty seconds are like.
+
+| | What it does | What it never does |
+|---|---|---|
+| **Hail** | A core passes over for 10 to 13 s, 20 to 30 s into a fight and every half minute or so after, called out as it arrives (HAIL CORE: LOW GRIP). Stones in the air and bursting on the ground, stars cracking on the lens and fading, a hiss and ticks in the sound. The distance closes in to 42%. Sideways grip drops 30%, so the tail steps out further. | Fog the funnel, the ground markers, the wreckage brackets or the HUD. Put a star in the middle of the picture. Start during the finale. |
+| **Lightning** | Strikes out in the country every 6 to 13 s (3.5 to 8 s in hail), round the funnel or somewhere you are looking. One wash of light and a fainter return stroke, a third of a second in all; for that moment the murk is thrown open and whatever was out there shows: the funnel, the wreckage in the air, the next town. Thunder arrives at the speed of sound (a strike 300 m off is heard 0.9 s later) and rolls longer the further off it was. | Land within 150 m of you: that is the storm's own aimed bolt, and it has a marker. Strobe. Flash the whole screen white. |
+
+Calm mode (the pause menu, or the system's reduced-motion setting) cuts the flash to 40% with no return stroke, spaces the strikes out, and thins the stars on the lens.
+
+Everything is pooled, a draw call each: 16 thrown objects, 28 tracers, 44 sparks, 44 pieces of debris, 4 rockets, 4 blast rings, 96 dust sprites, 22 flashes, 520 hailstones, 8 stars on the lens. Weak GPUs get a lower-detail tier automatically, with fewer of most of them.
 
 ---
 
@@ -181,7 +235,7 @@ Rigs: **The Mule** (balanced), **Bulldog** (most hull, shrugs off suction and cr
 
 The rest of the crew follow in a camper truck and a converted bus. They are company, not units to command.
 
-Upgrades (Data): Winch (the line holds longer), Ordnance (guns hit harder, BURST recharges faster), Plating (hull), Turbo (boost).
+Upgrades (Data): Winch (the line holds longer), Ordnance (guns hit harder, one more rocket in the rack), Plating (hull), Turbo (boost).
 
 ---
 
@@ -196,8 +250,9 @@ Upgrades (Data): Winch (the line holds longer), Ordnance (guns hit harder, BURST
 | Floor-it-to-rip harpoon (version 2.0) | replaced | the harpoon now slows the storm and sets up the rocket kill shot, as the player asked |
 | Rockets as the main damage (versions 2.0, 2.1) | removed | the player asked for guns to do the weakening and the rocket to be the kill shot only |
 | DOROTHY as an opener or optional booster (2.0, 2.1) | moved | it is now phase 4: after the harpoon, as a cinematic, before the kill shot |
-| A third button | removed | one action button that is always the next step, plus boost |
-| Manual aiming | never added | two thumbs are driving; positioning and timing are the aim |
+| Guns that fire themselves (2.0 to 2.2) | replaced | it was hard to tell they were doing anything, and the fight was mostly waiting inside a ring. The crew still cover you at the wheel; the storm only falls to you on the turret |
+| BURST | removed | with the trigger in your hand there is nothing for it to do |
+| Driving and aiming at once | never added | two thumbs cannot do both well on glass. One seat at a time, and an autodrive for the other |
 | Pistol, rifle, sniper, grenade launcher, minigun | postponed | four weapons that each do a different job beat eight that differ by a number |
 | COLD FRONT, CORKSCREW | postponed | designed, not built: wait for people to play the core loop |
 | New regions, cosmetics, achievements | not started | the brief ruled them out until the core is fun |
@@ -210,19 +265,21 @@ Three.js on WebGL2, plain ES modules, no build step, offline from the Home Scree
 
 ```
 src/config.js    every tuning number, storms, rigs, crew
-src/combat.js    the mission: storm AI, wreckage, guns, DOROTHY, rockets, harpoon, surge
+src/combat.js    the mission: storm AI, wreckage, the two seats, DOROTHY, harpoon, surge
+src/gunner.js    the turret: aim, hits and criticals, rockets and lock-on, autodrive, the weapon you see
+src/weather.js   hail cores and ambient lightning
 src/rig.js       the truck: model, handling, drift, boost
 src/tornado.js   funnel, bands, debris, skirt (shaders)
-src/fx.js        pooled wreckage, tracers, rockets, explosions, telegraphs, cable
+src/fx.js        pooled wreckage, tracers, sparks, debris, rockets, explosions, telegraphs, cable
 src/convoy.js    the camper truck and the bus
 src/world.js     terrain, ground texture, roads, towns, props
 src/sky.js       sky dome, wall cloud, rain, light
 src/audio.js     synthesised engine, wind, guns, explosions
 src/hud.js       in-mission HUD     src/ui.js   title, headquarters, results
-src/main.js      boot, camera, frame loop, resolution governor
+src/main.js      boot, the three cameras (chase, gun, cinematic) and the swing between them, frame loop, resolution governor
 ```
 
-**Saves.** Same key and shape as version 1 (`tornado-hunter/v1`). Data, kills, owned rigs, upgrades and crew carry over. The `winch` and `cable` upgrade levels keep their value and now mean "the line holds longer" and "ordnance".
+**Saves.** Same key and shape as version 1 (`tornado-hunter/v1`). Data, kills, owned rigs, upgrades and crew carry over. The `winch` and `cable` upgrade levels keep their value and now mean "the line holds longer" and "ordnance" (guns hit harder, one more rocket in the rack per level).
 
 ---
 
@@ -231,7 +288,7 @@ src/main.js      boot, camera, frame loop, resolution governor
 | Phase | Goal |
 |---|---|
 | **Now** | People play it on real iPhones and answer the questions below |
-| **Feel pass** | Tune speeds, drift, wreckage rate and rocket reload from that play; haptics; recorded audio where synthesis falls short |
+| **Feel pass** | Tune aim sensitivity and assist, wreckage rate, rocket count and the hail from that play; haptics; recorded audio where synthesis falls short |
 | **Second technology** | COLD FRONT and CORKSCREW as swaps for the DOROTHY slot |
 | **Set pieces** | Scripted chaos tied to the map: a grain elevator coming down across the highway, power lines falling in sequence |
 | **The wingman** | The convoy joins the fight: a second gunner, a second harpoon |
@@ -244,6 +301,6 @@ src/main.js      boot, camera, frame loop, resolution governor
 1. With the storm out of frame, is the truck fun to drive on its own?
 2. Does catching the tornado feel like something you did, or something the game allowed?
 3. Could you tell what was about to hit you in time to do something about it?
-4. Was holding the danger zone while the guns worked tense, or just waiting?
-5. Harpoon, DOROTHY, kill shot: did that finale feel like the best moment of the fight? Was losing control during the DOROTHY shot welcome or annoying?
+4. On the gun, could you hold the seam with a thumb? Did you ever take the wheel back on purpose, and did being put on the gun ever feel like having it taken away?
+5. Harpoon, DOROTHY, lock, kill shot: did that finale feel like the best moment of the fight? Was losing control during the DOROTHY shot welcome or annoying?
 6. Did you start the next storm without being asked?
