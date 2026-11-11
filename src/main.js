@@ -11,18 +11,19 @@ import { Storm } from './tornado.js';
 import { Fx } from './fx.js';
 import { Mission } from './combat.js';
 import { Hud } from './hud.js';
+import { Weather } from './weather.js';
 import { UI } from './ui.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('view');
 const G = { state: 'boot', paused: false, input, audio, save, mission: null, time: 0, fovKick: 0 };
-window.__game = { state: 'title', score: 0, time: 0, phase: 'boot', hull: 0, stability: 1, stage: 0, bands: 0, dist: 0, speed: 0, mph: 0, stormMph: 0, exposed: 0, boost: 0, shot: 0, close: 0, data: 0, fps: 0, scale: 1 };
+window.__game = { state: 'title', score: 0, time: 0, phase: 'boot', view: 'drive', weapon: 'mg', rockets: 0, hull: 0, stability: 1, stage: 0, bands: 0, dist: 0, speed: 0, mph: 0, stormMph: 0, boost: 0, shot: 0, crits: 0, close: 0, hail: 0, data: 0, fps: 0, scale: 1 };
 
 let renderer;
 try { renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false }); }
 catch { $('loading').querySelector('p').textContent = 'This device cannot run WebGL'; throw new Error('WebGL unavailable'); }
 const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(FEEL.camFov, 1, 0.5, 9000);
-G.scene = scene; G.camera = camera; G.renderer = renderer;
+G.scene = scene; G.camera = camera; G.renderer = renderer; scene.add(camera); // the gunner's weapon hangs off the camera
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 // ---- resolution governor: hold the frame rate by trading pixels, never by dropping input ----
@@ -52,11 +53,11 @@ G.makeRig = () => {
   return new Rig(scene, def, G.sky.envMap, { hull: 1 + s.upgrades.plating * 0.2, boost: 1 + s.upgrades.turbo * 0.15, recharge: (1 + s.upgrades.turbo * 0.15) * (sparks ? 1.35 : 1), glow: G.fx.dustTex });
 };
 G.kickFov = () => { G.fovKick = 10; };
-G.onScreen = (name) => { G.state = name === 'results' ? 'over' : name; input.setEnabled(false); document.body.classList.remove('playing'); G.hud.show(false); };
+G.onScreen = (name) => { G.state = name === 'results' ? 'over' : name; input.setEnabled(false); input.setMode('drive'); document.body.classList.remove('playing'); G.hud.show(false); };
 G.startMission = (def, opts = {}) => {
   if (G.mission) G.mission.dispose(); if (G.attract) { G.attract.dispose(); G.attract = null; }
-  G.world.reset(); G.fx.reset(); G.lastOpts = { def, opts };
-  G.mission = new Mission(G, def, save.s.loadout, save.s.upgrades, opts);
+  G.world.reset(); G.fx.reset(); G.lastOpts = { def, opts }; input.setMode('drive'); view.name = 'drive'; view.t = 1;
+  G.mission = new Mission(G, def, save.s.loadout, save.s.upgrades, opts); G.weather.begin(G.mission);
   G.ui.hide(); G.hud.show(true); G.hud.begin(G.mission); G.state = 'playing'; G.paused = false; G.banked = false; G.resultShown = false;
   document.body.classList.add('playing'); input.clear(); input.setEnabled(true); camState.init = false; audio.suspend(false); document.activeElement && document.activeElement.blur && document.activeElement.blur();
   if (!save.s.seenCoach) { save.s.seenCoach = true; save.write(); }
@@ -114,6 +115,29 @@ function missionCamera(dt, m) {
   G.fovKick = Math.max(0, G.fovKick - dt * 16); const fov = Math.min(112, G.baseFov + G.fovKick + Math.min(1.1, sp) * FEEL.camFovSpeed + boost * 7);
   if (Math.abs(fov - camera.fov) > 0.05) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 7); camera.updateProjectionMatrix(); }
 }
+// on the gun: the camera is the gunner's eye (src/gunner.js places it). Driving to gun and back is one quick swing
+// measured from the truck, so the world never stops moving and nothing jumps.
+const view = { name: 'drive', t: 1, pos: new THREE.Vector3(), quat: new THREE.Quaternion() }, _q = new THREE.Quaternion();
+function gunCamera(dt, m) {
+  m.gn.camera(dt, camera, G.fx.calm);
+  G.fovKick = Math.max(0, G.fovKick - dt * 16); const fov = G.baseFov - FEEL.gunFovTighten;
+  if (Math.abs(fov - camera.fov) > 0.05) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 9); camera.updateProjectionMatrix(); }
+  camState.pos.copy(camera.position);
+}
+function viewCamera(dt, m) {
+  const now = m.cine ? 'cine' : m.view, r = m.rig;
+  if (now !== view.name) { // cuts to and from the cinematics stay cuts; wheel to gun and back is a swing
+    if (now !== 'cine' && view.name !== 'cine') { view.t = 0; view.pos.copy(camera.position).sub(_p.set(r.x, r.y, r.z)); view.quat.copy(camera.quaternion); } else view.t = 1;
+    if (now === 'drive' && view.name === 'gun') camState.init = false;
+    view.name = now;
+  }
+  G.fx.fp = now === 'gun'; if (now !== 'gun') m.gn.root.visible = false;
+  if (now === 'cine') cineCamera(dt, m); else if (now === 'gun') gunCamera(dt, m); else missionCamera(dt, m);
+  if (view.t < 1) {
+    view.t = Math.min(1, view.t + dt / (G.fx.calm ? 0.1 : FEEL.gunBlend)); const k = view.t * view.t * (3 - 2 * view.t);
+    _l.set(r.x, r.y, r.z).add(view.pos); camera.position.lerpVectors(_l, camera.position, k); _q.copy(camera.quaternion); camera.quaternion.slerpQuaternions(view.quat, _q, k); camera.updateMatrixWorld();
+  }
+}
 // phase 4 and the kill shot: the camera leaves the truck and rides with the sensors, or the rocket
 function cineCamera(dt, m) {
   const s = m.storm, p = m.cine.pos, rocket = m.cine.kind === 'rocket';
@@ -154,12 +178,12 @@ function frame(now) {
     const steps = dt > 0 ? (G.fast || 1) : 0, sdt = G.fast ? 1 / 60 : dt;
     for (let i = 0; i < steps; i++) { if (i) { simT += sdt; fx.update(sdt, simT); if (fx.stopT > 0) fx.stopT = 0; } m.update(sdt, simT, input.axes(), input); }
     storm = m.storm; prox = THREE.MathUtils.clamp(1 - (m.dist - 40) / 500, 0, 1); stormLevel = m.phase === 'won' ? 0 : 1;
-    if (m.cine) cineCamera(dtBase, m); else missionCamera(dtBase, m);
-    if (!G.paused) G.hud.update(dtBase, m, camera, input.usingTouch);
-    audio.beds({ prox: storm.alive ? prox : 0, storm: G.sky.storm, speed: Math.min(1.4, m.rig.speedFrac), throttle: Math.abs(m.rig.throttle), tension: m.line ? 0.6 : null, playing: !G.paused && !m.result, drift: m.rig.drifting ? 1 : Math.min(1, Math.abs(m.rig.slip || 0) / 14), boost: m.rig.boostT > 0 });
+    viewCamera(dtBase, m);
+    if (!G.paused) G.hud.update(dtBase, m, camera, input.usingTouch, fx.calm);
+    audio.beds({ prox: storm.alive ? prox : 0, storm: G.sky.storm, speed: Math.min(1.4, m.rig.speedFrac), throttle: Math.abs(m.rig.throttle), tension: m.line ? 0.6 : null, playing: !G.paused && !m.result, drift: m.rig.drifting ? 1 : Math.min(1, Math.abs(m.rig.slip || 0) / 14), boost: m.rig.boostT > 0, hail: G.weather.hail });
     if (m.result && !G.banked) { G.banked = true; G.unlockText = bank(m.result); input.setEnabled(false); document.body.classList.remove('playing'); }
     if (m.result && !G.resultShown && m.phaseT > (m.result.won ? 4.8 : 1.8)) { G.resultShown = true; G.hud.show(false); G.ui.results(m.result, G.unlockText); }
-    const g = window.__game; g.state = m.result ? 'over' : 'playing'; g.score = Math.round(m.data); g.data = g.score; g.time = +m.time.toFixed(2); g.phase = m.phase; g.hull = Math.round(m.rig.hull); g.stability = +m.stability.toFixed(3); g.stage = m.stage; g.bands = storm.bandsLeft; g.dist = Math.round(m.dist); g.speed = +Math.hypot(m.rig.vx, m.rig.vz).toFixed(1); g.mph = m.rig.mph; g.stormMph = m.stormMph; g.inZone = !!m.inZone; g.cine = !!m.cine; g.boost = +m.rig.boostCharge.toFixed(2); g.shot = m.stats.shot; g.close = m.stats.close; g.x = Math.round(m.rig.x); g.z = Math.round(m.rig.z);
+    const g = window.__game; g.state = m.result ? 'over' : 'playing'; g.score = Math.round(m.data); g.data = g.score; g.time = +m.time.toFixed(2); g.phase = m.phase; g.hull = Math.round(m.rig.hull); g.stability = +m.stability.toFixed(3); g.stage = m.stage; g.bands = storm.bandsLeft; g.dist = Math.round(m.dist); g.speed = +Math.hypot(m.rig.vx, m.rig.vz).toFixed(1); g.mph = m.rig.mph; g.stormMph = m.stormMph; g.inZone = !!m.inZone; g.cine = !!m.cine; g.boost = +m.rig.boostCharge.toFixed(2); g.shot = m.stats.shot; g.close = m.stats.close; g.view = m.view; g.weapon = m.gn.weapon; g.rockets = m.gn.rockets; g.crits = m.stats.crits; g.locked = m.gn.locked; g.aim = m.gn.aim.kind; g.hail = +G.weather.hail.toFixed(2); g.x = Math.round(m.rig.x); g.z = Math.round(m.rig.z);
     G.rigVel = m.rig;
   } else if (G.attract) {
     const s = G.attract, t = TOWNS.pete, a = simT * 0.05; s.moveX = Math.cos(a); s.moveZ = Math.sin(a); s.moveSpeed = 9; if (dt > 0) { s.update(dt, simT); G.world.update(dt, s); G.world.events.length = 0; }
@@ -168,6 +192,7 @@ function frame(now) {
     const g = window.__game; g.state = G.state === 'over' ? 'over' : 'title'; g.phase = G.state;
   }
   if (dt > 0) fx.update(dt, simT);
+  G.weather.update(dt, simT, m, storm, camera);
   G.world.cull(camera, quality.detail); G.sky.update(dtBase, simT, stormLevel, storm, prox, m && !m.result ? m.rig : null);
   renderer.render(scene, camera);
 }
@@ -177,13 +202,14 @@ async function boot() {
   // the identity's palette is the source of the interface colours
   fetch('assets/brand/palette.json').then((r) => r.json()).then((p) => { const st = document.documentElement.style; for (const [k, v] of Object.entries({ bg: p.background, surface: p.surface, primary: p.primary, accent: p.accent, text: p.text, signal: p.signal, wheat: p.wheat })) if (v) st.setProperty('--' + k, v); }).catch(() => {});
   const fill = $('load-fill'), prog = (v) => { fill.style.transform = `scaleX(${v})`; };
-  G.sky = new Sky(scene, camera, !!G.low); G.sky.low = !!G.low; G.world = new World(scene, G.sky); G.fx = new Fx(scene, camera, G.world, G.sky.uniforms);
+  G.sky = new Sky(scene, camera, !!G.low); G.sky.low = !!G.low; G.world = new World(scene, G.sky); G.fx = new Fx(scene, camera, G.world, G.sky.uniforms, !!G.low);
   await G.sky.load(); prog(0.2);
   await G.world.load((v) => prog(0.2 + v * 0.6));
   await G.fx.load(); prog(0.95);
+  G.weather = new Weather(G);
   G.hud = new Hud(); G.fx.flashCb = (s, c) => G.hud.flash(s, c); G.fx.calm = save.s.settings.calm || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   G.hud.onReady = () => audio.ready_();
-  input.init({ zone: $('stick-zone'), base: $('stick-base'), nub: $('stick-nub'), action: $('btn-action'), boost: $('btn-boost'), gadget: $('btn-gadget') });
+  input.init({ view: canvas, zone: $('stick-zone'), aim: $('aim-zone'), base: $('stick-base'), nub: $('stick-nub'), action: $('btn-action'), boost: $('btn-boost'), fire: $('btn-fire'), swap: $('btn-swap'), drive: $('btn-drive') });
   audio.setMuted(save.s.settings.mute);
   G.ui = new UI(G); spawnAttract(); G.ui.show('title');
   window.addEventListener('pointerdown', () => audio.unlock(), { once: false, passive: true });

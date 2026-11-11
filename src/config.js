@@ -69,6 +69,35 @@ export const FEEL = {
   dmgDebris: 16, dmgBigDebris: 24, dmgWreck: 10, dmgLightning: 20, dmgSatellite: 12, dmgCore: 30,
   crosswind: 15,              // m/s^2 sideways
   camDistance: 13.5, camHeight: 5.4, camFov: 60, camFovSpeed: 16,
+
+  // ---- the gunner's seat: first person on the turret while the truck drives itself ----
+  gunFovTighten: 8,           // degrees narrower than the driving lens: sights, not a windscreen
+  gunEyeHeight: 1.5,          // m above the turret mount
+  gunBlend: 0.3,              // s to swing between the driving camera and the gun (0.1 in calm mode)
+  gunPitchMin: -0.3, gunPitchMax: 1.2, // rad
+  gunGuard: 0.3,              // s after a seat change before any press counts: no accidental shot, boost or seat change
+  gunStormDps: 17,            // storm strength per second of hits on the band
+  gunCrit: 2.2,               // a hit on the seam (storm) or dead centre (wreckage)
+  gunWreckRange: 250,         // m: wreckage can be engaged as soon as it leaves the funnel
+  gunSatMul: 0.1,             // bullets barely mark a satellite twister: that is a rocket's job
+  wreckHp: 45, wreckHpBig: 170, // what it takes to shoot a bale, or a tractor, out of the air
+  crewGunShare: 0.75,         // the crew covering you at the wheel shoot at three quarters of the rate you do
+  gunnerBreather: 1.4,        // the storm throws this much less often at a truck that cannot weave
+  gunnerShotgun: 1.6,         // and the crew's last-second shotgun is this much slower: on the gun, the sky is your job
+  aimAssist: 1.5,             // touch only: how much wider a target is than it looks
+  rocketAmmo: 3, rocketMax: 4, rocketResupply: 2, // carried, most carried, handed up after each band
+  rocketStorm: 0.18,          // share of a band one rocket takes off
+  rocketSplash: 17,           // m
+  rocketLockSeconds: 0.4,     // s holding the reticle on a target to lock
+  autoStandoff: 0.7,          // share of the danger zone the autodrive holds
+  autoSpeed: 0.92,            // share of top speed it will use: it never boosts, it never takes the racing line
+
+  // ---- weather ----
+  hailFirst: [20, 30], hailSeconds: [10, 13], hailGap: [28, 42], // s
+  hailGrip: 0.3,              // share of sideways grip lost on ice
+  hailVisibility: 0.42,       // fog distance multiplier at full hail
+  boltEvery: [6, 13], boltEveryHail: [3.5, 8], // s between ambient lightning strikes
+  soundSpeed: 343,            // m/s: thunder arrives when it should
 };
 
 export const WORLD = { scale: 3, size: 3072, yScale: 1.6, roadSpacing: 512, roadOffset: 256, roadHalf: 6.5, highwayHalf: 9 };
@@ -132,7 +161,7 @@ export const GADGETS = [{ id: 'anchor', name: 'Ground Anchor' }, { id: 'thumper'
 
 export const UPGRADES = [
   { id: 'winch', name: 'Winch', blurb: 'The harpoon line holds longer', prices: [80, 160, 280], step: 0.15 },
-  { id: 'cable', name: 'Ordnance', blurb: 'Guns hit harder; BURST recharges faster', prices: [70, 140, 240], step: 0.1 },
+  { id: 'cable', name: 'Ordnance', blurb: 'Guns hit harder; one more rocket in the rack', prices: [70, 140, 240], step: 0.1 },
   { id: 'plating', name: 'Plating', blurb: 'More hull', prices: [70, 150, 260], step: 0.2 },
   { id: 'turbo', name: 'Turbo', blurb: 'Boost lasts longer and recharges faster', prices: [60, 130, 220], step: 0.15 },
 ];

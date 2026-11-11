@@ -1,6 +1,6 @@
 // All sound is synthesised with Web Audio: nothing to download, works offline, unlocks on the first tap.
 let ctx = null, master = null, muted = false;
-let wind, roar, rain, engine, cable, skid, rush;
+let wind, roar, rain, engine, cable, skid, rush, hail;
 let noiseBuf = null;
 
 function makeNoise() {
@@ -43,7 +43,7 @@ export const audio = {
     master = ctx.createGain(); master.gain.value = muted ? 0 : 0.8;
     const comp = ctx.createDynamicsCompressor(); master.connect(comp).connect(ctx.destination);
     noiseBuf = makeNoise();
-    wind = noiseLoop('bandpass', 500, 0.7); roar = noiseLoop('lowpass', 120, 0.3); rain = noiseLoop('highpass', 3500, 0.2); skid = noiseLoop('bandpass', 1700, 5); rush = noiseLoop('bandpass', 900, 0.5);
+    wind = noiseLoop('bandpass', 500, 0.7); roar = noiseLoop('lowpass', 120, 0.3); rain = noiseLoop('highpass', 3500, 0.2); skid = noiseLoop('bandpass', 1700, 5); rush = noiseLoop('bandpass', 900, 0.5); hail = noiseLoop('bandpass', 5200, 1.4);
     const o1 = ctx.createOscillator(), o2 = ctx.createOscillator(), ef = ctx.createBiquadFilter(), eg = ctx.createGain();
     o1.type = 'sawtooth'; o2.type = 'square'; o1.frequency.value = 55; o2.frequency.value = 27.5; ef.type = 'lowpass'; ef.frequency.value = 400; eg.gain.value = 0;
     o1.connect(ef); o2.connect(ef); ef.connect(eg).connect(master); o1.start(); o2.start(); engine = { o1, o2, ef, g: eg };
@@ -52,12 +52,12 @@ export const audio = {
   setMuted(m) { muted = m; if (master) master.gain.setTargetAtTime(m ? 0 : 0.8, ctx.currentTime, 0.05); },
   suspend(on) { if (ctx) { if (on) ctx.suspend(); else ctx.resume(); } },
   // continuous beds, set every frame. prox 0..1 (near the funnel), storm 0..1, speed 0..1, throttle 0..1, tension <0 slack .. >1 over
-  beds({ prox = 0, storm = 0, speed = 0, throttle = 0, tension = null, playing = false, drift = 0, boost = false }) {
+  beds({ prox = 0, storm = 0, speed = 0, throttle = 0, tension = null, playing = false, drift = 0, boost = false, hail: ice = 0 }) {
     if (!ctx) return;
     const t = ctx.currentTime, k = 0.12;
     wind.g.gain.setTargetAtTime(0.04 * storm + 0.2 * prox, t, k); wind.f.frequency.setTargetAtTime(380 + 900 * prox, t, k);
     roar.g.gain.setTargetAtTime(0.85 * prox * prox, t, k); roar.f.frequency.setTargetAtTime(90 + 160 * prox, t, k);
-    rain.g.gain.setTargetAtTime(0.03 * storm, t, 0.4);
+    rain.g.gain.setTargetAtTime(0.03 * storm, t, 0.4); hail.g.gain.setTargetAtTime(0.085 * ice, t, 0.3);
     // the engine: pitch tracks speed, opens up on boost; air rushing past is half the feeling of going fast
     engine.g.gain.setTargetAtTime(playing ? 0.03 + 0.045 * throttle + (boost ? 0.03 : 0) : 0, t, 0.08);
     engine.o1.frequency.setTargetAtTime(46 + 120 * speed + (boost ? 26 : 0), t, 0.06); engine.o2.frequency.setTargetAtTime(23 + 60 * speed + (boost ? 13 : 0), t, 0.06);
@@ -78,6 +78,9 @@ export const audio = {
   lineSnap() { burst('highpass', 3000, 1, 0.08, 0.6); tone('sawtooth', 900, 80, 0.3, 0.2); },
   boost() { burst('bandpass', 400, 1.5, 0.7, 0.35, 2600); },
   thunder(vol = 0.9) { burst('lowpass', 2400, 0.4, 0.08, vol); burst('lowpass', 500, 0.3, 2.2, vol * 0.9, 50, 0.04); },
+  // a strike somewhere else: it arrives `delay` seconds after the flash, and the further off it was the less crack and the more roll
+  thunderFar(vol, delay, far) { if (far < 0.55) burst('lowpass', 1800 - 1400 * far, 0.4, 0.07, vol * (1 - far), 0, delay); burst('lowpass', 420 - 220 * far, 0.3, 2 + 2.4 * far, vol * 0.85, 45, delay + 0.03); burst('lowpass', 160, 0.2, 1.6 + 2 * far, vol * 0.5, 40, delay + 0.5 + far); },
+  hailTick() { tone('sine', 2600 + Math.random() * 1800, 1400, 0.035, 0.05); burst('highpass', 5200, 0.8, 0.02, 0.12); },
   whistle(dur = 0.9) { tone('sine', 1500, 500, dur, 0.06); },
   impact() { burst('lowpass', 300, 0.6, 0.35, 0.9, 60); },
   hurt() { burst('lowpass', 900, 0.8, 0.3, 0.9, 100); tone('square', 110, 55, 0.25, 0.2); },
@@ -87,6 +90,17 @@ export const audio = {
   thump() { tone('sine', 140, 30, 0.6, 0.9); burst('lowpass', 800, 0.5, 0.4, 0.5, 80); },
   stake() { burst('bandpass', 500, 3, 0.1, 0.5); tone('square', 80, 60, 0.15, 0.2); },
   warn() { tone('square', 740, 740, 0.09, 0.07); tone('square', 740, 740, 0.09, 0.07, 0.16); },
+  // what a hit sounds like: a tick when it lands, a bright ring when it lands where it hurts, a crunch when the thing comes apart
+  hit(deep) { if (deep) { burst('bandpass', 420, 2.2, 0.05, 0.3); tone('sine', 190, 120, 0.05, 0.1); } else { burst('highpass', 3200, 1, 0.022, 0.2); tone('square', 1500, 900, 0.03, 0.05); } },
+  crit() { tone('triangle', 1760, 2640, 0.07, 0.13); tone('sine', 3520, 3520, 0.09, 0.05, 0.015); burst('highpass', 4200, 1, 0.03, 0.16); },
+  plink() { tone('square', 620, 420, 0.03, 0.035); },
+  kill() { burst('bandpass', 900, 0.9, 0.16, 0.5, 220); tone('sine', 150, 48, 0.2, 0.3); tone('triangle', 880, 1320, 0.09, 0.1, 0.05); },
+  stormCrack(deep) { tone('sawtooth', deep ? 300 : 420, 70, 0.4, 0.14); burst('lowpass', 1200, 0.7, 0.35, 0.45, 110); },
+  lock() { tone('square', 1480, 1480, 0.05, 0.07); tone('square', 1976, 1976, 0.09, 0.07, 0.07); },
+  swap() { burst('bandpass', 2400, 3, 0.03, 0.3); burst('bandpass', 1300, 3, 0.04, 0.3, 0, 0.09); tone('square', 210, 150, 0.05, 0.06, 0.09); },
+  dry() { burst('bandpass', 3000, 4, 0.02, 0.25); },
+  modeIn() { tone('sawtooth', 180, 520, 0.2, 0.06); burst('bandpass', 1800, 2, 0.05, 0.22, 0, 0.19); },
+  modeOut() { tone('sawtooth', 480, 170, 0.18, 0.06); burst('bandpass', 1200, 2, 0.05, 0.2, 0, 0.17); },
   // the arsenal: each one has to be told apart with your eyes shut
   mg() { burst('highpass', 1800, 0.7, 0.045, 0.22); tone('square', 150, 70, 0.05, 0.12); },
   // a cow at altitude, with opinions
