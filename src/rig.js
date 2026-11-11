@@ -77,9 +77,9 @@ function buildModel(def, envMap, glowTex) {
 export class Rig {
   constructor(scene, def, envMap, mods) {
     this.def = def; this.mods = mods; this.scene = scene;
-    this.model = buildModel(def, envMap, mods.glow); scene.add(this.model); this.alert = 0; this.clock = 0;
+    this.model = buildModel(def, envMap, mods.glow); scene.add(this.model); this.alert = 0; this.clock = 0; this.ghost = !!mods.ghost; // ghost: handling only, drawn by something else (a crew vehicle you are driving)
     const sh = new THREE.Mesh(new THREE.CircleGeometry(1, 20), new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: 0.32, depthWrite: false, fog: false }));
-    sh.rotation.x = -Math.PI / 2; sh.scale.set(def.wid * 1.1, def.len * 0.95, 1); sh.renderOrder = 1; scene.add(sh); this.shadow = sh;
+    sh.rotation.x = -Math.PI / 2; sh.scale.set(def.wid * 1.1, def.len * 0.95, 1); sh.renderOrder = 1; scene.add(sh); this.shadow = sh; if (this.ghost) { this.model.visible = false; sh.visible = false; }
     this.x = 0; this.z = 0; this.y = 0; this.heading = 0; this.vx = 0; this.vz = 0; this.speed = 0;
     this.hullMax = FEEL.hullBase * def.hull * mods.hull; this.hull = this.hullMax;
     this.boostT = 0; this.boostCharge = 1; this.stun = 0; this.immune = 0; this.air = 0; this.vy = 0; this.surface = 0;
@@ -160,7 +160,7 @@ export class Rig {
     this.clock += dt || 0; const fl = Math.sin(this.clock * 13) > 0, bc = 0.5 + 0.5 * Math.sin(this.clock * 7);
     for (const sp of m.userData.glows) { const k = sp.userData.kind, v = k === 'head' ? 1 : k === 'beacon' ? 0.25 + bc * 1.1 : this.alert > 0.5 ? ((k === 'barA') === fl ? 1.25 : 0.2) : 0.6; sp.scale.setScalar(sp.userData.size * (0.7 + 0.3 * v)); sp.material.opacity = Math.min(1, v) * (this.dead ? 0.2 : 0.9); }
     this.shadow.position.set(this.x, world.heightAt(this.x, this.z) + 0.12, this.z); this.shadow.rotation.z = this.heading; this.shadow.material.opacity = 0.32 * (this.air > 0 ? 0.5 : 1);
-    m.visible = !(this.immune > 0 && this.hull > 0 && Math.floor(this.immune * 20) % 2 === 0);
+    m.visible = !this.ghost && !(this.immune > 0 && this.hull > 0 && Math.floor(this.immune * 20) % 2 === 0);
   }
   // world position of the harpoon muzzle (where the cable leaves the rig)
   muzzle(out) { return out.copy(this.model.userData.muzzle).applyMatrix4(this.model.matrixWorld); }

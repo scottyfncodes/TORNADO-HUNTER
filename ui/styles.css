@@ -227,7 +227,6 @@ body:not(.gunning) .gun-only, body.gunning .drive-only { display: none; }
 .ret .ret-dot { fill: var(--text); stroke: var(--ink); stroke-width: 1; }
 .ret-rk, .reticle.rk .ret-mg { display: none; }
 .reticle.rk .ret-rk { display: block; }
-.reticle.noaim .ret { display: none; }
 .ret .ret-dia { stroke: var(--text); stroke-width: 2.2; }
 .ret .ret-lock { stroke: var(--primary); stroke-width: 3; stroke-linecap: butt; stroke-dasharray: 119.4; stroke-dashoffset: calc(119.4px * (1 - var(--lock, 0))); transform: rotate(-90deg); }
 .reticle.on .ret-line path, .reticle.on .ret-dia { stroke: var(--primary); }

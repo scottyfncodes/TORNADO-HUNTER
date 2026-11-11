@@ -4,8 +4,8 @@
 //   the kill shot (the same launcher, locked on the critical core)
 // One aim, one camera rig and one autodrive serve all of them. The truck is still a truck: whatever
 // the storm throws lands on it unless you shoot it down or take the wheel back.
-// The finale is three seats on three other vehicles (src/convoy.js): Winch's harpoon truck, Doc's
-// science bus, Sparks' rocket truck. `mount` is the convoy unit you are sitting on, or null for your own rig.
+// Two phases of the finale are seats on other vehicles (src/convoy.js): Winch's harpoon truck and
+// Sparks' rocket truck. (Doc's bus you drive: src/combat.js.) `mount` is the convoy unit you are sitting on, or null for your own rig.
 import * as THREE from '../vendor/three.module.min.js';
 import { FEEL, PALETTE, WORLD } from './config.js';
 import { box, cyl, merge } from './geo.js';
@@ -72,15 +72,6 @@ function harpModel() { // Winch's launcher: a pale barrel as thick as your arm, 
   g.add(new THREE.Mesh(merge(P), mat)); g.userData = { muzzle: new THREE.Vector3(0, 0.02, -1.7), mat };
   return g;
 }
-function rackModel() { // DOROTHY: six green sensor canisters in a hazard-striped tray, and the lever that lets them go
-  const P = [], g = new THREE.Group(), mat = new THREE.MeshLambertMaterial({ vertexColors: true });
-  P.push(box(0.62, 0.06, 0.5, INK, 0, -0.1, -0.1), box(0.64, 0.07, 0.04, HAZ, 0, 0.0, 0.15), box(0.64, 0.07, 0.04, HAZ, 0, 0.0, -0.35), box(0.04, 0.07, 0.5, HAZ, 0.3, 0.0, -0.1), box(0.04, 0.07, 0.5, HAZ, -0.3, 0.0, -0.1));
-  for (const x of [-0.19, 0, 0.19]) for (const z of [-0.22, 0.02]) P.push(cyl(0.075, 0.075, 0.26, PALETTE.signal, x, 0.05, z, 8), cyl(0.08, 0.08, 0.04, INK, x, 0.19, z, 8), cyl(0.03, 0.03, 0.03, CREAM, x, 0.22, z, 6));
-  P.push(box(0.05, 0.05, 0.3, STEEL, 0.4, 0.0, 0.2), cyl(0.035, 0.035, 0.2, AMBER, 0.4, 0.1, 0.34, 6), box(0.3, 0.035, 0.18, STEEL, 0, -0.16, 0), cyl(0.045, 0.055, 0.6, STEEL, 0, -0.46, 0, 7));
-  g.add(new THREE.Mesh(merge(P), mat)); g.userData = { muzzle: new THREE.Vector3(0, 0.2, -0.3), mat };
-  return g;
-}
-
 export class Gunner {
   constructor(mission, upgrades) {
     const G = mission.G; this.m = mission; this.G = G;
@@ -92,7 +83,7 @@ export class Gunner {
     this.note = ''; this.noteT = 0; this.hitT = 0; this.stuckT = 0; this.backT = 0; this.weakT = Math.random() * 20; this.weak = new THREE.Vector3(); this.weakR = 6;
     // the weapon in front of you
     this.root = new THREE.Group(); this.root.visible = false; G.camera.add(this.root);
-    this.mg = mgModel(mission.gun.sound); this.pod = podModel(); this.harp = harpModel(); this.rack = rackModel(); this.models = { mg: this.mg, rocket: this.pod, harpoon: this.harp, dorothy: this.rack }; this.root.add(this.mg, this.pod, this.harp, this.rack);
+    this.mg = mgModel(mission.gun.sound); this.pod = podModel(); this.harp = harpModel(); this.models = { mg: this.mg, rocket: this.pod, harpoon: this.harp }; this.root.add(this.mg, this.pod, this.harp);
     this.muzzleFlash = new THREE.Sprite(new THREE.SpriteMaterial({ map: G.fx.dustTex, color: '#ffd27a', blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false })); this.muzzleFlash.visible = false; this.root.add(this.muzzleFlash);
     // the seam: the one bright place on a band where a hit counts double
     const sm = (color, order) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: G.fx.dustTex, color, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false })); s.visible = false; s.renderOrder = order; G.scene.add(s); return s; };
@@ -107,11 +98,11 @@ export class Gunner {
   get touch() { return this.G.input.usingTouch; }
 
   // ---- in and out ----
-  // why: auto / manual (your own turret), or harpoon / dorothy / kill (a seat on `unit`, another crew member's vehicle)
+  // why: auto / manual (your own turret), or harpoon / kill (a seat on `unit`, another crew member's vehicle)
   enter(why, unit = null) {
     const m = this.m, G = this.G, was = this.on;
     this.on = true; this.why = why; this.mount = unit; this.seatId = unit ? unit.role : 'rig'; this.lock = null; this.lockT = 0; this.locked = false; this.wasFiring = true; this.shotT = 0; this.eyeY = null; this.lastRef = null;
-    this.setWeapon(why === 'kill' ? 'rocket' : why === 'harpoon' || why === 'dorothy' ? why : 'mg', true); this.swapT = 0.35;
+    this.setWeapon(why === 'kill' ? 'rocket' : why === 'harpoon' ? why : 'mg', true); this.swapT = 0.35;
     // you arrive looking at what you came to shoot
     this.placeSeam(0); this.eye(_o); _p.copy(this.weak).sub(_o);
     this.yaw = Math.atan2(_p.x, _p.z); this.pitch = clamp(Math.atan2(_p.y, Math.hypot(_p.x, _p.z)), FEEL.gunPitchMin, FEEL.gunPitchMax);
@@ -218,7 +209,6 @@ export class Gunner {
     const firing = input.firing || !!this.botFire, edge = firing && !this.wasFiring; this.wasFiring = firing;
     if (ph === 'kill') { if (edge) { if (locked) m.killShot(); else if (m.reload <= 0) { this.say('AIM AT THE CORE'); G.audio.deny(); G.hud.deny('btn-fire'); } } }
     else if (ph === 'stagger') { if (edge && !m.harpoonBusy) { if (!locked) { this.say('AIM AT THE GLOW'); G.audio.deny(); G.hud.deny('btn-fire'); } else if (m.fireHarpoon()) { this.recoil = 1.6; this.kick += 0.03; } else G.hud.deny('btn-fire'); } }
-    else if (ph === 'rip') { if (edge) { this.recoil = 1; m.sendDorothy(); } }
     else if (ph !== 'chase') { /* nothing to shoot at between phases */ }
     else if (rocket) { if (edge) this.fireRocket(); }
     else if (firing && this.shotT <= 0) { this.shotT = m.gun.every; this.shoot(assist); }
@@ -293,8 +283,8 @@ export class Gunner {
   resupply() { const n = Math.min(FEEL.rocketResupply, this.rocketMax - this.rockets); if (n > 0) { this.rockets += n; return n; } return 0; }
 
   // ---- autodrive: holds the truck inside the danger zone, on a road when one runs its way, round anything solid ----
-  autodrive(dt) {
-    const m = this.m, r = m.rig, s = m.storm, w = this.G.world, d = m.dist, hx = Math.sin(r.heading), hz = Math.cos(r.heading), sp = Math.hypot(r.vx, r.vz);
+  autodrive(dt, r = this.m.rig) {
+    const m = this.m, s = m.storm, w = this.G.world, d = r === m.rig ? m.dist : Math.hypot(r.x - s.x, r.z - s.z), hx = Math.sin(r.heading), hz = Math.cos(r.heading), sp = Math.hypot(r.vx, r.vz);
     if (this.backT > 0) { this.backT -= dt; return { steer: this.backSteer, throttle: -1 }; }
     const tx = s.x + s.vx * 0.6 - r.x, tz = s.z + s.vz * 0.6 - r.z, tl = Math.hypot(tx, tz) || 1, ux = tx / tl, uz = tz / tl;
     let px = -uz, pz = ux; if (px * hx + pz * hz < 0) { px = -px; pz = -pz; }
@@ -332,16 +322,16 @@ export class Gunner {
     const k = this.swapT, drop = (1 - k) * (1 - k) * 0.7, rk = calm ? 0 : this.recoil, mgOn = this.weapon === 'mg' || this.weapon === 'harpoon', g = this.models[this.weapon];
     for (const key in this.models) this.models[key].visible = this.models[key] === g; this.root.visible = true;
     const tall = cam.aspect < 1; g.scale.setScalar(tall ? 0.6 : 1); // portrait: a narrow picture, so the weapon is drawn smaller to leave the same share of it clear
-    g.position.set((calm ? 0 : this.swayX) * 0.6, (g === this.rack ? -0.7 : mgOn ? -0.5 : -0.56) * (tall ? 1.25 : 1) - drop - (calm ? 0 : this.swayY) * 0.4, (mgOn ? -1.3 : -1.34) + rk * (mgOn ? 0.035 : 0.09)); g.rotation.set((mgOn ? 0.13 : 0.12) + rk * 0.012 - drop * 0.5, (calm ? 0 : this.swayX) * 0.5, 0);
+    g.position.set((calm ? 0 : this.swayX) * 0.6, (mgOn ? -0.5 : -0.56) * (tall ? 1.25 : 1) - drop - (calm ? 0 : this.swayY) * 0.4, (mgOn ? -1.3 : -1.34) + rk * (mgOn ? 0.035 : 0.09)); g.rotation.set((mgOn ? 0.13 : 0.12) + rk * 0.012 - drop * 0.5, (calm ? 0 : this.swayX) * 0.5, 0);
     if (g === this.pod) this.pod.userData.tips.forEach((t, i) => { t.visible = m.phase === 'kill' ? i === 0 && m.reload <= 0 : i < this.rockets; });
-    const f = this.muzzleFlash; f.visible = this.flashT > 0 && k >= 1 && g !== this.rack;
+    const f = this.muzzleFlash; f.visible = this.flashT > 0 && k >= 1;
     if (f.visible) { f.position.copy(g.userData.muzzle).multiplyScalar(g.scale.x).applyEuler(g.rotation).add(g.position); const sz = (mgOn ? 0.5 : 1.1) * g.scale.x * (0.8 + Math.random() * 0.5); f.scale.set(sz, sz, 1); f.material.rotation = Math.random() * 6; }
     cam.updateMatrixWorld();
   }
 
   // tests only: an aimer that tracks the most urgent thing and holds the trigger
   bot(o) {
-    const m = this.m; let z = null, soon = 1e9; this.botFire = false; if (m.phase !== 'chase') { _p.copy(this.weak).sub(o); this.botFire = (this.locked || m.phase === 'rip') && !this.wasFiring; }
+    const m = this.m; let z = null, soon = 1e9; this.botFire = false; if (m.phase !== 'chase') { _p.copy(this.weak).sub(o); this.botFire = this.locked && !this.wasFiring; }
     else {
       for (const h of m.hz) if (h && h.state === 'fly' && h.h.dur - h.h.t < soon && h.h.t > 0.25) { soon = h.h.dur - h.h.t; z = h; }
       if (this.G.bot === 'storm') z = null;

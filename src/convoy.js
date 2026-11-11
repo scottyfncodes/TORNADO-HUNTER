@@ -54,7 +54,7 @@ export class Convoy {
       for (const sx of [1, -1]) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: '#fff1c4', blending: THREE.AdditiveBlending, depthWrite: false, fog: false, transparent: true, opacity: 0.85 })); sp.position.set(sx * 0.75, 1.3, len / 2 + 0.3); sp.scale.setScalar(1.2); g.add(sp); lamps.push(sp); }
       const bc = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: AMBER, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, transparent: true })); bc.position.set(0, 3.6, 0); bc.scale.setScalar(1.6); g.add(bc);
       const sh = new THREE.Mesh(new THREE.CircleGeometry(1, 16), new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: 0.28, depthWrite: false, fog: false })); sh.rotation.x = -Math.PI / 2; sh.scale.set(1.6, len * 0.6, 1); sh.renderOrder = 1;
-      scene.add(g, sh); this.units.push({ role, crew, eye, active: false, g, sh, bc, side, back, x: 0, y: 0, z: 0, heading: 0, speed: 0, phase: Math.random() * 6 });
+      scene.add(g, sh); this.units.push({ role, crew, eye, active: false, driven: false, g, sh, bc, side, back, x: 0, y: 0, z: 0, heading: 0, speed: 0, phase: Math.random() * 6 });
     }
   }
   dispose() { for (const u of this.units) { this.scene.remove(u.g); this.scene.remove(u.sh); } }
@@ -69,6 +69,7 @@ export class Convoy {
 
   update(dt, t, rig, storm) {
     for (const u of this.units) {
+      if (u.driven) continue; // you have its wheel
       const p = this.slot(u, rig), sd = Math.hypot(u.x - storm.x, u.z - storm.z), td = Math.hypot(p.x - storm.x, p.z - storm.z);
       let want = 0, dx = p.x - u.x, dz = p.z - u.z, dist = Math.hypot(dx, dz);
       if (storm.alive && sd < FLEE) { dx = u.x - storm.x; dz = u.z - storm.z; dist = 60; want = 55; }            // it is coming: run
