@@ -74,6 +74,7 @@ export const FEEL = {
   gunFovTighten: 8,           // degrees narrower than the driving lens: sights, not a windscreen
   gunEyeHeight: 1.5,          // m above the turret mount
   gunBlend: 0.3,              // s to swing between the driving camera and the gun (0.1 in calm mode)
+  seatBlend: 0.45,            // s to swing across to another crew vehicle
   gunPitchMin: -0.3, gunPitchMax: 1.2, // rad
   gunGuard: 0.3,              // s after a seat change before any press counts: no accidental shot, boost or seat change
   gunStormDps: 17,            // storm strength per second of hits on the band
@@ -146,13 +147,13 @@ export const RIGS = [
 ];
 
 export const CREW = [
-  { id: 'doc', name: 'Doc Vane', role: 'Scientist', perk: 'DOROTHY weakens the storm further, and you get 3 more seconds for the kill shot.',
-    barks: { start: 'It is doing a hundred and climbing. I was right. Note that I was right.', probe: 'The swarm is away! Reading it now!', snap: 'Structure is gone! It is coming apart!', hurt: 'That was not in the model!', win: 'Textbook. My textbook.' } },
-  { id: 'winch', name: 'Winch Okafor', role: 'Harpooner', perk: 'More time to land the harpoon, and the line holds 2 seconds longer.',
-    barks: { start: 'Cable is greased. Do not embarrass it.', probe: 'Sensors away.', snap: 'She let go! Floor it!', hurt: 'Easy on my rig!', win: 'Steel beats weather. Every time.' } },
-  { id: 'sparks', name: 'Sparks Marín', role: 'Engineer', perk: 'The hull slowly repairs. Boost recharges 35% faster.',
-    barks: { start: 'Everything is technically finished.', probe: 'Launcher worked! Write that down!', snap: 'Ha! Did you hear that?', hurt: 'I can fix that. Probably.', win: 'Nothing fell off. Nothing important.' } },
-  { id: 'june', name: 'June Bug', role: 'Gunner', perk: 'Guns reach 30% further and hit harder. 20% more Data.',
+  { id: 'doc', name: 'Doc Vane', role: 'Scientist', ride: 'Science bus · Dorothy', perk: 'DOROTHY weakens the storm further, and you get 3 more seconds for the kill shot.',
+    barks: { start: 'It is doing a hundred and climbing. I was right. Note that I was right.', seat: 'My bus, my dials. Pull the lever and nothing else.', probe: 'The swarm is away! Reading it now!', snap: 'Structure is gone! It is coming apart!', hurt: 'That was not in the model!', win: 'Textbook. My textbook.' } },
+  { id: 'winch', name: 'Winch Okafor', role: 'Harpooner', ride: 'Harpoon truck', perk: 'More time to land the harpoon, and the line holds 2 seconds longer.',
+    barks: { start: 'Cable is greased. Do not embarrass it.', seat: 'My truck, my cable. Put it in the bright part.', probe: 'Sensors away.', snap: 'She let go! Floor it!', hurt: 'Easy on my rig!', win: 'Steel beats weather. Every time.' } },
+  { id: 'sparks', name: 'Sparks Marín', role: 'Engineer', ride: 'Rocket truck · kill shot', perk: 'The hull slowly repairs. Boost recharges 35% faster.',
+    barks: { start: 'Everything is technically finished.', seat: 'One rocket. I only had parts for one. Make it count.', probe: 'Launcher worked! Write that down!', snap: 'Ha! Did you hear that?', hurt: 'I can fix that. Probably.', win: 'Nothing fell off. Nothing important.' } },
+  { id: 'june', name: 'June Bug', role: 'Gunner', ride: 'Your rig · turret', perk: 'Guns reach 30% further and hit harder. 20% more Data.',
     barks: { start: 'Guns are hot. Nobody tell my mom.', probe: 'It ate it! It totally ate it!', snap: 'Data everywhere! Grabbing it!', hurt: 'Incoming! I said incoming!', win: 'Best. Tuesday. Ever.' } },
 ];
 
