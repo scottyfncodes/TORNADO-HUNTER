@@ -41,11 +41,14 @@ export const FEEL = {
   mgRange: 160,               // m against incoming debris
   mgStormRange: 230,          // m against an exposed core
   mgDebrisDps: 60,            // debris hit points per second
-  mgStormDps: 5,              // stability per second on an exposed core
+  mgStormDps: 6,              // shield per second while the gunner can reach the storm
   shotgunRange: 22,           // m
   shotgunReload: 4,         // s
-  staggerSeconds: 6.5,        // s to land the harpoon
-  staggerRecover: 0.4,        // share of stability it gets back if you miss the window
+  staggerSeconds: 7,          // s the core stays exposed after the shield breaks: land the harpoon
+  hookSeconds: 8,             // s the line holds a hooked storm
+  hookRecover: 0.5,           // share of shield it rebuilds if the line lets go before the kill shot
+  dorothyBoost: 2,            // shield damage multiplier while DOROTHY is in the funnel
+  staggerRecover: 0.4,        // share of shield it rebuilds if you miss the harpoon window
   harpoonRange: 230,          // m
   ripSeconds: 1.5,            // s of full-throttle pull to tear a band off
   ripIdle: 0.25,              // rip rate with no pull at all (never a softlock)
@@ -68,7 +71,7 @@ export const WORLD = { scale: 3, size: 3072, yScale: 1.6, roadSpacing: 512, road
 // Super tornadoes: a temperament each, not a bigger number. `run` is ground speed in m/s.
 export const STORMS = [
   {
-    id: 'pete', name: 'Skinny Pete', ef: 1, type: 'Rope', bands: 3, stageHp: 100,
+    id: 'pete', name: 'Skinny Pete', ef: 1, type: 'Rope', bands: 3, stageHp: 220,
     blurb: 'A hundred miles an hour and never in a straight line.',
     habit: 'Jukes hard. Throws whatever it just ate. Crosswinds.',
     pay: 60, run: 45, juke: [4.5, 7.5], jukeAngle: [0.55, 1.5],
@@ -77,7 +80,7 @@ export const STORMS = [
     volley: [1, 2, 3], unlocks: null,
   },
   {
-    id: 'agnes', name: 'Big Agnes', ef: 3, type: 'Wedge', bands: 3, stageHp: 160,
+    id: 'agnes', name: 'Big Agnes', ef: 3, type: 'Wedge', bands: 3, stageHp: 330,
     blurb: 'Half a mile wide. Turns like a continent. Everything ends up inside her.',
     habit: 'Whole debris fields at once. Suction that grabs from a block away.',
     pay: 110, run: 40, juke: [8, 12], jukeAngle: [0.3, 0.8],
@@ -86,7 +89,7 @@ export const STORMS = [
     volley: [2, 2, 3], unlocks: 'bulldog',
   },
   {
-    id: 'sisters', name: 'The Sisters', ef: 4, type: 'Multi-vortex', bands: 3, stageHp: 150,
+    id: 'sisters', name: 'The Sisters', ef: 4, type: 'Multi-vortex', bands: 3, stageHp: 300,
     blurb: 'Never travels alone. They split, they close, they cut you off.',
     habit: 'Satellite twisters sweep the ground around her. Fast.',
     pay: 180, run: 54, juke: [3.5, 6], jukeAngle: [0.6, 1.6],
@@ -106,9 +109,9 @@ export const RIGS = [
 ];
 
 export const CREW = [
-  { id: 'doc', name: 'Doc Vane', role: 'Scientist', perk: 'DOROTHY keeps the core open 3 seconds longer and works from further out.',
+  { id: 'doc', name: 'Doc Vane', role: 'Scientist', perk: 'DOROTHY doubles shield damage for 3 seconds longer and works from further out.',
     barks: { start: 'It is doing a hundred and climbing. I was right. Note that I was right.', probe: 'Dorothy is flying! Reading it now!', snap: 'Structure is gone! It is coming apart!', hurt: 'That was not in the model!', win: 'Textbook. My textbook.' } },
-  { id: 'winch', name: 'Winch Okafor', role: 'Harpooner', perk: 'Longer stagger window. Bands rip off 30% faster.',
+  { id: 'winch', name: 'Winch Okafor', role: 'Harpooner', perk: 'More time to land the harpoon, and the line holds 2 seconds longer.',
     barks: { start: 'Cable is greased. Do not embarrass it.', probe: 'Pods away.', snap: 'She let go! Floor it!', hurt: 'Easy on my rig!', win: 'Steel beats weather. Every time.' } },
   { id: 'sparks', name: 'Sparks Marín', role: 'Engineer', perk: 'The hull slowly repairs. Boost recharges 35% faster.',
     barks: { start: 'Everything is technically finished.', probe: 'Launcher worked! Write that down!', snap: 'Ha! Did you hear that?', hurt: 'I can fix that. Probably.', win: 'Nothing fell off. Nothing important.' } },
@@ -120,7 +123,7 @@ export const CREW = [
 export const GADGETS = [{ id: 'anchor', name: 'Ground Anchor' }, { id: 'thumper', name: 'Thumper' }];
 
 export const UPGRADES = [
-  { id: 'winch', name: 'Winch', blurb: 'Harpoon rips bands off faster', prices: [80, 160, 280], step: 0.15 },
+  { id: 'winch', name: 'Winch', blurb: 'The harpoon line holds longer', prices: [80, 160, 280], step: 0.15 },
   { id: 'cable', name: 'Ordnance', blurb: 'Rockets hit harder and reload faster', prices: [70, 140, 240], step: 0.1 },
   { id: 'plating', name: 'Plating', blurb: 'More hull', prices: [70, 150, 260], step: 0.2 },
   { id: 'turbo', name: 'Turbo', blurb: 'Boost lasts longer and recharges faster', prices: [60, 130, 220], step: 0.15 },
