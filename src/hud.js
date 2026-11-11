@@ -34,16 +34,17 @@ export class Hud {
     this.set('boosting', r.boostT > 0, (v) => $('hud-speed').classList.toggle('boost', v));
     this.set('smph', Math.round(m.stormMph / 5) * 5, (v) => { $('storm-mph').textContent = v; });
     this.set('pips', s.bands.map((b) => (b.gone ? 'gone' : '')).join(','), (v) => v.split(',').forEach((c, i) => { this.pips[i].className = c; }));
-    // stability: the bar is the current band; it turns green while DOROTHY has the core open, magenta when staggered
-    const mode = m.phase === 'stagger' || m.phase === 'rip' ? 'stagger' : m.exposed > 0 ? 'open' : '';
+    // one bar, three meanings: the shield you are breaking (wheat), the exposed core's window (green), the hook's hold (magenta)
+    const mode = m.phase === 'rip' ? 'stagger' : m.phase === 'stagger' ? 'open' : '';
     this.set('mode', mode, (v) => { const e = $('hud-storm'); e.classList.toggle('open', v === 'open'); e.classList.toggle('stagger', v === 'stagger'); });
-    this.set('stabLabel', mode === 'stagger' ? (m.phase === 'rip' ? 'Ripping' : 'Staggered') : mode === 'open' ? 'Core open' : 'Stability', (v) => { $('stab-label').textContent = v; });
-    const fill = m.phase === 'rip' ? 1 - m.rip : m.phase === 'stagger' ? m.staggerT / m.p.stagger : m.stability;
+    this.set('stabLabel', m.phase === 'rip' ? 'Hooked' : m.phase === 'stagger' ? 'Exposed' : m.exposed > 0 ? 'Shield x2' : 'Shield', (v) => { $('stab-label').textContent = v; });
+    const fill = m.phase === 'rip' ? m.hookT / m.p.hook : m.phase === 'stagger' ? m.staggerT / m.p.stagger : m.shield;
     this.set('stab', Math.round(Math.max(0, Math.min(1, fill)) * 100), (v) => { $('stab-fill').style.transform = `scaleX(${v / 100})`; });
     // buttons
     const a = m.rocketState();
     this.set('ahint', a.hint || '', (v) => { $('action-hint').textContent = v; });
-    this.set('aready', a.ready, (v) => { $('btn-action').classList.toggle('ready', v); });
+    this.set('alabel', a.label, (v) => { $('action-label').textContent = v; });
+    this.set('aready', (a.ready ? 1 : 0) + (a.ready && a.danger ? 2 : 0), (v) => { const b = $('btn-action'); b.classList.toggle('ready', v === 1); b.classList.toggle('danger', v >= 2); });
     this.set('afill', Math.round(a.fill * 20), (v) => { $('action-fill').style.transform = `scaleY(${v / 20})`; });
     this.set('boost', Math.round(r.boostCharge * 20), (v) => { $('boost-fill').style.transform = `scaleY(${1 - v / 20})`; $('btn-boost').classList.toggle('ready', v >= 20); });
     const g = m.techState();
@@ -51,7 +52,7 @@ export class Hud {
     this.set('ghint', g.hint || '', (v) => { $('gadget-hint').textContent = v; });
     this.set('gready', (g.ready ? 1 : 0) + (g.ready && g.danger ? 2 : 0), (v) => { const b = $('btn-gadget'); b.classList.toggle('ready', v === 1); b.classList.toggle('danger', v >= 2); if (v) this.onReady && this.onReady(); });
     this.set('gfill', Math.round(g.fill * 20), (v) => { $('gadget-fill').style.transform = `scaleY(${v / 20})`; });
-    const line = m.coachLine(), tone = /CATCH|CLOSER|OUTRUN/.test(line) ? 'bad' : /FIRE|DROP DOROTHY$|HARPOON IT|FLOOR|BOOST/.test(line) ? 'good' : '';
+    const line = m.coachLine(), tone = /CATCH|CLOSER|OUTRUN|GET IN/.test(line) ? 'bad' : /FIRE|HARPOON IT|KILL|BOOST/.test(line) ? 'good' : '';
     this.set('coach', line, (v) => { $('hud-coach').textContent = v; }); this.set('coachTone', tone, (v) => { $('hud-coach').className = 'coach ' + v; });
     const call = m.calloutT > 0 && m.callout ? m.callout : null;
     this.set('callout', call ? call.text + call.tone : '', () => { const e = $('hud-callout'); e.hidden = !call; if (call) { e.textContent = call.text; e.className = 'callout ' + call.tone; } });

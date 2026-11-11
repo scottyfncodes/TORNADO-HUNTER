@@ -159,7 +159,7 @@ export class Storm {
       m.position.set(_v.x, b.v * this.height, _v.z); m.scale.set(r, 7 + r * 0.05, r);
       const current = b === this.band;
       mu.uState.value = b.exposed ? 1 : 0; mu.uProgress.value = b.strain; mu.uAlpha.value = this.fade * (current ? 1 : 0.55);
-      mu.uColor.value.set(!b.exposed ? '#8a9a96' : b.strain > 0.85 ? PALETTE.accent : b.strain > 0.02 ? PALETTE.primary : PALETTE.signal);
+      mu.uColor.value.set(b.tone || (!b.exposed ? '#8a9a96' : PALETTE.signal));
     }
   }
 }

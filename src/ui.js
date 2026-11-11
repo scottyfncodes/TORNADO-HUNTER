@@ -32,7 +32,7 @@ export class UI {
   }
   show(name) {
     for (const k in this.screens) this.screens[k].hidden = k !== name;
-    if (name === 'title') { const first = save.firstRun(); $('btn-start').textContent = first ? 'Start the chase' : 'Play'; $('btn-hq').hidden = true; $('title-hint').textContent = first ? 'Hold to drive. Slide to steer. Your crew does the shooting; you bring the rockets.' : `${rankFor(save.s.bands)} · ${Math.round(save.s.data)} Data banked`; }
+    if (name === 'title') { const first = save.firstRun(); $('btn-start').textContent = first ? 'Start the chase' : 'Play'; $('btn-hq').hidden = true; $('title-hint').textContent = first ? 'Hold to drive. Slide to steer. Break its shield, harpoon it, fire the kill shot.' : `${rankFor(save.s.bands)} · ${Math.round(save.s.data)} Data banked`; }
     if (name === 'hq') { if (!stormOpen(STORMS.find((s) => s.id === save.s.loadout.storm) || STORMS[0])) save.s.loadout.storm = 'pete'; this.renderHQ(); }
     this.G.onScreen(name);
     const focus = { title: 'btn-start', hq: 'btn-roll', results: 'res-primary', pause: 'p-resume' }[name]; if (focus && !this.G.input.usingTouch) $(focus).focus({ preventScroll: true });
@@ -94,7 +94,7 @@ export class UI {
     body.appendChild(g);
     body.appendChild(el('h3', 'section-h', 'Fitted to every rig'));
     const kit = el('div', 'grid-4');
-    for (const [n, t] of [['Machine gun', 'Your gunner shoots down incoming wreckage on sight, then works on the open core.'], ['Shotgun', 'The last-second save: blasts whatever is about to hit you, and clears wrecks off the road.'], ['Rockets', 'Yours to fire. Heavy damage on an exposed core, a scratch on a closed one.'], ['Dorothy + harpoon', 'Drop Dorothy up close to open the core. When the storm staggers, hook it and floor it.']]) kit.appendChild(this.card(n, t, { static: true }));
+    for (const [n, t] of [['Machine gun', 'Your gunner shoots down incoming wreckage on sight, and chews at the storm\'s shield whenever it is in range.'], ['Shotgun', 'The last-second save: blasts whatever is about to hit you, and clears wrecks off the road.'], ['Rockets', 'Yours to fire. They break the shield, and one into a hooked storm is the kill shot.'], ['Harpoon + Dorothy', 'When the shield breaks, harpoon the exposed core: it drags the storm to a crawl. Dorothy, dropped up close, doubles shield damage.']]) kit.appendChild(this.card(n, t, { static: true }));
     body.appendChild(kit);
   }
   buyBtn(price, onBuy) {
@@ -130,7 +130,7 @@ export class UI {
     $('res-eyebrow').textContent = `${res.storm.name} · EF${res.storm.ef + res.rematch} · ${mm}:${ss}`;
     $('res-title').textContent = res.won ? 'Storm destroyed' : 'Rig wrecked';
     const st = res.stats;
-    $('res-sub').textContent = res.won ? `${st.shot} pieces of wreckage shot down, ${st.direct} direct rocket hits, ${st.close} close calls.` : st.snaps ? 'So close. Magenta circles mark where things land: steer off them and let the gunner work.' : 'Drop Dorothy up close, fire rockets while the core is open, harpoon it when it staggers.';
+    $('res-sub').textContent = res.won ? `${st.shot} pieces of wreckage shot down, ${st.rockets} rockets fired, ${st.close} close calls.` : st.snaps ? 'So close. Magenta circles mark where things land: steer off them and let the gunner work.' : 'Stay in gun range and fire rockets to break the shield, harpoon the exposed core, then fire the kill shot.';
     const t = $('res-tally'); t.textContent = '';
     for (const [k, v] of res.lines) { t.appendChild(el('dt', '', k)); t.appendChild(el('dd', '', '+' + v)); }
     t.appendChild(el('dt', 'total', res.won ? 'Banked' : 'Salvaged')); t.appendChild(el('dd', 'total', '+' + res.data));
