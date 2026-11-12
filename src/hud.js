@@ -42,7 +42,7 @@ export class Hud {
 
   begin(m) {
     this.last = {}; this.targetT = 0; $('ret-info').hidden = true; $('ret-note').hidden = true; this.ret.hidden = true; for (const k of this.marks) { k.on = false; k.e.hidden = true; }
-    $('storm-name').textContent = m.def.name; $('storm-ef').textContent = 'EF' + m.ef;
+    $('storm-name').textContent = m.def.name; $('storm-ef').textContent = m.daily === 'scored' ? 'DAILY' : m.daily ? 'PRACTICE' : 'EF' + m.ef;
     const pips = $('band-pips'); pips.textContent = ''; this.pips = m.storm.bands.map(() => { const i = document.createElement('i'); pips.appendChild(i); return i; });
   }
 

@@ -5,6 +5,7 @@
 //         light that throws the murk open for a moment, and thunder that arrives when the distance says it should.
 import * as THREE from '../vendor/three.module.min.js';
 import { FEEL } from './config.js';
+import { stream } from './daily.js';
 
 const rand = (a, b) => a + Math.random() * (b - a), span = (r) => rand(r[0], r[1]);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -30,8 +31,13 @@ export class Weather {
     this.lens = document.getElementById('lens'); this.marks = [];
     if (this.lens) for (let i = 0; i < (G.low ? 4 : 8); i++) { const e = document.createElement('i'); this.lens.appendChild(e); this.marks.push({ e, until: 0 }); }
   }
+  // when the weather turns: seeded on the Daily Storm so the hail comes when everyone's does. The strikes have a stream of their
+  // own: calm mode spaces them out, and that must never move the hail
+  wr(a, b) { return a + this.rnd() * (b - a); }
+  br(a, b) { return a + this.rb() * (b - a); }
   begin(m) {
-    this.hail = 0; this.spell = 0; this.nextHail = span(FEEL.hailFirst) + (m.coach ? 14 : 0); this.boltT = rand(4, 8); this.reveal = 0; this.spells = 0; this.bolts = 0;
+    const seeded = m.seed !== null && m.seed !== undefined; this.rnd = seeded ? stream(m.seed, 'weather') : Math.random; this.rb = seeded ? stream(m.seed, 'bolts') : Math.random;
+    this.hail = 0; this.spell = 0; this.nextHail = this.wr(...FEEL.hailFirst) + (m.coach ? 14 : 0); this.boltT = this.br(4, 8); this.reveal = 0; this.spells = 0; this.bolts = 0;
     for (const k of this.marks) { k.until = 0; k.e.style.opacity = 0; }
   }
 
@@ -39,8 +45,8 @@ export class Weather {
     const G = this.G, sky = G.sky, fx = G.fx, calm = fx.calm, live = !!m && !m.result;
     // ---- hail ----
     if (!live) this.spell = 0;
-    else if (this.spell > 0) { this.spell -= dt; if (this.spell <= 0) this.nextHail = span(FEEL.hailGap); }
-    else if (m.phase === 'chase' || m.phase === 'surge') { this.nextHail -= dt; if (this.nextHail <= 0) { this.spell = span(FEEL.hailSeconds); this.spells++; m.call('HAIL CORE: LOW GRIP', 'warn', 1.6, 3); G.audio.warn(); } } // it changes your grip: a threat, never dropped from the callout queue
+    else if (this.spell > 0) { this.spell -= dt; if (this.spell <= 0) this.nextHail = this.wr(...FEEL.hailGap); }
+    else if (m.phase === 'chase' || m.phase === 'surge') { this.nextHail -= dt; if (this.nextHail <= 0) { this.spell = this.wr(...FEEL.hailSeconds); this.spells++; m.call('HAIL CORE: LOW GRIP', 'warn', 1.6, 3); G.audio.warn(); } } // it changes your grip: a threat, never dropped from the callout queue
     this.hail += ((this.spell > 0 ? 1 : 0) - this.hail) * Math.min(1, dt * 0.9); if (this.hail < 0.004) this.hail = 0;
     const h = this.hail; sky.ice = h; sky.vis = 1 - (1 - FEEL.hailVisibility) * h; sky.calm = calm;
     if (m) m.rig.gripMul = 1 - FEEL.hailGrip * h;
@@ -56,7 +62,7 @@ export class Weather {
     // ---- lightning out in the country ----
     this.reveal = Math.max(0, this.reveal - dt); this.boltT -= dt;
     if (this.boltT <= 0 && storm && storm.alive) {
-      this.boltT = span(h > 0.4 ? FEEL.boltEveryHail : FEEL.boltEvery) * (calm ? 1.6 : 1) * (m ? 1 : 1.5);
+      this.boltT = (m && this.rb ? this.br(...(h > 0.4 ? FEEL.boltEveryHail : FEEL.boltEvery)) : span(h > 0.4 ? FEEL.boltEveryHail : FEEL.boltEvery)) * (calm ? 1.6 : 1) * (m ? 1 : 1.5);
       if (!(m && m.cine)) this.bolt(storm, camera, !!m);
     }
   }

@@ -42,6 +42,18 @@ export const STATES = {
   },
 };
 
+// a fight played straight to its results screen (bands shed by the test, the finale's steps taken as soon as they open)
+const FINISH = `async (m, G) => { const s = m.storm, frame = () => new Promise((r) => requestAnimationFrame(r)); G.fast = 6;
+  while (!m.result) { if (m.phase === 'chase') { m.stats.close += 1; m.damageStorm(m.hp + 1, { x: s.x, y: 40, z: s.z }); } else if (m.phase === 'stagger' && !m.harpoonBusy) m.fireHarpoon(); else if (m.phase === 'rip') { if (!m.dropped) { m.rig.place(s.ax + m.dropR + 2, s.az, -Math.PI / 2, G.world); m.home.place(s.ax - 140, s.az, Math.PI / 2, G.world); } else m.act(); } else if (m.phase === 'kill' && m.reload <= 0 && m.gn.locked) { m.stats.rounds = 940; m.stats.fired = 702; m.stats.crits = 241; m.rig.hull = m.rig.hullMax * 0.71; m.time = 88.4; m.killShot(); } await frame(); } // a believable fight for the numbers on the screen, set before the grade is worked out
+  while (!G.resultShown) await frame(); G.fast = 1; }`;
+Object.assign(STATES, {
+  // the title once the Daily Storm is open: today's storm, the streak, how today went
+  'title-daily': async () => { const G = window.__G, { dayKey } = await import('/src/daily.js'); if (G.mission) G.toHQ(); const S = G.save.s; S.kills.pete = S.kills.pete || 1; S.seenCoach = true; S.streak = { count: 4, last: dayKey(), best: 6 }; S.daily = { day: dayKey(), used: true, result: { won: true, letter: 'A', time: 102 } }; G.ui.show('title'); },
+  results: async () => { const G = window.__G, { STORMS } = await import('/src/config.js'); G.save.s.grades.agnes = 'B'; G.startMission(STORMS[1]); await (FINISH_FN)(G.mission, G); },
+  'results-daily': async () => { const G = window.__G, { dayKey } = await import('/src/daily.js'); G.save.s.daily = { day: dayKey(), used: false, result: null }; G.startDaily('scored'); await (FINISH_FN)(G.mission, G); },
+  'results-lost': async () => { const G = window.__G, { STORMS } = await import('/src/config.js'); G.startMission(STORMS[2]); const m = G.mission; for (let i = 0; i < 20; i++) await new Promise((r) => requestAnimationFrame(r)); m.rig.hull = 5; m.rig.immune = 0; m.hurt(20); while (!G.resultShown) await new Promise((r) => requestAnimationFrame(r)); },
+});
+
 // runs in the page: measure what is on screen now
 function audit() {
   const W = innerWidth, H = innerHeight, out = { small: [], tiny: [], off: [], overlap: [] };
@@ -52,7 +64,7 @@ function audit() {
     if (!shown(b)) continue; const r = b.getBoundingClientRect(), name = b.id || b.className || b.textContent.trim().slice(0, 20);
     if (r.width < 44 - 0.5 || r.height < 44 - 0.5) out.small.push(`${name} ${Math.round(r.width)}x${Math.round(r.height)}`);
     if (r.left < -0.5 || r.top < -0.5 || r.right > W + 0.5 || r.bottom > H + 0.5) {
-      const sc = b.closest('.hq-body, .panel'); if (!sc || sc.scrollHeight <= sc.clientHeight) out.off.push(`${name} at ${Math.round(r.left)},${Math.round(r.top)}`); // inside a scrolling panel is fine
+      const sc = b.closest('.hq-body'); if (!sc || sc.scrollHeight <= sc.clientHeight) out.off.push(`${name} at ${Math.round(r.left)},${Math.round(r.top)}`); // inside the scrolling HQ list is fine; a results or pause button must be on screen
     }
   }
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
@@ -68,6 +80,9 @@ function audit() {
     const [a, A] = boxes[i], [b, B] = boxes[j], x = Math.min(A.right, B.right) - Math.max(A.left, B.left), y = Math.min(A.bottom, B.bottom) - Math.max(A.top, B.top);
     if (x > 1 && y > 1) out.overlap.push(`${a} / ${b} (${Math.round(x)}x${Math.round(y)})`);
   }
+  // the title: its block never runs into the credit at the bottom
+  const tb = document.querySelector('#title:not([hidden]) .title-block'), by = document.querySelector('#title:not([hidden]) .haveanapp-byline span');
+  if (tb && by) { const A = tb.getBoundingClientRect(), B = by.getBoundingClientRect(); if (A.bottom > B.top + 1 && A.left < B.right && B.left < A.right) out.overlap.push(`title block / byline (${Math.round(A.bottom - B.top)} px)`); }
   return out;
 }
 
@@ -78,8 +93,8 @@ export async function run(states = Object.keys(STATES), shots = SHOTS) {
     const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
     await page.goto(URL); await page.waitForFunction(() => window.__G && window.__G.ui && document.getElementById('loading').hidden, null, { timeout: 60000 });
     for (const name of states) {
-      await page.evaluate(`(${STATES[name].toString()})()`);
-      if (name !== 'title' && name !== 'skip') await page.touchscreen.tap(Math.round(w * 0.2), Math.round(h * 0.62)); // a thumb on the glass: the game knows it is on a phone
+      await page.evaluate(`(${STATES[name].toString().replace('FINISH_FN', FINISH)})()`);
+      if (['drive', 'gun'].includes(name)) await page.touchscreen.tap(Math.round(w * 0.2), Math.round(h * 0.62)); // a thumb on the glass: the game knows it is on a phone
       await page.waitForTimeout(350);
       const A = await page.evaluate(audit), tag = `${name} ${w}x${h}`;
       ok(!A.small.length, `${tag}: touch targets under 44 px: ${A.small.join(', ')}`);

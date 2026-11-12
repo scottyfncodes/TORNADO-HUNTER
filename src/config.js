@@ -116,6 +116,22 @@ export const FEEL = {
   soundSpeed: 343,            // m/s: thunder arrives when it should
 };
 
+// ---- the results screen: a letter per fight (src/grade.js). Destroying the storm earns one; each part is 0..1, weighted ----
+// Calibrated by tests/fullfight.mjs: a gunner who never misses the seam takes Pete in 36 to 38 s with 160 to 175 crits, Agnes
+// in 66 to 68 s (350 to 370), the Sisters in 65 to 78 s (270 to 280), and grades A, or S with a few near misses and little damage.
+// One who lags the target and lets go of the trigger takes Pete in about 85 s, the big two in 110 to 130 s, and grades B to D when
+// it survives (with a driver who never dodges it is wrecked in most fights against the big two).
+export const GRADE = {
+  weights: { time: 0.35, hull: 0.25, acc: 0.15, crits: 0.15, close: 0.1 },
+  par: { pete: 40, agnes: 72, sisters: 75 }, // s: full marks for time at par (about 10% over a gunner who never misses), none at timeZero times par
+  timeZero: 2.2,
+  accZero: 0.3, accFull: 0.85,              // share of turret rounds that hit something you can hurt
+  crits: { pete: 170, agnes: 360, sisters: 275 }, // critical hits for full marks
+  close: 8,                                 // near misses for full marks
+  letters: [['S', 90], ['A', 75], ['B', 60], ['C', 45], ['D', 0]],
+  share: { accGood: 0.75, accOk: 0.45, hullOk: 25 }, // the share text's squares: the turret's accuracy on a band, hull lost at the wheel
+};
+
 // ---- the harpooned storm: restrained, not tamed (src/tether.js). Each storm's own reach is STORMS[].tether ----
 export const TETHER = {
   // one lunge of each kind. Seconds; coil is how far the base digs in the other way first (share of the reach), lean how far

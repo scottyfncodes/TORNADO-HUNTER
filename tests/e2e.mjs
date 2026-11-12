@@ -7,6 +7,7 @@ import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import fs from 'node:fs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -183,6 +184,65 @@ try {
     ok(C2.killSeat === 'rocket' && C2.view === 'gun' && C2.guarded, `${calm ? 'calm: ' : ''}skipping DOROTHY did not land on Sparks' launcher like the ride does`);
     ok(/SKIP/.test(C2.skipLine || ''), `${calm ? 'calm: ' : ''}no TAP TO SKIP on a cinematic already seen`);
     ok(C2.skips.kill && C2.skips.kill.result === 'destroyed', `${calm ? 'calm: ' : ''}a tap did not skip the kill-shot camera (${JSON.stringify(C2.skips.kill)})`);
+  }
+
+  // ---- the Daily Storm (2.8): one scored attempt, practice after, the same fight at any frame rate, a share that stays local ----
+  const DAY = '2026-11-12';
+  const dailyRun = (opts) => page.evaluate(async ({ day, fast, noise, finish }) => {
+    const { dailyFor } = await import('/src/daily.js'); const G = window.__G, frame = () => new Promise((r) => requestAnimationFrame(r));
+    const R = Math.random; if (noise) { let x = noise; Math.random = () => { x = (x * 1103515245 + 12345) % 2147483648; return x / 2147483648; }; } // different cosmetic randomness
+    G.startDaily('scored', day); G.fast = fast; const m = G.mission, trail = { j: [], a: [] }, jr = m.rj, ra = m.ra, hail0 = +G.weather.nextHail.toFixed(6);
+    m.rj = () => { const v = jr(); trail.j.push(v); return v; }; m.ra = () => { const v = ra(); trail.a.push(v); return v; };
+    G.bot = true; while (m.time < 40 && !m.result) await frame(); G.bot = false;
+    const out = { storm: m.def.id, want: dailyFor(day).storm.id, daily: m.daily, j: trail.j.slice(0, 8).map((v) => v.toFixed(8)), a: trail.a.slice(0, 16).map((v) => v.toFixed(8)), hail0, used: G.save.s.daily.used, chip: document.getElementById('storm-ef').textContent };
+    if (finish) { // see it to the end: shed every band, harpoon, DOROTHY, kill shot
+      G.fast = 6; const s = m.storm; m.rig.hull = m.rig.hullMax;
+      while (!m.result) { if (m.phase === 'chase') m.damageStorm(m.hp + 1, { x: s.x, y: 40, z: s.z }); else if (m.phase === 'stagger' && !m.harpoonBusy) m.fireHarpoon(); else if (m.phase === 'rip') { if (!m.dropped) { m.rig.place(s.ax + m.dropR + 2, s.az, -Math.PI / 2, G.world); m.home.place(s.ax - 140, s.az, Math.PI / 2, G.world); } else m.act(); } else if (m.phase === 'kill' && m.reload <= 0 && m.gn.locked) m.killShot(); await frame(); }
+      while (!G.resultShown) await frame(); out.tether = m.tetherSeed === dailyFor(day).tetherSeed; out.result = { ...G.save.s.daily.result, rows: undefined }; out.streak = { ...G.save.s.streak }; out.share = !document.getElementById('res-share').hidden; out.grade = document.getElementById('res-letter').textContent;
+    }
+    Math.random = R; G.fast = 1; return out;
+  }, opts);
+  await page.evaluate((day) => { const S = window.__G.save; S.s.daily = { day, used: false, result: null }; S.s.streak = { count: 2, last: '2026-11-11', best: 2 }; S.write(); }, DAY);
+  const D1 = await dailyRun({ day: DAY, fast: 6, noise: 0, finish: false });
+  console.log('daily, first:', JSON.stringify({ storm: D1.storm, daily: D1.daily, used: D1.used, chip: D1.chip, hail: D1.hail0 }));
+  ok(D1.storm === D1.want && D1.daily === 'scored' && D1.used && D1.chip === 'DAILY', `the scored Daily Storm did not start on today's storm (${JSON.stringify(D1)})`);
+  const D2 = await dailyRun({ day: DAY, fast: 2, noise: 12345, finish: true }); // same day again: practice now, at another frame rate, with other cosmetic noise
+  ok(D2.daily === 'practice' && D2.chip === 'PRACTICE', `a second Daily Storm the same day was not practice (${D2.daily}, ${D2.chip})`);
+  ok(JSON.stringify(D1.j) === JSON.stringify(D2.j) && JSON.stringify(D1.a) === JSON.stringify(D2.a) && D1.storm === D2.storm, 'the same day drew different jukes or throws');
+  ok(D1.hail0 === D2.hail0, `the same day's first hail core was drawn differently (${D1.hail0} / ${D2.hail0})`);
+  ok(D2.tether, "the line's seed was not the day's");
+  ok(D2.result && D2.result.abandoned, 'restarting the scored Daily Storm did not spend it'); // D2 replaced the scored run D1 left unfinished
+  ok(D2.streak.count === 2, 'practice moved the streak');
+  // a scored run played to the end: tomorrow's, so the attempt is fresh. It records the result and extends the streak
+  const D3 = await dailyRun({ day: '2026-11-13', fast: 6, noise: 0, finish: true }); // the streak was last extended on the 11th: the 12th was not finished
+  console.log('daily, scored to the end:', JSON.stringify({ result: D3.result, streak: D3.streak, grade: D3.grade, share: D3.share }));
+  ok(D3.daily === 'scored' && D3.result && D3.result.won && D3.result.letter && D3.share && D3.grade === D3.result.letter, `a scored Daily Storm did not record its result (${JSON.stringify(D3.result)})`);
+  ok(D3.streak.count === 1 && D3.streak.last === '2026-11-13', `a missed day did not reset the streak (${JSON.stringify(D3.streak)})`);
+  // Share: the system sheet when there is one, the clipboard when not. Nothing is sent anywhere else.
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  const shared = await page.evaluate(async () => {
+    let sent = null; navigator.share = async (d) => { sent = d.text; }; navigator.canShare = () => true;
+    document.getElementById('res-share').click(); await new Promise((r) => setTimeout(r, 200)); const viaSheet = sent;
+    delete navigator.share; navigator.share = undefined; document.getElementById('res-share').click(); await new Promise((r) => setTimeout(r, 300));
+    let clip = null; try { clip = await navigator.clipboard.readText(); } catch { clip = 'unreadable'; }
+    return { viaSheet, clip, label: document.getElementById('res-share').textContent };
+  });
+  console.log('share:', JSON.stringify(shared));
+  ok(shared.viaSheet && /^Tornado Hunter · Daily Storm · 13 Nov 2026\n.+ · [SABCD] · \d+:\d\d\n🚚 /.test(shared.viaSheet), `the share text is wrong: ${shared.viaSheet}`);
+  ok(shared.clip === shared.viaSheet && shared.label === 'Copied', `the clipboard fallback did not copy the same text (${shared.label})`);
+
+  // a version 1 save, loaded cold: nothing lost, the new fields at their defaults, the Daily Storm on the title
+  {
+    const fixture = fs.readFileSync(path.join(ROOT, 'tests/fixtures/save-v1.json'), 'utf8');
+    const ctx = await browser.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true }); await ctx.addInitScript((v) => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('tornado-hunter/v1', v); sessionStorage.setItem('seeded', '1'); } }, fixture);
+    const p2 = await ctx.newPage(); const errs = []; p2.on('pageerror', (e) => errs.push(String(e)));
+    await p2.goto(URL); await p2.waitForFunction(() => window.__G && window.__G.ui && document.getElementById('loading').hidden, null, { timeout: 60000 });
+    const v1 = await p2.evaluate(() => { const S = window.__G.save.s; window.__G.ui.show('hq'); return { data: S.data, kills: S.kills, rig: S.loadout.rig, gadget: S.loadout.gadget, calm: S.settings.calm, seen: S.seen, grades: S.grades, streak: S.streak, hqData: document.getElementById('hq-data').textContent, dailyShown: (window.__G.ui.show('title'), !document.getElementById('title-daily').hidden), streakText: document.getElementById('daily-streak').textContent }; });
+    console.log('v1 save:', JSON.stringify(v1));
+    ok(v1.data === 412 && v1.kills.agnes === 1 && v1.rig === 'bulldog' && v1.gadget === 'thumper' && v1.calm && v1.hqData === '412', `a version 1 save lost something (${JSON.stringify(v1)})`);
+    ok(v1.seen && !v1.seen.dorothy && v1.grades && !Object.keys(v1.grades).length && v1.streak.count === 0 && v1.dailyShown && v1.streakText === 'No streak yet', `a version 1 save did not get the new fields (${JSON.stringify(v1)})`);
+    ok(errs.length === 0, `v1 save: page errors ${errs.join(' | ')}`);
+    await ctx.close();
   }
 
   // losing still ends the fight

@@ -35,11 +35,12 @@ Then open `http://localhost:8000`. Any static host works.
 Tests (Node 22, no dependencies; the browser test uses Playwright with Chromium):
 
 ```
-node --test tests/*.test.mjs   # the harpooned storm's movement, and the truck's handling (drift, trees, fences)
-node tests/e2e.mjs             # the finale in a browser, every storm; seat-change reasons; skipping a cinematic once seen
+node --test tests/*.test.mjs   # the tether, the handling, saves (a real v1 save), grades and the Daily Storm
+node tests/e2e.mjs             # the finale on every storm; seat reasons; skipping cinematics; the Daily Storm; a v1 save loaded cold
 node tests/firstminute.mjs     # the first 60 s of every storm, every beat timed, every callout checked (AUDIT=1 for the timeline)
 node tests/layout.mjs          # 44 px targets, 12 px text, no overlaps at 667x375, 844x390, 390x844 (SHOTS=dir to save them)
 node tests/driving.probe.mjs   # what the handling numbers mean: corners, drifts, the cost of a tree
+node tests/fullfight.mjs       # whole fights by the test aimer: what the grade sees (GRADE is calibrated from it)
 ```
 
 ## Where things are
@@ -49,6 +50,9 @@ node tests/driving.probe.mjs   # what the handling numbers mean: corners, drifts
 | `docs/GAME_DESIGN.md` | The design of record: the chase-combat loop, driving, arsenal, storms, what was cut |
 | `src/config.js` | Every tuning number, colour and data table |
 | `src/combat.js` | The mission: storm AI, wreckage, the two seats, DOROTHY, harpoon, surge |
+| `src/grade.js` | The grade for a fight, and the one line on what would have raised it |
+| `src/daily.js` | The Daily Storm: the day in Denver, its seed and streams, the streak, the share text |
+| `src/save.js` | The save (`tornado-hunter/v1`), and `migrate()` for every older one |
 | `src/tether.js` | The harpooned storm fighting the line: lunges, telegraphs, escalation, fairness |
 | `tests/` | The tether and the handling under Node; the finale, the first minute and the layout in a browser |
 | `src/gunner.js` | The turret: first-person aim, hits and criticals, rockets and lock-on, autodrive, the weapon you see |
@@ -63,4 +67,8 @@ node tests/driving.probe.mjs   # what the handling numbers mean: corners, drifts
 | `vendor/` | Three.js r170 (MIT) |
 | `fonts/` | Alfa Slab One and Barlow Semi Condensed (SIL OFL 1.1) |
 
-Progress is saved in the browser. Nothing is sent anywhere.
+**After every fight:** a grade (S to D) from time, hull, accuracy, crits and near misses, the best one per storm kept, and one line on what would have raised it.
+
+**The Daily Storm:** one storm a day for everyone (the date in Denver picks it and seeds it), one scored run plus unlimited practice, a streak on the title, and a spoiler-free result to share.
+
+Progress is saved in the browser. Nothing is sent anywhere: Share hands the text to your phone's share sheet or clipboard.

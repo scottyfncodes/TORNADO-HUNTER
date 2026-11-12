@@ -2,6 +2,7 @@
 import { STORMS, RIGS, CREW, GADGETS, UPGRADES, PALETTE, rankFor } from './config.js';
 import { TOWNS } from './world.js';
 import { save } from './save.js';
+import { dayKey, dailyFor, liveStreak, shareText, clock } from './daily.js';
 
 const $ = (id) => document.getElementById(id);
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
@@ -16,6 +17,8 @@ export class UI {
     const click = (id, fn) => $(id).addEventListener('click', () => { G.audio.unlock(); G.audio.ui(); fn(); });
     click('btn-start', () => (save.firstRun() ? G.startMission(STORMS[0], { coach: true }) : this.show('hq')));
     click('btn-hq', () => this.show('hq'));
+    click('btn-daily', () => G.startDaily('scored')); // spends today's scored attempt, or practice once it is spent
+    $('res-share').addEventListener('click', () => { G.audio.unlock(); G.audio.ui(); this.share(); });
     click('btn-roll', () => { const def = STORMS.find((s) => s.id === save.s.loadout.storm) || STORMS[0]; G.startMission(def, { rematch: save.s.loadout.rematch && save.s.kills[def.id] ? 1 : 0, coach: !save.s.kills.pete }); });
     click('btn-pause', () => G.setPaused(true));
     click('p-resume', () => G.setPaused(false));
@@ -33,6 +36,7 @@ export class UI {
   show(name) {
     for (const k in this.screens) this.screens[k].hidden = k !== name;
     if (name === 'title') { const first = save.firstRun(); $('btn-start').textContent = first ? 'Start the chase' : 'Play'; $('btn-hq').hidden = true; $('title-hint').textContent = first ? 'Hold to drive. Slide to steer. In range you take the turret: drag to aim, hold to fire.' : `${rankFor(save.s.bands)} · ${Math.round(save.s.data)} Data banked`; }
+    if (name === 'title') this.renderDaily();
     if (name === 'hq') { if (!stormOpen(STORMS.find((s) => s.id === save.s.loadout.storm) || STORMS[0])) save.s.loadout.storm = 'pete'; this.renderHQ(); }
     this.G.onScreen(name);
     const focus = { title: 'btn-start', hq: 'btn-roll', results: 'res-primary', pause: 'p-resume' }[name]; if (focus && !this.G.input.usingTouch) $(focus).focus({ preventScroll: true });
@@ -124,22 +128,54 @@ export class UI {
     body.appendChild(g);
   }
 
+  // ---- the Daily Storm on the title: today's storm, whether the scored run is spent, and the streak ----
+  renderDaily() {
+    const s = save.s, open = !save.firstRun() && Object.keys(s.kills).length > 0; $('title-daily').hidden = !open; $('btn-daily').hidden = !open; if (!open) return;
+    const key = dayKey(), D = dailyFor(key), d = s.daily.day === key ? s.daily : { used: false, result: null }, n = liveStreak(s.streak, key);
+    $('daily-storm').textContent = D.storm.name;
+    $('daily-streak').textContent = n ? `${n}-day streak` : 'No streak yet';
+    const r = d.result; $('daily-note').textContent = !d.used ? 'One scored run today' : !r ? 'Practice is free' : r.abandoned ? 'Scored run left early. Practice is free' : r.won ? `Today ${r.letter} in ${clock(r.time)}. Practice is free` : 'Wrecked today. Practice is free';
+    $('btn-daily').setAttribute('aria-label', `Daily Storm: ${D.storm.name}. ${$('daily-note').textContent}`);
+  }
+  // what the pause menu's buttons mean depends on the run: a scored Daily Storm restarts as practice, and quitting spends it
+  syncPause(m) { const scored = m && m.daily === 'scored' && !m.result; $('p-restart').textContent = scored ? 'Restart as practice' : 'Restart storm'; $('p-quit').textContent = scored ? 'Quit: run is spent' : 'Headquarters'; }
+  // the share text goes to the system share sheet, or the clipboard: it never leaves the device any other way
+  async share() {
+    const r = this.lastRes, s = save.s, b = $('res-share'); if (!r || !r.daily) return;
+    const text = shareText({ day: s.daily.day, storm: r.storm.name, letter: r.grade && r.grade.letter, time: r.time, won: r.won, rows: r.rows });
+    const say = (t) => { b.textContent = t; clearTimeout(this.shareT); this.shareT = setTimeout(() => { b.textContent = 'Share'; }, 1800); };
+    try { if (navigator.share && (!navigator.canShare || navigator.canShare({ text }))) { await navigator.share({ text }); return; } }
+    catch (e) { if (e && e.name === 'AbortError') return; } // the player closed the sheet: nothing to say
+    try { await navigator.clipboard.writeText(text); say('Copied'); return; } catch { /* no async clipboard here */ }
+    try { const t = document.createElement('textarea'); t.value = text; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.opacity = '0'; document.body.appendChild(t); t.select(); const done = document.execCommand('copy'); t.remove(); say(done ? 'Copied' : 'Copy failed'); } catch { say('Copy failed'); }
+  }
+
   // ---- results ----
   results(res, unlockText) {
     const sc = this.screens.results; sc.classList.toggle('won', res.won); sc.classList.toggle('lost', !res.won);
-    const mm = Math.floor(res.time / 60), ss = String(Math.floor(res.time % 60)).padStart(2, '0');
-    $('res-eyebrow').textContent = `${res.storm.name} · EF${res.storm.ef + res.rematch} · ${mm}:${ss}`;
+    this.lastRes = res; const st = res.stats, g = res.grade || { letter: null, hint: '' }, daily = res.daily, D = daily ? save.s.daily.day : '';
+    const date = D ? new Date(D + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : '';
+    $('res-eyebrow').textContent = (daily ? `Daily Storm · ${date} · ` : '') + `${res.storm.name} · EF${res.storm.ef + res.rematch}` + (daily === 'practice' ? ' · Practice' : '');
     $('res-title').textContent = res.won ? 'Storm destroyed' : 'Rig wrecked';
-    const st = res.stats;
-    $('res-sub').textContent = res.won ? `${st.shot} pieces of wreckage shot down, ${st.crits} critical hits, ${st.rockets} rocket${st.rockets === 1 ? '' : 's'}, ${st.close} close calls, one kill shot.` : st.snaps ? 'So close. On the gun, shoot down what it throws before it lands; rockets for cars and tractors. Or hit DRIVE and steer off the magenta circles.' : 'Get inside the danger zone and the turret is yours: shoot the bright seam on the band. Then the crew take over, a seat each: harpoon, Dorothy, kill shot.';
+    $('res-sub').textContent = res.won ? '' : st.snaps ? 'So close. On the gun, shoot down what it throws before it lands; rockets for cars and tractors. Or hit DRIVE and steer off the magenta circles.' : 'Get inside the danger zone and the turret is yours: shoot the bright seam on the band. Then the crew take over, a seat each: harpoon, Dorothy, kill shot.';
+    $('res-sub').hidden = res.won;
+    // the letter, and the best for this storm: NEW BEST when this one beat it
+    const gb = $('res-grade'), best = save.s.grades[res.storm.id], fresh = !!g.letter && (!res.bestBefore || g.letter !== res.bestBefore) && best === g.letter;
+    gb.hidden = !g.letter; if (g.letter) { $('res-letter').textContent = g.letter; gb.dataset.l = g.letter; gb.classList.toggle('new', fresh && !!res.bestBefore); $('res-best').textContent = fresh && res.bestBefore ? 'New best' : `Best ${best}`; gb.setAttribute('aria-label', `Grade ${g.letter}, best ${best}`); }
+    $('res-hint').textContent = g.letter ? g.hint : '';
+    // the numbers the grade read, then the data
     const t = $('res-tally'); t.textContent = '';
-    for (const [k, v] of res.lines) { t.appendChild(el('dt', '', k)); t.appendChild(el('dd', '', '+' + v)); }
-    t.appendChild(el('dt', 'total', res.won ? 'Banked' : 'Salvaged')); t.appendChild(el('dd', 'total', '+' + res.data));
+    const row = (k, v, small) => { t.appendChild(el('dt', '', k)); const d = el('dd', '', v); if (small) d.appendChild(el('small', '', small)); t.appendChild(d); };
+    row('Time', clock(res.time)); if (res.won) row('Hull left', Math.round(100 * res.hull / res.hullMax) + '%');
+    row('Accuracy', st.rounds ? Math.round(100 * st.fired / st.rounds) + '%' : '-', st.rounds ? `${st.fired}/${st.rounds}` : ''); row('Critical hits', String(st.crits)); row('Near misses', String(st.close));
+    t.appendChild(el('dt', 'total', res.won ? 'Data banked' : 'Data salvaged')); t.appendChild(el('dd', 'total', '+' + res.data));
     const u = $('res-unlock'); u.hidden = !unlockText; u.textContent = unlockText || '';
-    const p = $('res-primary'), q = $('res-secondary');
+    const p = $('res-primary'), q = $('res-secondary'), sh = $('res-share');
     const again = () => { this.G.audio.unlock(); this.G.audio.ui(); this.G.restart(); }, hq = () => { this.G.audio.ui(); this.G.toHQ(); };
-    p.textContent = res.won ? 'Continue' : 'Retry'; q.textContent = res.won ? 'Fight it again' : 'Headquarters';
-    p.onclick = res.won ? hq : again; q.onclick = res.won ? again : hq;
+    sh.hidden = daily !== 'scored'; sh.textContent = 'Share';
+    if (daily) { p.textContent = daily === 'scored' ? 'Practise' : 'Practise again'; q.textContent = 'Headquarters'; p.onclick = again; q.onclick = hq; p.className = 'slab ' + (daily === 'scored' ? 'slab-quiet' : 'slab-primary'); }
+    else { p.textContent = res.won ? 'Continue' : 'Retry'; q.textContent = res.won ? 'Fight it again' : 'Headquarters'; p.onclick = res.won ? hq : again; q.onclick = res.won ? again : hq; p.className = 'slab slab-primary'; }
     this.show('results');
+    if (daily === 'scored' && !this.G.input.usingTouch) sh.focus({ preventScroll: true });
   }
 }

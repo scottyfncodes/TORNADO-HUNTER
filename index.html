@@ -70,8 +70,12 @@
   <div class="title-block">
     <h1 class="wordmark"><img src="ui/wordmark.svg" alt="Tornado Hunter" width="340" height="102"></h1>
     <p class="tagline">Chase it. Hook it. Kill shot.</p>
-    <button class="slab slab-primary" id="btn-start">Start the chase</button>
-    <button class="slab slab-quiet" id="btn-hq" hidden>Headquarters</button>
+    <div class="title-actions">
+      <button class="slab slab-primary" id="btn-start">Start the chase</button>
+      <button class="slab slab-quiet" id="btn-hq" hidden>Headquarters</button>
+      <button class="slab slab-quiet daily-btn" id="btn-daily" hidden><span class="daily-k">Daily Storm</span><span class="daily-v" id="daily-storm"></span></button>
+    </div>
+    <p class="daily-line" id="title-daily" hidden><span class="streak" id="daily-streak"></span><span id="daily-note"></span></p>
     <p class="hint" id="title-hint">Hold to drive. Slide to steer. In range you take the turret: drag to aim, hold to fire.</p>
   </div>
   <p class="haveanapp-byline" data-haveanapp><span>Tornado Hunter <a class="haveanapp-byline__by" href="https://haveanapp.com" rel="noopener" target="_blank">by HaveAnApp</a></span></p>
@@ -98,11 +102,14 @@
 <section id="results" class="screen screen-results" hidden aria-label="Mission results">
   <div class="panel">
     <p class="eyebrow" id="res-eyebrow"></p>
-    <h2 id="res-title"></h2>
-    <p class="res-sub" id="res-sub"></p>
+    <div class="res-head">
+      <div class="res-titles"><h2 id="res-title"></h2><p class="res-sub" id="res-sub"></p></div>
+      <div class="grade" id="res-grade"><b id="res-letter"></b><span id="res-best"></span></div>
+    </div>
+    <p class="res-hint" id="res-hint"></p>
     <dl class="tally" id="res-tally"></dl>
     <p class="unlock" id="res-unlock" hidden></p>
-    <div class="btn-row"><button class="slab slab-primary" id="res-primary"></button><button class="slab slab-quiet" id="res-secondary"></button></div>
+    <div class="btn-row"><button class="slab slab-primary" id="res-share" hidden>Share</button><button class="slab slab-primary" id="res-primary"></button><button class="slab slab-quiet" id="res-secondary"></button></div>
   </div>
 </section>
 
