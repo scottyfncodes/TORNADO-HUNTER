@@ -5,7 +5,7 @@
 import { FEEL } from './config.js';
 
 const keys = new Set();
-const pressed = { action: 0, boost: 0, mode: 0, swap: 0, pause: 0 }; // time of the last unconsumed press
+const pressed = { action: 0, boost: 0, mode: 0, swap: 0, pause: 0, skip: 0 }; // time of the last unconsumed press
 let stickId = null, stickOrigin = { x: 0, y: 0 }, stick = { x: 0, y: 0, active: false };
 let now = 0, touchSeen = false, els = null, enabled = false, mode = 'drive', modeAt = 0;
 const STICK_R = 56, GUARD = FEEL.gunGuard;
@@ -18,7 +18,7 @@ function latch(name) { pressed[name] = now || 0.0001; }
 function onKey(e, down) {
   const k = e.code;
   if (down && !e.repeat) {
-    if (k === 'Space' || k === 'Enter') { if (mode === 'gun') { if (!guarded()) fire.key = true; } else latch('action'); }
+    if (k === 'Space' || k === 'Enter') { latch('skip'); if (mode === 'gun') { if (!guarded()) fire.key = true; } else latch('action'); }
     if (k === 'ShiftLeft' || k === 'ShiftRight') latch('boost');
     if (k === 'KeyF' || k === 'KeyE') latch('mode');
     if (k === 'KeyQ' || k === 'Tab') latch('swap');
@@ -108,6 +108,7 @@ export const input = {
     window.addEventListener('keydown', (e) => onKey(e, true));
     window.addEventListener('keyup', (e) => onKey(e, false));
     window.addEventListener('blur', () => { keys.clear(); dropHeld(); });
+    window.addEventListener('pointerdown', () => { if (enabled) latch('skip'); }, { capture: true, passive: true }); // a tap anywhere: skips a cinematic you have seen
     dom.zone.addEventListener('pointerdown', stickDown);
     dom.zone.addEventListener('pointermove', stickMove);
     dom.zone.addEventListener('pointerup', stickUp);

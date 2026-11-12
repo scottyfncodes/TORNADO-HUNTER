@@ -114,7 +114,7 @@ export class Rig {
       const grip = Math.min(1, Math.abs(vF) / 6) * (1 - 0.56 * Math.min(1, Math.abs(vF) / 75));
       let yaw = steer * FEEL.rigTurnRate * this.def.turn * (drift ? FEEL.driftTurn * (1 - 0.4 * Math.min(1, sp0 / 80)) : grip) * (vF >= -0.5 ? 1 : -1);
       if (drift) { // the nose may lead the direction of travel by about 50 degrees, no more: a slide, not a spin
-        const slipA = Math.atan2(this.vx * fz - this.vz * fx, Math.max(0.01, vF)); if (Math.abs(slipA) > 0.85 && Math.sign(slipA) === Math.sign(steer)) yaw = 0;
+        const slipA = Math.atan2(this.vx * fz - this.vz * fx, Math.max(0.01, vF)); if (Math.abs(slipA) > FEEL.driftMaxSlip && Math.sign(slipA) === Math.sign(steer)) yaw = 0;
       }
       this.heading -= yaw * dt;
       fx = Math.sin(this.heading); fz = Math.cos(this.heading);
@@ -123,8 +123,8 @@ export class Rig {
     if (grounded) {
       if (drift || this.driftOut > 0) {
         // swing the velocity round toward the nose without throwing the speed away; getting back on the throttle carries it out
-        const sp = Math.max(0, sp0 - (drift ? 7 : 0) * dt), va = Math.atan2(this.vx, this.vz); let d = this.heading - va; d = Math.atan2(Math.sin(d), Math.cos(d));
-        const na = va + Math.sign(d) * Math.min(Math.abs(d), (drift ? 1.5 : 3.2) * dt); this.vx = Math.sin(na) * sp; this.vz = Math.cos(na) * sp;
+        const sp = Math.max(0, sp0 - (drift ? FEEL.driftBleed : 0) * dt), va = Math.atan2(this.vx, this.vz); let d = this.heading - va; d = Math.atan2(Math.sin(d), Math.cos(d));
+        const na = va + Math.sign(d) * Math.min(Math.abs(d), (drift ? FEEL.driftSwing : FEEL.driftCatch) * dt); this.vx = Math.sin(na) * sp; this.vz = Math.cos(na) * sp;
         vF = this.vx * fx + this.vz * fz; vS = this.vx * rx + this.vz * rz;
         if (!drift && thr > 0) { const top = this.topSpeed; if (Math.hypot(vF, vS) < top) vF += FEEL.rigAccel * this.def.accel * 0.6 * dt; }
       } else {

@@ -166,6 +166,7 @@ b, .num { font-variant-numeric: tabular-nums; }
 .hud-data b { color: var(--signal); font-size: var(--t-lg); min-width: 3ch; text-align: right; }
 .icon-btn { width: 48px; height: 48px; display: grid; place-items: center; color: var(--text); }
 .hud-bark { left: calc(var(--s3) + var(--sl)); top: calc(112px + var(--st)); max-width: min(28vw, 250px); padding: var(--s2) var(--s3); font-size: var(--t-sm); display: grid; gap: 1px; }
+.hud-bark.aside { opacity: 0; }
 .hud-bark b { font-size: var(--t-xs); letter-spacing: 0.12em; text-transform: uppercase; color: var(--wheat); }
 .callout { left: 50%; top: 36%; transform: translateX(-50%); font-family: var(--display); font-size: clamp(20px, 3.4vw, 32px); line-height: 1; white-space: nowrap; color: var(--primary); text-shadow: 0 3px 0 var(--ink), 0 0 0 var(--ink); -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; }
 .callout.bad { color: var(--accent); }
@@ -174,6 +175,7 @@ b, .num { font-variant-numeric: tabular-nums; }
 .coach:empty { display: none; }
 .coach.bad { color: var(--accent); }
 .coach.good { color: var(--primary); }
+.coach.seat { color: var(--signal); }
 .storm-arrow { left: 0; top: 0; color: var(--accent); filter: drop-shadow(0 2px 0 var(--ink)); }
 
 /* thumb pad */

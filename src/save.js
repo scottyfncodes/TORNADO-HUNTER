@@ -8,6 +8,7 @@ const FRESH = () => ({
   loadout: { rig: 'mule', crew: ['doc', 'winch'], gadget: 'anchor', storm: 'pete' },
   settings: { mute: false, calm: false },
   seenCoach: false,
+  seen: { dorothy: false, kill: false }, // the two cinematics, watched to the end at least once: from then on a tap skips them
 });
 
 let state = FRESH();

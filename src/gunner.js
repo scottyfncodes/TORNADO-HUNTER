@@ -338,6 +338,8 @@ export class Gunner {
       if (z) { _p.set(z.h.x, z.h.y, z.h.z).sub(o); const want = z.big && this.rockets > 0 ? 'rocket' : 'mg'; if (this.weapon !== want) this.setWeapon(want); this.botFire = want === 'mg' || (this.locked && !this.wasFiring); }
       else { if (this.weapon !== 'mg') this.setWeapon('mg'); _p.copy(this.weak).sub(o); this.botFire = m.inZone; }
     }
+    // G.botLag (0..1): a sloppy aimer whose sights wander off the target and who lets go of the trigger now and then
+    const lag = this.G.botLag || 0; if (lag && m.phase === 'chase') { const t = this.weakT, w = lag * 22 * Math.sin(t * 1.7), l = Math.hypot(_p.x, _p.z) || 1; _p.x += -_p.z / l * w; _p.z += _p.x / l * w; _p.y += lag * 6 * Math.sin(t * 2.3); if (Math.sin(t * 0.9) < -0.5) this.botFire = false; }
     this.yaw = Math.atan2(_p.x, _p.z); this.pitch = clamp(Math.atan2(_p.y, Math.hypot(_p.x, _p.z)), FEEL.gunPitchMin, FEEL.gunPitchMax);
   }
 }

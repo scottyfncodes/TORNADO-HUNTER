@@ -1,6 +1,6 @@
 # TORNADO HUNTER: Game Design
 
-*Design of record. Version 2.6: five phases, a crew member and a vehicle for each (DOROTHY is driven to the foot of a harpooned storm that fights the line), and weather. Tuning numbers live in `src/config.js`.*
+*Design of record. Version 2.7: the first minute measured and re-paced, a drift worth taking, a reason for every seat change, and cinematics you can skip once seen. (2.6: five phases, a crew member and a vehicle for each, DOROTHY driven to the foot of a harpooned storm that fights the line, and weather.) Tuning numbers live in `src/config.js`.*
 
 ---
 
@@ -49,7 +49,7 @@ Kept from version 1: the three storms and their names, the bands as the storm's 
 
 | Beat | What happens | Typical length |
 |---|---|---|
-| **Hunt** | A rolling start: you are already doing 90 mph on a road, the funnel 330 m ahead and running. | 5 s |
+| **Hunt** | A rolling start: you are already doing 90 mph on a road, the funnel 330 m ahead and running (Big Agnes 430 m: her zone is 240 m, and the chase still has to last). | 5 s |
 | **1 Chase** | At the wheel, third person. Close the gap. Roads are faster; fields are the shortcut. The storm jukes every few seconds and throws wreckage; the crew shoot it down, you steer off the magenta circles. A ring on the ground marks the danger zone. | 5 to 15 s each time |
 | **2 Guns** | Crossing into the zone (185 to 240 m, by storm) swings the camera onto the turret in a third of a second and the autodrive takes the truck. You shoot the band: the strength bar drains, the band cracks at two thirds, fails at one third, breaks. The storm keeps throwing, and on the gun the sky is your job. DRIVE takes the wheel back at any time. | 10 to 25 s per band |
 | **Outer bands** | A band shot off bursts and you are back at the wheel: a wall of debris rolls out for you to outrun, the storm bolts, two rockets are handed up. Back to phase 1. | 8 to 12 s |
@@ -91,7 +91,10 @@ The line's seed is chosen per fight (`G.tetherSeed` replays one). The tests are 
 |---|---|
 | **Scripted** | Crossing into the danger zone puts you on your own gun. A band shot off puts you back at the wheel. The storm weakened puts you on Winch's harpoon truck, the hook puts you at the wheel of Doc's bus, a critical core puts you on Sparks' rocket truck. Miss a window and you are back at your own wheel. |
 | **Manual** | GUNS (the action button during a chase) takes the turret anywhere, and the autodrive closes the range for you, slower than you would. DRIVE gives the wheel back; it stays yours for at least four seconds, and until you leave the zone and come back in. |
+| **Why** | Every seat change the game makes for you says why on the coach line, in green, for 1.8 s: IN RANGE: YOU SHOOT, IT DRIVES, then TAP DRIVE TO STEER IT YOURSELF (F on a keyboard). BAND OFF: YOUR WHEEL, OUTRUN IT. WEAKENED: WINCH'S HARPOON IS UP. HOOKED: DOC'S BUS, YOU DRIVE. CORE CRITICAL: SPARKS' ROCKET. MISSED IT: YOUR WHEEL, CLOSE IN. THE LINE WENT: YOUR WHEEL AGAIN. Being put on the gun is an offer with the way back printed on it, not the wheel taken away (question 4). |
+| **Never on top of a threat** | The automatic swing to the gun waits while you are steering out from under something (a piece coming down where you will be, or a crosswind that has been called), at most 2.5 s. After any seat change the storm holds its next throw for 0.8 s: the swing and the input guard are never a window to hit you in. |
 | **The swing** | 0.3 s to your own gun, 0.45 s across to another vehicle, measured from the truck so the world never stops moving. The plate that shows your speed shows whose seat it is instead (WINCH · HARPOON TRUCK), and its owner says a line. No cut, no fade, no loading. Cuts are kept for the two cinematics. Calm mode shortens it to 0.1 s. |
+| **The cinematics** | The DOROTHY ride and the kill-shot camera play in full the first time. Once each has been watched to the end (remembered in the save), a tap or Space skips it to the outcome: the core goes critical and Sparks' launcher comes up, or the rocket lands. A skip runs the same ending as the full shot, so the cut and the swing after it are the same, calm mode included. The tap that starts a cinematic (DEPLOY, FIRE) never skips it: only a tap once it is a third of a second old counts. The coach line says TAP TO SKIP only when it can. |
 | **Nothing carries over** | Every finger and key held through a change is dropped, and the new seat ignores input for a third of a second: the thumb that pressed GUNS does not fire, the thumb that was aiming does not steer. |
 
 ### Autodrive
@@ -104,16 +107,26 @@ Miss the harpoon window and the storm recovers 40% of its strength; let the line
 
 ### The first 60 seconds
 
-| Brief asked for | Where it happens (simulated, seconds into the mission) |
-|---|---|
-| Immediate high-speed pursuit | 0: rolling start at 90 mph |
-| A clearly visible super tornado | 0: 330 m ahead, 310 m tall |
-| A satisfying boost | 0 to 3: boost is charged at the start and the coach line asks for it |
-| A dramatic environmental hazard | 3 to 7: first wreckage thrown |
-| Automated gunfire | 3 to 5: guns open up on it |
-| A near miss or recoverable mistake | 4 to 20: first close call or first hit |
-| A meaningful combat action | 5 to 7: inside the danger zone, first BURST |
-| A storm reaction that changes the chase | 19 to 23: first band shot off, debris wall, bolt |
+Measured, not simulated on paper: `node tests/firstminute.mjs` plays the opening of every storm in a browser. The driver follows the coach line (steers at the storm, boosts when told, never dodges); the gunner is the test aimer at two skills, *sharp* (on the seam) and *sloppy* (the sights wander, the trigger is let go a third of the time); three seeds each. Medians, Skinny Pete / Big Agnes / The Sisters, seconds into the mission:
+
+| Brief asked for | Where it should land | 2.6, measured | 2.7, measured |
+|---|---|---|---|
+| Immediate high-speed pursuit | 0 | 0: rolling start at 90 mph | the same |
+| A clearly visible super tornado | 0 | 330 m ahead, 310 m tall | the same (Agnes 430 m) |
+| A satisfying boost | 0 to 3 | 0.07 / 0.07 / 0.07 | 0.07 / 0.4 / 0.2 |
+| A dramatic environmental hazard: first wreckage | 3 to 7 | 3.2 / 3.1 / 6.0, worst 20.8 (41 in another run) | 3.2 / 4.7 / 3.2, worst 4.75 |
+| A near miss or recoverable mistake | 4 to 20 | 26 / 8.2 / 9.3, and none at all in a minute in some runs | 4.4 / 6.0 / 4.3, worst 6.0: the ranging shot |
+| A meaningful combat action: into the zone, on the gun | 5 to 7 | 5.7 / **2.2** / 5.9 | 5.9 / 5.3 / 5.9 |
+| A storm reaction that changes the chase: first band shot off | 19 to 23 | sharp 17.2 / 15.5 / 16.1, sloppy 29.1 / 20.3 / 25.2 | sharp 15.5 / 19.8 / 16.3, sloppy 32.4 / 26.9 / 28.3 |
+| Callouts that were never readable (up less than 0.6 s) | none | 2 to 11 a minute | none |
+
+What was late or stacked, and what changed (2.7):
+
+- **Agnes put you on the gun at 2.2 s.** Every storm started 330 m ahead, and her zone is 240 m: two seconds of chase. She starts 430 m out (`STORMS[].lead`).
+- **The first wreckage could take 20 to 40 seconds**, when the first attacks rolled lightning and crosswind. The first throw is now the ranging shot (section 7), and the storm never makes two attacks in a row that throw nothing.
+- **The near miss was luck**, and against a sharp gunner it barely happened, because everything was shot down. The ranging shot makes it the first lesson, at about 4.4 s.
+- **Callouts overwrote each other**: BAND SHOT OFF was replaced by GET CLEAR in the same frame, every band of every fight; a CROSSWIND warning was cut 0.01 s later by GUNS UP, and the crosswind then hit a truck the player had just been taken off. Callouts are ranked and queued (section 5); the automatic swing to the gun waits out a called crosswind or a piece about to land on you; the storm holds its throw for 0.8 s after any seat change.
+- **Not fixed, on purpose: the first band for a sloppy gunner** (27 to 32 s, against 19 to 23). It is aim: the same storm falls in 15 to 20 s to a gunner on the seam. Shortening the band would make it fall in 13 to a good one, and the fight lengths in this section were left as they were. Whether a real thumb lands nearer the sharp or the sloppy line is question 4.
 
 ---
 
@@ -127,8 +140,22 @@ Driving is the game. If it is not fun with no storm on screen, nothing else matt
 | Top speed, field | 53 m/s (119 mph) | shortcuts cost speed, never the chase |
 | Boost | ×1.38 for 2.2 s (197 mph) | recharges in 5 s, or sooner if you earn it |
 | Acceleration | 34 m/s² off the line, tapering | you feel fast long before top speed |
-| Drift | brake while steering above 45 mph | the nose swings in, the truck keeps its speed, the line bends to follow |
-| Collisions | fences, bales, signs, trees: you go through them and lose a little speed. Buildings stop you and cost a little hull. | predictable and recoverable |
+| Drift | brake while steering above 45 mph | the nose swings in, the truck keeps its speed, the line bends to follow. At top speed a drift takes a 90-degree corner in 0.72 s and 28 m of width, against 1.33 s and 49 m steering: it is the tight way round, and it keeps 93% of the speed |
+| Collisions | fences, bales, signs, trees: you go through them and lose speed. Buildings stop you and cost a little hull. | a tree knocks about 30 mph off and you are back to top speed in under a second: felt, worth steering round, never a stop. A fence barely registers, because fences line the roads and a thumb will brush them |
+
+**Measured, not guessed.** `node tests/driving.probe.mjs` drives the truck on its own (no storm, a flat world, 60 Hz) and prints what the numbers mean in the hand; `tests/driving.test.mjs` holds every rig to the targets. Version 2.7 changed, in `src/config.js` only:
+
+| Number | Was | Now | Why |
+|---|---|---|---|
+| `driftTurn` | 1.75 | 2.3 | how fast the nose swings in once you pull back: the slide took 0.18 s to open, now 0.08 s. On a thumb the slide answers at once |
+| `driftSwing` | 1.5 (in rig.js) | 2.2 | how fast the direction of travel follows the nose in a slide. At 1.5 a drift took a corner only 15% tighter than steering and cost 14% of the speed |
+| `driftBleed` | 7 (in rig.js) | 6 | m/s² a slide costs: a 90-degree drift now keeps 93% (it kept 89%) |
+| `smashTree` | 0.86 (in world.js) | 0.78 | a tree at top speed cost 0.04 s, which is nothing: you could not feel one, so missing one was no skill. Now 0.1 s and a 30 mph drop, back to top speed in 0.9 s |
+| `smashSoft` | 0.93 (in world.js) | 0.9 | the floor on anything soft. At 0.93 a bale, a cow and a parked car all cost the same as a fence; now their own weight shows. Fences keep 0.94 |
+| `driftCatch`, `driftMaxSlip` | 3.2, 0.85 (in rig.js) | unchanged | moved into config with the rest. The slide still caps at 50 degrees, so a coarse thumb cannot spin it, and lets go in 0.25 s |
+| `driftGrip` | 1.0 | removed | nothing read it |
+
+Left alone, on purpose: the speed feel. The lens widens 16 degrees at road top speed (13 on a field), 7 more on boost and a 10-degree kick when the boost fires; the camera drops 1.3 m and tucks in 2.2 m. At the rolling start (90 mph) that is already +10 degrees, so the speed is felt from the first frame, which is the point. Touch is unchanged too: the thumb pulled back past 45% of the stick's travel brakes, and with any steer that is a drift, so a 30 px slide down from full lock starts one.
 
 **Boost is earned.** A near miss returns 30% of a charge, a piece of wreckage shot down 12%, a held drift 22% a second, a clean escape from the debris wall 60%. Driving well and close to danger keeps you fast.
 
@@ -206,7 +233,9 @@ On the gun:
 
 **HUD.** Left: hull, and your speed in mph (the plate turns green and reads AUTO while the truck drives itself). Centre: the storm's name, its speed, a pip per band, and one bar: the storm's strength while the guns work on it, then the countdown for whichever step comes next (weakened, hooked, critical). The plate's border turns green while you are inside the danger zone. During the DOROTHY and kill-shot shots the controls fade out. Under it, one line of coaching for this moment. Right: data and pause. The bottom centre of the screen is kept empty because that is where your truck is, or your gun. On the gun the centre carries the reticle, the hit marker and the target plate, and nothing else; hail never lands a star in the middle of the lens.
 
-Checked at 667×375, 844×390 and 390×844: nothing overlaps, every target is at least 44 px, no text under 12 px.
+**Callouts, one at a time, every one read.** The big word in the middle of the screen has a rank: a turn in the fight (BAND SHOT OFF, WEAKENED), a threat (INCOMING, DEBRIS FIELD, CROSSWIND, GET CLEAR, HAIL CORE), a beat (GUNS UP, HOOKED, CORE CRITICAL), or chatter (CLOSE CALL, BOOM, COW, IT IS TURNING, the band cracking, which the sound, the ring and the bar already carry). Nothing is replaced until it has been up 0.6 s, except by something that outranks it; a beat cut short comes back afterwards; a beat that has waited 2.4 s is old news and dropped; chatter that would have to wait is dropped at once. When a band is shot off or the storm is weakened the sky is cleared, and so is anything still queued about it, including a crosswind that was coming. GET CLEAR follows BAND SHOT OFF rather than replacing it in the same frame. Where a callout would overlap the crew's speech plate (it depends on the screen and the words) the plate steps aside until it is gone.
+
+Checked at 667×375, 844×390 and 390×844 by `node tests/layout.mjs`: nothing overlaps, every target is at least 44 px, no text under 12 px.
 
 ---
 
@@ -227,6 +256,7 @@ The difficulty is what the storm does to you while you hold the zone: the more i
 ## 7. Environmental chaos
 
 - **Wreckage** is real objects: hay bales, barn doors, road signs, cars, tractors. It is thrown at where you are heading, corrects in flight, then locks for at least three quarters of a second: that last stretch is yours to dodge. Cars and tractors that land stay on the ground as smoking wrecks for a few seconds.
+- **The ranging shot.** The storm's first throw of every fight is one small piece that holds 12 m to the side of the truck all the way down: outside the 7.5 m it hits, inside the 18 m that counts as a near miss. The crew do not shoot at it. So the first thing anyone learns is what a magenta circle means, and that a near miss pays boost, at about 4.4 s, every fight. After it the storm never makes two attacks in a row that throw nothing (lightning, crosswind), so wreckage keeps coming.
 - **The storm eats the map.** Barns, silos, trees, fences and cattle in its path are lifted, orbited and flung.
 - **Crosswinds** are called a second ahead with an arrow, then shove the truck sideways for a second and a half.
 - **Lightning** tracks you, locks, strikes.
@@ -286,6 +316,10 @@ Upgrades (Data): Winch (the line holds longer), Ordnance (guns hit harder, one m
 | Pistol, rifle, sniper, grenade launcher, minigun | postponed | four weapons that each do a different job beat eight that differ by a number |
 | COLD FRONT, CORKSCREW | postponed | designed, not built: wait for people to play the core loop |
 | New regions, cosmetics, achievements | not started | the brief ruled them out until the core is fun |
+| One callout slot, last call wins (to 2.6) | replaced (2.7) | measured: up to eleven callouts a minute were overwritten before they could be read, BAND SHOT OFF by GET CLEAR in the same frame every time. Now ranked and queued (section 5) |
+| BAND CRACKING and BAND FAILING as headline callouts | demoted to chatter (2.7) | they lost the channel to every threat; the crack you hear, the ring and the bar carry them |
+| A random first attack | replaced by the ranging shot (2.7) | measured: the first wreckage could take 23 or 41 seconds when the dice rolled lightning and crosswind |
+| `driftGrip` | removed (2.7) | a tuning number nothing read |
 
 ---
 
@@ -310,6 +344,8 @@ src/hud.js       in-mission HUD     src/ui.js   title, headquarters, results
 src/main.js      boot, the three cameras (chase, gun, cinematic) and the swing between them, frame loop, resolution governor
 ```
 
+**Tests.** `node --test tests/*.test.mjs`: the tether's movement and the truck's handling, under Node. `node tests/e2e.mjs`: the finale on every storm, the seat-change reasons and the cinematics, in a browser. `node tests/firstminute.mjs`: the first minute of every storm, played by a scripted player at two gunning skills, every beat timed and every callout checked for being read (`AUDIT=1` prints the timeline). `node tests/layout.mjs`: the interface bar at the three sizes (`SHOTS=<folder>` saves screenshots). `node tests/driving.probe.mjs` prints the handling numbers.
+
 **Saves.** Same key and shape as version 1 (`tornado-hunter/v1`). Data, kills, owned rigs, upgrades and crew carry over. The `winch` and `cable` upgrade levels keep their value and now mean "the line holds longer" and "ordnance" (guns hit harder, one more rocket in the rack per level).
 
 ---
@@ -332,6 +368,6 @@ src/main.js      boot, the three cameras (chase, gun, cinematic) and the swing b
 1. With the storm out of frame, is the truck fun to drive on its own?
 2. Does catching the tornado feel like something you did, or something the game allowed?
 3. Could you tell what was about to hit you in time to do something about it?
-4. On the gun, could you hold the seam with a thumb? Did you ever take the wheel back on purpose, and did being put on the gun ever feel like having it taken away?
+4. On the gun, could you hold the seam with a thumb? Did you ever take the wheel back on purpose, and did being put on the gun ever feel like having it taken away? (A scripted gunner on the seam sheds the first band in 15 to 20 s, a sloppy one in 27 to 32: which one is a person?)
 5. Harpoon, DOROTHY, lock, kill shot: did that finale feel like the best moment of the fight? Was losing control during the DOROTHY shot welcome or annoying?
 6. Did you start the next storm without being asked?
