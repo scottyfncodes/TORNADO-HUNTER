@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import { migrate, FRESH, save } from '../src/save.js';
 import { grade, better, rankOf, LETTERS } from '../src/grade.js';
 import { dayKey, shiftDay, seedOf, dailyFor, stream, extendStreak, liveStreak, shareText, clock } from '../src/daily.js';
-import { GRADE, STORMS } from '../src/config.js';
+import { GRADE, STORMS, SETPIECE } from '../src/config.js';
 
 const V1 = fs.readFileSync(new URL('./fixtures/save-v1.json', import.meta.url), 'utf8');
 
@@ -94,4 +94,10 @@ test('the share text is spoiler-free: storm, grade, time and a row per phase', (
   assert.equal(l, 'Tornado Hunter · Daily Storm · 12 Nov 2026\nThe Sisters · Wrecked at 1:01\n🚚 🟥\n🎯 🟨');
   assert.ok(!/\d{3,}|seed|http/i.test(t.split('\n').slice(2).join('')), 'no numbers, no seed, no link in the rows');
   assert.equal(clock(59.6), '1:00');
+});
+
+test('the grain elevator comes in about a third of Daily Storms, and the seed decides', () => {
+  let n = 0; const days = 730; for (let i = 0; i < days; i++) { const d = dailyFor(shiftDay('2026-01-01', i)); if (stream(d.seed, 'setpiece')() < SETPIECE.chance) n++; }
+  assert.ok(Math.abs(n / days - SETPIECE.chance) < 0.05, `${n} of ${days} days`);
+  const d = dailyFor('2026-11-12'); assert.equal(stream(d.seed, 'setpiece')(), stream(d.seed, 'setpiece')());
 });

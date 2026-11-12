@@ -81,7 +81,7 @@ export class Hud {
     this.set('bus', !gun && !!m.home, (v) => { if (!gun) $('mph-lbl').textContent = v ? 'mph · Doc\'s bus' : 'mph'; }); // at the wheel of someone else's vehicle
     if (gun) this.gunner(dt, m, g, camera);
     // green: why the game just changed your seat (and how to get the wheel back). Magenta: you are losing it. Amber: do this
-    const line = m.coachLine(), n = m.seatNote, tone = n && (line === n.text || line === n.shown) ? 'seat' : /SKIP$/.test(line) ? '' : /CATCH|CLOSER|OUTRUN|GET INSIDE|ARMOUR/.test(line) ? 'bad' : /FIRE|GLOW|KILL|BOOST|TAP GUNS|DEPLOY|ITS FOOT|SEAM|LOCK/.test(line) ? 'good' : '';
+    const line = m.coachLine(), n = m.seatNote, tone = n && (line === n.text || line === n.shown) ? 'seat' : /SKIP$/.test(line) ? '' : /CATCH|CLOSER|OUTRUN|GET INSIDE|ARMOUR|TAKE THE FIELD/.test(line) ? 'bad' : /FIRE|GLOW|KILL|BOOST|TAP GUNS|DEPLOY|ITS FOOT|SEAM|LOCK/.test(line) ? 'good' : '';
     this.set('coach', line, (v) => { $('hud-coach').textContent = v; }); this.set('coachTone', tone, (v) => { $('hud-coach').className = 'coach ' + v; });
     const call = m.calloutT > 0 && m.callout ? m.callout : null;
     this.set('callout', call ? call.text + call.tone : '', () => { const e = $('hud-callout'); e.hidden = !call; if (call) { e.textContent = call.text; e.className = 'callout ' + call.tone; } this.last.clash = null; });
