@@ -103,6 +103,8 @@ export class Storm {
     this.x = 0; this.z = 0; this.groundY = 0; this.vx = 0; this.vz = 0; this.spin = 1; this.height = def.height;
     this.alive = true; this.visible = true; this.fade = 1; this.thin = 1; this.thinTarget = 1; this.eats = !this.mini; this.t = 0; this.cut = 0;
     this.moveX = 0; this.moveZ = 0; this.moveSpeed = 0; this.lean = new THREE.Vector2(); this.topOffset = new THREE.Vector3(); this.thrash = 0; this.thrashX = 0; this.thrashZ = 0;
+    // harpooned (src/tether.js): ax,az is the anchor, which travels at vx,vz; tug is the lunge offset, lean and writhe on top of it
+    this.ax = 0; this.az = 0; this.tug = null; this.writhe = 0;
     this.pow = def.pow || (def.type === 'Wedge' ? 1.25 : def.type === 'Rope' ? 2.2 : 1.7); this.wob = def.wob || (def.type === 'Rope' ? 12 : 7);
     this.group = new THREE.Group(); scene.add(this.group);
     this.mat = funnelMaterial(shared, { height: def.height, r0: def.r0, r1: def.r1, pow: this.pow, wob: this.wob });
@@ -129,31 +131,37 @@ export class Storm {
   get killRadius() { return this.def.killR * (0.55 + 0.45 * this.thin); }
   get shadowR() { return this.def.r0 * 2 + 40; }
   get wallR() { return this.def.r1 * 3.4; }
-  spineAt(v, out) { const w = this.wob * Math.sin(Math.PI * v), k = v * v * this.height * 0.45; return out.set(this.lean.x * k + Math.sin(v * 4 + this.t * 1.1) * w, 0, this.lean.y * k + Math.cos(v * 3.3 + this.t * 0.9) * w); }
+  spineAt(v, out) { const w = this.wob * (1 + this.writhe) * Math.sin(Math.PI * v), k = v * v * this.height * 0.45; return out.set(this.lean.x * k + Math.sin(v * 4 + this.t * 1.1) * w, 0, this.lean.y * k + Math.cos(v * 3.3 + this.t * 0.9) * w); }
   radiusAt(v) { const r0 = this.def.r0 * this.thin; return r0 + (this.def.r1 * (0.45 + 0.55 * this.thin) - r0) * Math.pow(v, this.pow) + r0 * 1.3 * Math.exp(-v * 14); }
   // where a harpoon bites: on the band, on the side facing (px,pz)
   seam(band, px, pz, out) { this.spineAt(band.v, out); const cx = this.x + out.x, cz = this.z + out.z, d = Math.hypot(px - cx, pz - cz) || 1, r = this.radiusAt(band.v) * 1.1; return out.set(cx + (px - cx) / d * r, this.groundY + band.v * this.height, cz + (pz - cz) / d * r); }
-  place(x, z) { this.x = x; this.z = z; this.groundY = this.world.heightAt(x, z); }
+  place(x, z) { this.x = this.ax = x; this.z = this.az = z; this.groundY = this.world.heightAt(x, z); }
   snapBand(band) { band.gone = true; band.burst = 0.001; this.thinTarget = 0.42 + 0.58 * this.bandsLeft / this.bands.length; }
   die() { this.alive = false; this.eats = false; }
 
   update(dt, t) {
     this.t = t; const u = this.mat.uniforms;
     // movement: ease toward the commanded velocity, lean into it
-    const tx = this.moveX * this.moveSpeed, tz = this.moveZ * this.moveSpeed, k = Math.min(1, dt * 1.8);
+    const tx = this.moveX * this.moveSpeed, tz = this.moveZ * this.moveSpeed, k = Math.min(1, dt * (this.tug ? 4 : 1.8)); // the line bites: it stops quickly
     this.vx += (tx - this.vx) * k; this.vz += (tz - this.vz) * k;
-    if (this.alive) {
+    const tg = this.alive ? this.tug : null, lim = this.world ? 1440 : 1e9;
+    if (tg) { // on the line: the anchor travels (slowly), the funnel fights around it
+      this.ax = Math.max(-lim, Math.min(lim, this.ax + this.vx * dt)); this.az = Math.max(-lim, Math.min(lim, this.az + this.vz * dt));
+      this.x = this.ax + tg.ox; this.z = this.az + tg.oz;
+    } else if (this.alive) {
       this.thrashX = Math.sin(t * 2.3) * this.thrash; this.thrashZ = Math.cos(t * 1.7) * this.thrash;
       this.x += (this.vx + this.thrashX) * dt; this.z += (this.vz + this.thrashZ) * dt;
-      const lim = this.world ? 1440 : 1e9; this.x = Math.max(-lim, Math.min(lim, this.x)); this.z = Math.max(-lim, Math.min(lim, this.z));
+      this.x = Math.max(-lim, Math.min(lim, this.x)); this.z = Math.max(-lim, Math.min(lim, this.z)); this.ax = this.x; this.az = this.z;
     }
     this.groundY = this.world.heightAt(this.x, this.z);
-    this.lean.x += (THREE.MathUtils.clamp(this.vx / 14, -1.3, 1.3) - this.lean.x) * Math.min(1, dt * 1.2);
-    this.lean.y += (THREE.MathUtils.clamp(this.vz / 14, -1.3, 1.3) - this.lean.y) * Math.min(1, dt * 1.2);
+    this.writhe += ((tg ? tg.writhe : 0) - this.writhe) * Math.min(1, dt * 8);
+    const lr = Math.min(1, dt * (tg ? 5 : 1.2)); // on the line it leans into what it is about to do, not just where it is going
+    this.lean.x += (THREE.MathUtils.clamp(this.vx / 14 + (tg ? tg.lx : 0), -1.3, 1.3) - this.lean.x) * lr;
+    this.lean.y += (THREE.MathUtils.clamp(this.vz / 14 + (tg ? tg.lz : 0), -1.3, 1.3) - this.lean.y) * lr;
     this.thin += (this.thinTarget - this.thin) * Math.min(1, dt * 2.5);
     if (!this.alive) { this.cut = Math.min(1.1, this.cut + dt * 0.5); this.fade = Math.max(0, 1 - Math.max(0, this.cut - 0.6) * 2.5); if (this.cut >= 1.1) this.visible = false; }
     this.group.visible = this.visible; this.group.position.set(this.x, this.groundY, this.z);
-    u.uSpin.value = this.spin; u.uThin.value = this.thin; u.uLean.value.copy(this.lean); u.uFade.value = this.fade; u.uCut.value = this.cut;
+    u.uSpin.value = this.spin; u.uWob.value = this.wob * (1 + this.writhe); u.uThin.value = this.thin; u.uLean.value.copy(this.lean); u.uFade.value = this.fade; u.uCut.value = this.cut;
     if (this.skirtMat) { const su = this.skirtMat.uniforms; su.uSpin.value = this.spin; su.uThin.value = 0.55 + 0.45 * this.thin; su.uLean.value.set(0, 0); su.uFade.value = this.fade * 0.82; su.uCut.value = Math.min(1, this.cut * 2.2); }
     if (this.cows) { // orbit, tumble, moo
       const k = this.fade * Math.max(0, 1 - this.cut * 2);

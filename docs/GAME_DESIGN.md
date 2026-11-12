@@ -1,6 +1,6 @@
 # TORNADO HUNTER: Game Design
 
-*Design of record. Version 2.5: five phases, a crew member and a vehicle for each (DOROTHY is driven to the funnel's foot), and weather. Tuning numbers live in `src/config.js`.*
+*Design of record. Version 2.6: five phases, a crew member and a vehicle for each (DOROTHY is driven to the foot of a harpooned storm that fights the line), and weather. Tuning numbers live in `src/config.js`.*
 
 ---
 
@@ -10,8 +10,8 @@ You drive an overpowered storm truck at 140 mph after a super tornado doing a hu
 
 1. **Chase (the wheel).** Close on the storm. It throws cars, tractors and barn doors at where you are going; you dodge, and the crew shoot wreckage out of the air.
 2. **Guns (the turret).** Cross into the storm's danger zone and you are on the gun, first person, while the truck drives itself. You aim and you fire: the machine gun on the band, rockets for anything armoured. Whatever you do not shoot down lands on the truck.
-3. **Harpoon (Winch's truck).** The camera swings across to the harpoon truck. Lock the launcher on the glow and hook the weakened storm. It is pinned: from a hundred miles an hour to walking pace, which is what makes the next part possible.
-4. **DOROTHY (Doc's bus).** You take the wheel of the science bus and drive it right up to the foot of the pinned funnel. DOROTHY is set down there, and you deploy her: eighty green sensors. The camera leaves the truck and rides with them as they are dragged in, sucked round and up, and keep swirling inside the funnel until it dies; the truck drives itself. The storm weakens further and its core goes critical.
+3. **Harpoon (Winch's truck).** The camera swings across to the harpoon truck. Lock the launcher on the glow and hook the weakened storm. It is restrained, not tamed: it can no longer go anywhere, which is what makes the next part possible, but it fights the line, and it lunges.
+4. **DOROTHY (Doc's bus).** You take the wheel of the science bus and drive it right up to the foot of the harpooned funnel, past its lunges. DOROTHY is set down there, and you deploy her: eighty green sensors. The camera leaves the truck and rides with them as they are dragged in, sucked round and up, and keep swirling inside the funnel until it dies; the truck drives itself. The storm weakens further and its core goes critical.
 5. **Kill shot (Sparks' rocket truck).** Across again. Hold the launcher on the glowing core until it locks. One rocket. The camera rides with it.
 
 Every phase belongs to someone. The chase and the turret are your rig, with June Bug. The finale is three hand-offs in a row, a vehicle each, and you take each seat in turn: two guns, and one steering wheel.
@@ -53,11 +53,37 @@ Kept from version 1: the three storms and their names, the bands as the storm's 
 | **1 Chase** | At the wheel, third person. Close the gap. Roads are faster; fields are the shortcut. The storm jukes every few seconds and throws wreckage; the crew shoot it down, you steer off the magenta circles. A ring on the ground marks the danger zone. | 5 to 15 s each time |
 | **2 Guns** | Crossing into the zone (185 to 240 m, by storm) swings the camera onto the turret in a third of a second and the autodrive takes the truck. You shoot the band: the strength bar drains, the band cracks at two thirds, fails at one third, breaks. The storm keeps throwing, and on the gun the sky is your job. DRIVE takes the wheel back at any time. | 10 to 25 s per band |
 | **Outer bands** | A band shot off bursts and you are back at the wheel: a wall of debris rolls out for you to outrun, the storm bolts, two rockets are handed up. Back to phase 1. | 8 to 12 s |
-| **3 Harpoon** | The last band gone to gunfire, the storm is WEAKENED for 7 s and the camera swings to Winch's harpoon truck, which closes to range and holds. Keep the launcher on the glow for 0.4 s, LOCKED, fire. Hooked, the storm is pinned at about 5 mph (4% of its speed) and the line holds for 15 s. | 1 to 7 s |
-| **4 DOROTHY** | Third person again, at the wheel of Doc's bus (heavier than your rig, hard to push around); your own rig drives itself. A green ring marks the foot of the funnel, 17 m outside its wall, and the coach line counts the metres. The inflow pulls and shakes harder the closer you get. Cross the ring and DOROTHY goes over the tailgate, the brakes come on, and the button reads DEPLOY. Drive on into the wall and it throws you back out and costs a little hull. Press DEPLOY: Doc takes the bus and runs, and the camera cuts outside the funnel and follows the sensors up it for 3.4 s; the truck circles on its own and cannot be hurt. The funnel thins and the core glows. | 3.4 s |
+| **3 Harpoon** | The last band gone to gunfire, the storm is WEAKENED for 7 s and the camera swings to Winch's harpoon truck, which closes to range and holds. Keep the launcher on the glow for 0.4 s, LOCKED, fire. Hooked, the storm goes nowhere (its anchor creeps at 4% of its speed, about 4 mph, and that is what the HUD reads) but it fights the line for the 15 s it holds: see *The harpooned storm*, below. | 1 to 7 s |
+| **4 DOROTHY** | Third person again, at the wheel of Doc's bus (heavier than your rig, hard to push around); your own rig drives itself. A green ring marks the foot of the funnel, 17 m outside its wall, round the line's anchor: it stays put while the funnel lunges about it, and the coach line counts the metres. The inflow pulls and shakes harder the closer you get. Cross the ring and DOROTHY goes over the tailgate, the brakes come on, and the button reads DEPLOY. Drive on into the wall and it throws you back out and costs a little hull. Press DEPLOY: Doc takes the bus and runs, and the camera cuts outside the funnel and follows the sensors up it for 3.4 s; the truck circles on its own and cannot be hurt. The funnel thins and the core glows. | 3.4 s |
 | **5 Kill shot** | Sparks' rocket truck, launcher up, you have 8 s. Hold the reticle on the glow for 0.4 s: LOCKED. One rocket, followed by the camera, and the storm comes apart: slow motion, explosions up the column, the sky tears open to blue. | 1 to 3 s |
 
 Simulated fight lengths: a gunner who never misses the seam takes Skinny Pete in about 45 seconds, The Sisters and Big Agnes in about 90. A gunner who never misses takes no damage on the gun at all. One who lags the target and never touches the rockets takes Pete in about 65 seconds with a third of the hull left, and is a coin toss on the last band of the two big storms: they want the rockets and the wheel. A person will take longer.
+
+### The harpooned storm: restrained, not tamed
+
+*We've got it. Now we have to survive getting close to it.* The hook stops the storm going anywhere; it does not stop it fighting. `src/tether.js`, tuned by `TETHER` and each storm's `tether` in `src/config.js`.
+
+**Two speeds.** The line holds the storm to an anchor that creeps at 4% of its run (about 4 mph: the HUD's number, its ground speed). The funnel moves about the anchor, never further than the line allows (its biggest lunge plus its shiver: 20 m for Pete, 36 for Agnes, 29 for the Sisters). A lunge is a curve in time: no jumps, ever.
+
+| Lunge | How often | What it does | Warning |
+|---|---|---|---|
+| **Restless** | all the time | a shiver that never stops, and small shoves of 3 to 5 m: it is alive, and it is angry. Harmless | none needed |
+| **Aggressive** | now and then | 9 to 14 m sideways across the bus's line. It cannot reach a bus on the ring; it bites one that has driven past the ring toward the wall | 0.95 to 1.15 s |
+| **Violent** | rarely, later | 17 to 30 m, toward the bus's side of the funnel. It can reach the ring: the near miss you remember | 1.45 to 1.75 s, louder and longer |
+
+**Every dangerous lunge is telegraphed, in this order.** The funnel leans toward where it is going and writhes harder, and its base digs in the other way. The line goes taut and turns magenta, its band flickers magenta, and the line groans, rising. If the lunge can reach you (and always for a violent one) the ground where its wall will be is marked in the storm's magenta, filling as it comes, and the coach says IT IS LUNGING. Then it goes: a whoosh, a shake if you are close, dust torn up along its leading edge. Then the line hauls it back past the anchor (a twang, the line goes slack and sags) and it settles. The storm plate turns magenta while a dangerous lunge is on; the number stays its ground speed.
+
+**The line's 15 seconds escalate.** It lands with 1.4 s of shivering (relief), then the first aggressive lunge, wide of the bus: the lesson. With 15 to 10 s left it is mostly restless, never violent. 10 to 5: aggressive more often, the odd violent one. 5 to 0: dangerous lunges come as often as the breathers allow, more of them violent, the shiver is at its biggest and the line frays (flickers magenta). **It lashes out at whatever gets close.** Within 60 m of the ring its breathers shorten (by up to 60%) and its dangerous lunges come up to three times as readily: a quick bus meets a second lunge as it arrives (about 6 s after the hook, against 7 to 8 s for one hanging back). Never a violent one in the first act. Simulated, per player: about one dangerous lunge in the 10-to-5 act and one and a half in the last five seconds, which is near the ceiling the warnings and breathers allow, so the last act escalates mostly by making more of them violent.
+
+**Fair, by rule.** At least 0.9 s of warning, always. A breather between dangerous lunges (0.6 to 2 s by act, longer for Pete, shorter close to the ring). Nothing is aimed at a bus that has just been hit, is in the air, has a satellite twister within 34 m, or has just set DOROTHY down: it lunges away, and one already coming is pulled short (eased, never cut) of the bus. Once DOROTHY is away and on the kill shot it only shivers. The steering camera aims at the anchor, not the funnel. The bus is hit by the funnel's wall (plus 3 m) as before, once per contact (1.1 s of immunity and a throw), never in the 1.2 s after DOROTHY goes down.
+
+| Storm | On the line |
+|---|---|
+| **Skinny Pete** | The teacher: the smallest lunges (9 m, 17 m), the longest warnings, the longest breathers, the fewest dangerous lunges. |
+| **Big Agnes** | The most storm moving the furthest (14 m, 30 m), and the biggest shiver. Park carefully. |
+| **The Sisters** | The angriest: most often, shortest breathers. Her satellites circle the anchor, not the lunging funnel, and the funnel will not lunge at a bus a satellite is already on. |
+
+The line's seed is chosen per fight (`G.tetherSeed` replays one). The tests are `node --test tests/*.test.mjs` (the movement on its own) and `node tests/e2e.mjs` (the finale in a browser, every storm). They prove the rules hold; they do not prove the Sisters feel fair. That needs a person with a phone.
 
 ### Seats and how you change them
 
@@ -127,7 +153,7 @@ Protecting the truck and hurting the storm are different jobs done by different 
 | **The rig's gun** | you, on the turret (hold FIRE). At the wheel the crew fire it at wreckage only, at three quarters of your rate | weakens the band; shoots wreckage out of the air | nothing reaches the storm from outside the zone; bullets barely mark a satellite twister |
 | **Rockets** | you, on the turret (swap, hold the reticle on a target 0.4 s to lock, FIRE) | one rocket ends a car, a tractor or a satellite twister and anything within 17 m of it; takes 18% off a band | 3 in the rack (4 at most), 2 more after every band |
 | **Shotgun** | the crew, automatically | the last-second save: blasts whatever is about to hit you, and clears wrecks off the road | 22 m range, 4 s between shots (6.4 s while you are on the gun) |
-| **Harpoon** | you, from Winch's harpoon truck (phase 3) | hooks the weakened storm and pins it at walking pace, so the bus can reach its foot; the line runs from his truck, and your rig is free | only on a weakened storm; 7 s window; needs a lock |
+| **Harpoon** | you, from Winch's harpoon truck (phase 3) | hooks the weakened storm and anchors it, so the bus can reach its foot (it lunges, the line hauls it back); the line runs from his truck, and your rig is free | only on a weakened storm; 7 s window; needs a lock |
 | **DOROTHY** | you, driving Doc's science bus to the funnel's foot, then DEPLOY (phase 4) | a swarm of sensors, sucked up to swirl inside the funnel, weakens it further and turns the core critical | only on a hooked storm |
 | **The kill shot** | you, from Sparks' rocket truck (phase 5) | the launcher, locked on the critical core | one job, one shot; it does not come out of the rack |
 
@@ -270,6 +296,7 @@ Three.js on WebGL2, plain ES modules, no build step, offline from the Home Scree
 ```
 src/config.js    every tuning number, storms, rigs, crew
 src/combat.js    the mission: storm AI, wreckage, the two seats, DOROTHY, harpoon, surge
+src/tether.js    the harpooned storm fighting the line: lunges, telegraphs, escalation, fairness (pure maths, tested under node)
 src/gunner.js    the turret: aim, hits and criticals, rockets and lock-on, autodrive, the weapon you see
 src/weather.js   hail cores and ambient lightning
 src/rig.js       the truck: model, handling, drift, boost

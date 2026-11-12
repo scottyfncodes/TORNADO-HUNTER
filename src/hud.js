@@ -55,7 +55,8 @@ export class Hud {
     this.set('data', Math.round(m.dataShown), (v) => { $('hud-data').textContent = v; });
     this.set('mph', Math.round(r.mph / 2) * 2, (v) => { $('rig-mph').textContent = v; });
     this.set('boosting', r.boostT > 0, (v) => $('hud-speed').classList.toggle('boost', v));
-    this.set('smph', Math.round(m.stormMph / 5) * 5, (v) => { $('storm-mph').textContent = v; });
+    this.set('smph', Math.round(m.stormMph / 5) * 5, (v) => { $('storm-mph').textContent = v; }); // ground speed: on the line, the anchor's creep
+    this.set('lunge', !!(m.tether && m.tether.dangerous), (v) => $('hud-storm').classList.toggle('lunge', v)); // and the lunges on top of it
     this.set('pips', s.bands.map((b) => (b.gone ? 'gone' : '')).join(','), (v) => v.split(',').forEach((c, i) => { this.pips[i].className = c; }));
     // one bar: the storm's strength while the guns work on it, then the window for whichever step comes next
     const ph = m.phase, mode = ph === 'kill' || ph === 'dorothy' ? 'stagger' : ph === 'stagger' || ph === 'rip' ? 'open' : '';

@@ -75,6 +75,15 @@ export const audio = {
   ping() { tone('sine', 1320, 1320, 0.5, 0.16); tone('sine', 1980, 1980, 0.35, 0.07, 0.08); },
   harpoon() { burst('highpass', 1200, 1, 0.12, 0.4); tone('sawtooth', 220, 60, 0.25, 0.15); },
   twang() { tone('triangle', 98, 196, 0.5, 0.3); tone('triangle', 147, 294, 0.4, 0.15, 0.02); },
+  // the line taking the strain as a harpooned storm winds up: a groan that swells and climbs until it goes (k: 0..1, how hard)
+  strain(dur = 1, k = 1) {
+    if (!ctx) return; const t = ctx.currentTime, o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(52, t); o.frequency.exponentialRampToValueAtTime(90 + 70 * k, t + dur);
+    f.type = 'bandpass'; f.frequency.setValueAtTime(240, t); f.frequency.exponentialRampToValueAtTime(700 + 500 * k, t + dur); f.Q.value = 3;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.1 + 0.12 * k, t + dur); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.08);
+    o.connect(f).connect(g).connect(master); o.start(t); o.stop(t + dur + 0.12);
+    burst('highpass', 2600, 2, dur, 0.04 + 0.05 * k, 5200); // the cable singing
+  },
   lineSnap() { burst('highpass', 3000, 1, 0.08, 0.6); tone('sawtooth', 900, 80, 0.3, 0.2); },
   boost() { burst('bandpass', 400, 1.5, 0.7, 0.35, 2600); },
   thunder(vol = 0.9) { burst('lowpass', 2400, 0.4, 0.08, vol); burst('lowpass', 500, 0.3, 2.2, vol * 0.9, 50, 0.04); },

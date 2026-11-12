@@ -90,7 +90,8 @@ const camState = { init: false, dir: new THREE.Vector3(0, 0, 1), pos: new THREE.
 const _d = new THREE.Vector3(), _p = new THREE.Vector3(), _l = new THREE.Vector3();
 function missionCamera(dt, m) {
   const r = m.rig, s = m.storm, hx = Math.sin(r.heading), hz = Math.cos(r.heading), sp = r.speedFrac;
-  const tx = (s.x - r.x) / m.dist, tz = (s.z - r.z) / m.dist, port = camera.aspect < 1, won = m.phase === 'won';
+  // aimed at the storm's anchor: on the line the funnel lunges about it, and the camera you steer by must not lunge with it
+  const ad = Math.hypot(s.ax - r.x, s.az - r.z) || 1, tx = (s.ax - r.x) / ad, tz = (s.az - r.z) / ad, port = camera.aspect < 1, won = m.phase === 'won';
   // look where you are going, leaning toward the storm so it stays in frame; lean hard when you are hooked to it
   const near = THREE.MathUtils.clamp((520 - m.dist) / 380, 0, 1), hooked = m.phase === 'rip' || m.phase === 'stagger';
   const wS = !s.alive ? 0 : hooked ? 0.5 : 0.1 + 0.3 * near;
