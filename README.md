@@ -12,6 +12,8 @@ An arcade chase-combat game in two seats (third person at the wheel, first perso
 4. **DOROTHY (Doc's bus).** You have the wheel of the science bus. Drive it right to the foot of the harpooned funnel, past its lunges, into the green ring, and DOROTHY is set down. Hit DEPLOY: a swarm of sensors is sucked in and swirls inside the funnel; the camera rides with them while the truck drives itself. The core goes critical.
 5. **Kill shot (Sparks' rocket truck).** Hold the launcher on the glowing core until it locks, then one rocket.
 
+Whenever the game changes your seat for you, the line under the storm says why, and how to take the wheel back. The DOROTHY ride and the kill-shot camera play in full the first time; after that a tap skips them.
+
 Hail cores and lightning come and go over a fight: stones on the lens, a slick road, the distance closing in, and thunder that arrives when the distance says it should.
 
 **Touch, at the wheel:** hold the left half of the screen to drive, slide to steer, pull back to brake, pull back while steering to drift. Right thumb: BOOST, and one big button that is always the next step (GUNS, HARPOON, DOROTHY).
@@ -33,8 +35,11 @@ Then open `http://localhost:8000`. Any static host works.
 Tests (Node 22, no dependencies; the browser test uses Playwright with Chromium):
 
 ```
-node --test tests/*.test.mjs   # the harpooned storm's movement: bounds, continuity, telegraphs, escalation, fairness
-node tests/e2e.mjs             # the finale in a browser, every storm: harpoon, bus, DOROTHY, kill shot, the line running out
+node --test tests/*.test.mjs   # the harpooned storm's movement, and the truck's handling (drift, trees, fences)
+node tests/e2e.mjs             # the finale in a browser, every storm; seat-change reasons; skipping a cinematic once seen
+node tests/firstminute.mjs     # the first 60 s of every storm, every beat timed, every callout checked (AUDIT=1 for the timeline)
+node tests/layout.mjs          # 44 px targets, 12 px text, no overlaps at 667x375, 844x390, 390x844 (SHOTS=dir to save them)
+node tests/driving.probe.mjs   # what the handling numbers mean: corners, drifts, the cost of a tree
 ```
 
 ## Where things are
@@ -45,7 +50,7 @@ node tests/e2e.mjs             # the finale in a browser, every storm: harpoon, 
 | `src/config.js` | Every tuning number, colour and data table |
 | `src/combat.js` | The mission: storm AI, wreckage, the two seats, DOROTHY, harpoon, surge |
 | `src/tether.js` | The harpooned storm fighting the line: lunges, telegraphs, escalation, fairness |
-| `tests/` | The tether's rules under Node, and the finale played in a browser |
+| `tests/` | The tether and the handling under Node; the finale, the first minute and the layout in a browser |
 | `src/gunner.js` | The turret: first-person aim, hits and criticals, rockets and lock-on, autodrive, the weapon you see |
 | `src/weather.js` | Hail cores and ambient lightning |
 | `src/tornado.js` | The funnel, its bands and debris (shaders) |

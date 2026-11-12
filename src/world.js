@@ -1,6 +1,6 @@
 // The plains: terrain mesh, one baked ground texture (fields, roads, towns), instanced props the storm can eat.
 import * as THREE from '../vendor/three.module.min.js';
-import { WORLD } from './config.js';
+import { WORLD, FEEL } from './config.js';
 import { box, cyl, cone, blob, octa, open, dome, prism, merge, rng, cowGeo } from './geo.js';
 
 const HALF = WORLD.size / 2, N = 129, CELL = WORLD.size / (N - 1);
@@ -279,7 +279,7 @@ export class World {
       const sp = Math.hypot(rig.vx, rig.vz);
       if (p.kit.soft || (p.kit.tree && sp > 13)) { // at these speeds everything short of a building goes flying: it costs speed, never hull
         this.launch(p, rig.vx * 0.6 + (Math.random() - 0.5) * 8, 6 + sp * 0.16, rig.vz * 0.6 + (Math.random() - 0.5) * 8);
-        const drag = p.kit.tree ? 0.86 : Math.max(0.93, p.kit.drag); rig.vx *= drag; rig.vz *= drag; rig.speed *= drag;
+        const drag = p.kit.tree ? FEEL.smashTree : Math.max(FEEL.smashSoft, p.kit.drag); rig.vx *= drag; rig.vz *= drag; rig.speed *= drag;
         out.push({ kind: 'smash', dmg: 0, x: p.x, y: p.y, z: p.z, type: p.type, tree: !!p.kit.tree });
       } else {
         const d = Math.sqrt(d2) || 0.01, nx = dx / d, nz = dz / d, into = -(rig.vx * nx + rig.vz * nz);

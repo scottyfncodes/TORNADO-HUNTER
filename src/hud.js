@@ -7,6 +7,7 @@ import { FEEL } from './config.js';
 
 const $ = (id) => document.getElementById(id);
 const _v = new THREE.Vector3();
+const overlap = (a, b) => { const A = a.getBoundingClientRect(), B = b.getBoundingClientRect(); return A.left < B.right && B.left < A.right && A.top < B.bottom && B.top < A.bottom; };
 // hit markers: a tick for a hit, a wider amber one for a critical, a green burst when it comes apart, grey when it did nothing
 const SEAT = { harpoon: 'Winch · harpoon truck', rocket: 'Sparks · rocket truck' };
 const MARK = { hit: [1.0, 0.82, 130], crit: [1.5, 1.0, 190], kill: [1.95, 1.2, 320], weak: [0.8, 0.7, 110], far: [0.8, 0.7, 110] };
@@ -79,12 +80,15 @@ export class Hud {
     this.set('gun', gun, (v) => { this.ret.hidden = !v; $('hud-speed').classList.toggle('auto', v); this.last.seat = null; $('rig-mph').hidden = false; $('mph-lbl').textContent = v ? 'mph · auto' : 'mph'; if (!v) { for (const k of this.marks) { k.on = false; k.e.hidden = true; } this.targetT = 0; } });
     this.set('bus', !gun && !!m.home, (v) => { if (!gun) $('mph-lbl').textContent = v ? 'mph · Doc\'s bus' : 'mph'; }); // at the wheel of someone else's vehicle
     if (gun) this.gunner(dt, m, g, camera);
-    const line = m.coachLine(), tone = /CATCH|CLOSER|OUTRUN|GET INSIDE|ARMOUR/.test(line) ? 'bad' : /FIRE|GLOW|KILL|BOOST|TAP GUNS|DEPLOY|ITS FOOT|SEAM|LOCK/.test(line) ? 'good' : '';
+    // green: why the game just changed your seat (and how to get the wheel back). Magenta: you are losing it. Amber: do this
+    const line = m.coachLine(), n = m.seatNote, tone = n && (line === n.text || line === n.shown) ? 'seat' : /SKIP$/.test(line) ? '' : /CATCH|CLOSER|OUTRUN|GET INSIDE|ARMOUR/.test(line) ? 'bad' : /FIRE|GLOW|KILL|BOOST|TAP GUNS|DEPLOY|ITS FOOT|SEAM|LOCK/.test(line) ? 'good' : '';
     this.set('coach', line, (v) => { $('hud-coach').textContent = v; }); this.set('coachTone', tone, (v) => { $('hud-coach').className = 'coach ' + v; });
     const call = m.calloutT > 0 && m.callout ? m.callout : null;
-    this.set('callout', call ? call.text + call.tone : '', () => { const e = $('hud-callout'); e.hidden = !call; if (call) { e.textContent = call.text; e.className = 'callout ' + call.tone; } });
+    this.set('callout', call ? call.text + call.tone : '', () => { const e = $('hud-callout'); e.hidden = !call; if (call) { e.textContent = call.text; e.className = 'callout ' + call.tone; } this.last.clash = null; });
     const bark = m.barkT > 0 && m.bark ? m.bark : null;
-    this.set('bark', bark ? bark.text : '', () => { $('hud-bark').hidden = !bark; if (bark) { $('bark-name').textContent = bark.name; $('bark-text').textContent = bark.text; } });
+    this.set('bark', bark ? bark.text : '', () => { $('hud-bark').hidden = !bark; if (bark) { $('bark-name').textContent = bark.name; $('bark-text').textContent = bark.text; } this.last.clash = null; });
+    // a callout outranks the crew's chatter: where the two would overlap (it depends on the screen and the words), the bark steps aside
+    this.set('clash', !!(call && bark) && overlap($('hud-callout'), $('hud-bark')), (v) => $('hud-bark').classList.toggle('aside', v));
     // an arrow on the screen edge when the storm is out of frame
     _v.set(s.x, s.groundY + 40, s.z).project(camera);
     const off = _v.z > 1 || Math.abs(_v.x) > 1.02 || Math.abs(_v.y) > 1.2;

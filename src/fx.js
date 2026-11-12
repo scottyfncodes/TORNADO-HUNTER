@@ -228,6 +228,9 @@ export class Fx {
     this.swarmMesh.visible = true; this.swarmCenter.copy(from);
   }
   endSwarm() { if (this.swarm.on) this.swarm.ending = true; }
+  // a cinematic you have already seen: straight to the outcome (onEaten / onHit fire on the next step, exactly as they would have)
+  skipSwarm() { const sw = this.swarm; if (sw.on && !sw.eaten) sw.t = Math.max(sw.t, sw.dur); }
+  skipRockets() { for (const r of this.rockets) if (r.on) r.t = 99; this.slowT = 0; }
   launchHarpoon(from, getTarget, onHit) {
     const start = from.clone(); this.bolt.visible = true;
     this.anim(0.28, (k) => { const to = getTarget(_a); this.bolt.position.lerpVectors(start, to, k); this.bolt.lookAt(to); this.bolt.rotateX(Math.PI / 2); this.setCable(0, start, this.bolt.position, 0.5, 0); }, () => { this.bolt.visible = false; onHit(); });

@@ -21,9 +21,14 @@ export const FEEL = {
   rigReverseSpeed: 14,        // m/s
   rigTurnRate: 2.5,           // rad/s at low speed
   rigGripRecover: 6.5,        // 1/s, how fast sideways slip bleeds off
-  driftGrip: 1.0,             // 1/s while the handbrake slide is held
-  driftTurn: 1.75,            // yaw multiplier in a slide
+  driftTurn: 2.3,             // yaw multiplier in a slide: how fast it opens (1.75 until 2.7: 0.18 s to open, now 0.08 s)
+  driftSwing: 2.2,            // rad/s the direction of travel swings round toward the nose in a slide (1.5 until 2.7: a drift was barely tighter than steering)
+  driftCatch: 3.2,            // rad/s it catches up once the slide is let go
+  driftBleed: 6,              // m/s^2 of speed a slide costs (7 until 2.7): a 90-degree drift keeps 93%
+  driftMaxSlip: 0.85,         // rad the nose may lead the direction of travel: a slide, not a spin
   driftMinSpeed: 20,          // m/s
+  smashTree: 0.78,            // share of speed kept through a tree at speed (0.86 until 2.7: you never felt one). A tree below 13 m/s is solid
+  smashSoft: 0.9,             // the least speed kept through anything soft (0.93 until 2.7): bales, cows and parked cars thud, fences (0.94) stay cheap
   boostMultiplier: 1.38,      // 197 mph on a road
   boostSeconds: 2.2,
   boostRecharge: 5,           // s from empty
@@ -64,6 +69,13 @@ export const FEEL = {
   surgeRadius: 235,           // m it reaches
   dmgSurge: 18,
   inputBuffer: 0.15,          // s an early press is remembered
+  startLead: 330,             // m the storm is ahead at the rolling start (STORMS[].lead overrides): about 5 s to the danger zone
+  calloutRead: 0.6,           // s a callout is up before anything but a more urgent one may replace it
+  seatNoteSeconds: 1.8,       // s the coach line gives the reason for a seat change the game made, then as long again for how to take the wheel back
+  seatWait: 2.5,              // s at most the automatic GUNS swing waits for something you are dodging to land
+  calloutStale: 2.4,          // s a beat may wait behind threats before it is old news and dropped
+  seatQuiet: 0.8,             // s after any seat change before the storm throws again: the swing and the guard are not a window to hit you in
+  rangingWide: 12,            // m: the storm's first throw holds this far to the side of the truck all the way down: outside the 7.5 m it hits, inside the 18 m that counts as a near miss
   hitStopBandSnap: 0.12, hitStopHarpoon: 0.06, hitStopHull: 0.06, hitStopRocket: 0.035,
   shakeBandSnap: 14, shakeHull: 9, shakeRocket: 6,
   telegraphMin: 0.9,          // s: nothing lands without at least this much warning
@@ -155,7 +167,7 @@ export const STORMS = [
     id: 'agnes', name: 'Big Agnes', ef: 3, type: 'Wedge', bands: 3, stageHp: 300, zone: 240,
     blurb: 'Half a mile wide. Turns like a continent. Everything ends up inside her.',
     habit: 'Whole debris fields at once. Suction that grabs from a block away.',
-    pay: 110, run: 40, juke: [8, 12], jukeAngle: [0.3, 0.8],
+    pay: 110, run: 40, juke: [8, 12], jukeAngle: [0.3, 0.8], lead: 430, // her zone is 240 m: start her further out so the chase still lasts five seconds
     r0: 30, r1: 150, height: 340, suckR: 200, suck: 17, killR: 36, dorothyRange: 175,
     attackEvery: [2.7, 2.3, 1.9], attacks: [['field', 'big', 'debris'], ['field', 'big', 'lightning', 'field'], ['field', 'field', 'big', 'lightning']],
     volley: [2, 2, 3], unlocks: 'bulldog',

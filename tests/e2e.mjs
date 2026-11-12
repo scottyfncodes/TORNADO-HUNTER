@@ -111,7 +111,7 @@ try {
   const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
   await page.goto(URL); await page.waitForFunction(() => window.__G && window.__G.ui && document.getElementById('loading').hidden, null, { timeout: 60000 });
 
-  for (const id of ['pete', 'agnes', 'sisters']) {
+  for (const id of (process.env.STORMS ?? 'pete,agnes,sisters').split(',').filter(Boolean)) { // STORMS= skips the finale runs
     for (const [driver, seeds] of [['attentive', [11, 12, 13]], ['naive', [21, 22]]]) for (const seed of seeds) {
       const L = await finale(page, { id, seed, driver });
       const lungeHits = L.hits.filter((h) => h.phase === 'rip' && h.funnel < 4), satHits = L.hits.filter((h) => h.phase === 'rip' && h.funnel >= 4);
@@ -143,6 +143,48 @@ try {
     ok(wh.length >= 1, `${id}: driving into the wall did not hurt`); ok(spaced, `${id}: repeated damage from one contact`);
     ok(wh.every((h) => h.sinceDrop === null || h.sinceDrop > 1.0), `${id}: the wall hurt inside the grace period`);
   }
+  // ---- seats and cinematics (2.7): every seat change the game makes says why; DOROTHY and the kill shot skip once seen ----
+  const cineRun = (opts) => page.evaluate(async ({ calm, skipAt }) => {
+    const { STORMS, FEEL } = await import('/src/config.js'); const G = window.__G, frame = () => new Promise((r) => requestAnimationFrame(r));
+    G.fx.calm = calm; G.tetherSeed = 7; G.startMission(STORMS[0]); G.fast = 4; const m = G.mission, s = m.storm, out = { notes: {}, skips: {} };
+    const tap = () => window.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch', pointerId: 91 }));
+    const until = async (c, secs, what) => { const t0 = m.time; while (!c()) { if (m.time - t0 > secs) throw new Error(`timed out: ${what} (phase ${m.phase}, cine ${m.cine && m.cine.kind}, reload ${m.reload}, dist ${Math.round(m.dist)}, rockets on ${G.fx.rockets.filter((r) => r.on).length})`); await frame(); } };
+    const note = (k) => { out.notes[k] = m.coachLine(); out.tones = out.tones || {}; out.tones[k] = document.getElementById('hud-coach').className; };
+    // into the zone: put on the gun by the game
+    m.rig.place(s.x + 150, s.z, -Math.PI / 2, G.world); m.storm.vx = 0; await until(() => m.view === 'gun', 5, 'auto seat'); note('auto'); await frame(); await frame(); out.tones.auto = document.getElementById('hud-coach').className;
+    while (s.bandsLeft > 1) { await until(() => m.phase === 'chase', 30, 'chase'); if (m.view !== 'gun') m.enterGun('auto'); m.damageStorm(m.hp + 1, { x: s.x, y: 40, z: s.z }); note('band'); }
+    await until(() => m.phase === 'chase', 30, 'last band'); m.damageStorm(m.hp + 1, { x: s.x, y: 40, z: s.z }); note('harpoon');
+    await until(() => { if (m.phase === 'stagger' && !m.harpoonBusy) m.fireHarpoon(); return m.phase === 'rip'; }, 12, 'hook'); note('bus');
+    m.rig.place(s.ax + m.dropR + 2, s.az, -Math.PI / 2, G.world); m.home.place(s.ax - 140, s.az, Math.PI / 2, G.world); await until(() => m.dropped, 6, 'drop'); // your own rig where its autodrive holds it
+    // DEPLOY, and a tap in the same moment: that tap started it, it must not skip it
+    G.fast = 1; m.act(); tap(); await frame(); await frame(); const t0 = m.time; await until(() => m.time - t0 > 0.5, 3, 'half a second'); out.skips.deployTap = m.phase !== 'dorothy';
+    if (skipAt !== null) { tap(); for (let i = 0; i < 4; i++) await frame(); out.skips.dorothy = { phase: m.phase, after: +(m.time - t0).toFixed(2), coach: m.coachLine() }; }
+    G.fast = 4; await until(() => m.phase === 'kill', 8, 'kill'); note('kill'); out.killSeat = m.gn.seatId; out.view = G.input.mode;
+    out.guarded = !G.input.firing; await until(() => m.reload <= 0 && m.gn.locked, 5, 'lock'); G.fast = 1; m.killShot(); await frame(); await frame(); const t1 = m.time; await until(() => m.time - t1 > 0.35 || m.result, 3, 'rocket away');
+    out.skipLine = m.cine ? m.coachLine() : null; if (skipAt !== null) { tap(); for (let i = 0; i < 4; i++) await frame(); out.skips.kill = { result: m.result && m.result.reason, after: +(m.time - t1).toFixed(2) }; }
+    await until(() => !!m.result, 8, 'result'); out.seen = { ...G.save.s.seen }; out.result = m.result.reason; G.fx.calm = false; G.fast = 1;
+    // the reasons for the game taking your seat back: the line running out
+    return out;
+  }, opts);
+  await page.evaluate(() => { const S = window.__G.save; S.s.seen = { dorothy: false, kill: false }; S.write(); });
+  const C1 = await cineRun({ calm: false, skipAt: 0.5 });
+  console.log('first time through:', JSON.stringify(C1));
+  ok(C1.skips.dorothy && C1.skips.dorothy.phase === 'dorothy', 'the first DOROTHY ride was skippable');
+  ok(C1.skips.kill && !C1.skips.kill.result, 'the first kill-shot camera was skippable');
+  ok(C1.seen.dorothy && C1.seen.kill && C1.result === 'destroyed', 'watching both cinematics to the end did not mark them seen');
+  ok(/^IN RANGE: YOU SHOOT, IT DRIVES$/.test(C1.notes.auto) && /seat/.test(C1.tones.auto), `no reason for the automatic seat change to the gun (${C1.notes.auto}, ${C1.tones.auto})`);
+  ok(/^BAND OFF: YOUR WHEEL/.test(C1.notes.band), `no reason for being put back at the wheel (${C1.notes.band})`);
+  ok(/WINCH/.test(C1.notes.harpoon) && /DOC'S BUS/.test(C1.notes.bus) && /SPARKS/.test(C1.notes.kill), `no reason for a crew seat change (${C1.notes.harpoon} / ${C1.notes.bus} / ${C1.notes.kill})`);
+  for (const calm of [false, true]) {
+    const C2 = await cineRun({ calm, skipAt: 0.5 });
+    console.log(`seen before${calm ? ', calm' : ''}:`, JSON.stringify(C2.skips), C2.skipLine, C2.killSeat);
+    ok(!C2.skips.deployTap, `${calm ? 'calm: ' : ''}the DEPLOY tap skipped the cinematic it started`);
+    ok(C2.skips.dorothy && C2.skips.dorothy.phase === 'kill', `${calm ? 'calm: ' : ''}a tap did not skip a DOROTHY ride already seen (${JSON.stringify(C2.skips.dorothy)})`);
+    ok(C2.killSeat === 'rocket' && C2.view === 'gun' && C2.guarded, `${calm ? 'calm: ' : ''}skipping DOROTHY did not land on Sparks' launcher like the ride does`);
+    ok(/SKIP/.test(C2.skipLine || ''), `${calm ? 'calm: ' : ''}no TAP TO SKIP on a cinematic already seen`);
+    ok(C2.skips.kill && C2.skips.kill.result === 'destroyed', `${calm ? 'calm: ' : ''}a tap did not skip the kill-shot camera (${JSON.stringify(C2.skips.kill)})`);
+  }
+
   // losing still ends the fight
   const lost = await page.evaluate(async () => { const { STORMS } = await import('/src/config.js'); const G = window.__G; G.startMission(STORMS[0]); const m = G.mission; m.rig.hull = 5; m.rig.immune = 0; m.hurt(20); return m.result && { won: m.result.won, reason: m.result.reason }; });
   ok(lost && !lost.won && lost.reason === 'wrecked', 'a wreck did not end the fight'); console.log('wreck:', JSON.stringify(lost));
