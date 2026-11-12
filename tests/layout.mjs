@@ -51,6 +51,12 @@ Object.assign(STATES, {
   'title-daily': async () => { const G = window.__G, { dayKey } = await import('/src/daily.js'); if (G.mission) G.toHQ(); const S = G.save.s; S.kills.pete = S.kills.pete || 1; S.seenCoach = true; S.streak = { count: 4, last: dayKey(), best: 6 }; S.daily = { day: dayKey(), used: true, result: { won: true, letter: 'A', time: 102 } }; G.ui.show('title'); },
   results: async () => { const G = window.__G, { STORMS } = await import('/src/config.js'); G.save.s.grades.agnes = 'B'; G.startMission(STORMS[1]); await (FINISH_FN)(G.mission, G); },
   'results-daily': async () => { const G = window.__G, { dayKey } = await import('/src/daily.js'); G.save.s.daily = { day: dayKey(), used: false, result: null }; G.startDaily('scored'); await (FINISH_FN)(G.mission, G); },
+  // the grain elevator coming down: the strips marked, the way out on the coach line, GUNS: NOT NOW
+  elevator: async () => {
+    const G = window.__G, { STORMS, SETPIECE } = await import('/src/config.js'), frame = () => new Promise((r) => requestAnimationFrame(r)); G.setpiece = 'force'; G.startMission(STORMS[0]); G.fast = 2; const m = G.mission, sp = m.sp; m.time = SETPIECE.after + 0.5;
+    const axes0 = G.input.axes; G.input.axes = () => { const r = m.rig; if (!sp.O) return { steer: 0, throttle: 1 }; const P = sp.frame(r), want = (sp.tip + sp.half) / 2, tx = r.x + sp.F.x * 40 + sp.N.x * (want - P.u), tz = r.z + sp.F.z * 40 + sp.N.z * (want - P.u), dx = tx - r.x, dz = tz - r.z, l = Math.hypot(dx, dz), hx = Math.sin(r.heading), hz = Math.cos(r.heading); return { steer: Math.max(-1, Math.min(1, (hx * dz / l - hz * dx / l) * 3)), throttle: 1 }; };
+    while (!(sp.state === 'fall' && sp.fallT >= 1.0)) await frame(); G.input.axes = axes0; G.setpiece = undefined; G.fx.stopT = 1e9;
+  },
   'results-lost': async () => { const G = window.__G, { STORMS } = await import('/src/config.js'); G.startMission(STORMS[2]); const m = G.mission; for (let i = 0; i < 20; i++) await new Promise((r) => requestAnimationFrame(r)); m.rig.hull = 5; m.rig.immune = 0; m.hurt(20); while (!G.resultShown) await new Promise((r) => requestAnimationFrame(r)); },
 });
 
@@ -94,7 +100,7 @@ export async function run(states = Object.keys(STATES), shots = SHOTS) {
     await page.goto(URL); await page.waitForFunction(() => window.__G && window.__G.ui && document.getElementById('loading').hidden, null, { timeout: 60000 });
     for (const name of states) {
       await page.evaluate(`(${STATES[name].toString().replace('FINISH_FN', FINISH)})()`);
-      if (['drive', 'gun'].includes(name)) await page.touchscreen.tap(Math.round(w * 0.2), Math.round(h * 0.62)); // a thumb on the glass: the game knows it is on a phone
+      if (['drive', 'gun', 'elevator'].includes(name)) await page.touchscreen.tap(Math.round(w * 0.2), Math.round(h * 0.62)); // a thumb on the glass: the game knows it is on a phone
       await page.waitForTimeout(350);
       const A = await page.evaluate(audit), tag = `${name} ${w}x${h}`;
       ok(!A.small.length, `${tag}: touch targets under 44 px: ${A.small.join(', ')}`);

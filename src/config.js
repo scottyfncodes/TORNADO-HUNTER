@@ -132,6 +132,31 @@ export const GRADE = {
   share: { accGood: 0.75, accOk: 0.45, hullOk: 25 }, // the share text's squares: the turret's accuracy on a band, hull lost at the wheel
 };
 
+// ---- the grain elevator, a set piece on the road (src/setpiece.js) ----
+export const SETPIECE = {
+  chance: 0.34,        // share of fights that get one (the Daily Storm's seed decides on its days); never the first, coached storm
+  after: 12,           // s into a fight before it can come: the first minute belongs to the ranging shot and the zone
+  minSpeed: 30,        // m/s: you are driving, not parked
+  align: 0.85,         // you are running along the road (cos of the angle), not crossing it
+  hailClear: 12,       // s: never with a hail core, nor one this close to arriving
+  forceAfter: 10,      // s at the wheel with no road to stand it on: the line you are driving will do
+  ahead: 300,          // m down the road it stands when it is placed
+  armLimit: 14,        // s it waits for you; then it stands where it is, inert
+  pass: 60,            // m off the road, on its own side, that the storm is turned to pass the elevator
+  creakRange: 90,      // m: the storm this close and it starts to go (or you four seconds out)
+  creakMax: 6,         // s of creaking at most before it goes
+  tele: [1.25, 1.7, 2.15], // s of warning for each piece, in sequence: never under 1.2
+  fallSeconds: 0.45,   // s from leaning to lying, the last part of each piece's warning
+  spacing: 20,         // m between the three pieces along the road
+  width: 11,           // m: each piece's strip along the road
+  lane: 6,             // m of road left clear on the storm's side: the escape line
+  setback: 20,         // m from the road's edge to the elevator's foot, on the far side (27 m tall beside a gravel road, 32 beside the highway)
+  dmg: 22, fling: 26,  // a piece landing on you
+  rubble: 8,           // s the pieces lie across the road
+  rubbleDrag: 0.55,    // share of speed kept driving over one
+  give: 0.6,           // boost back for a clean escape, as the debris wall
+};
+
 // ---- the harpooned storm: restrained, not tamed (src/tether.js). Each storm's own reach is STORMS[].tether ----
 export const TETHER = {
   // one lunge of each kind. Seconds; coil is how far the base digs in the other way first (share of the reach), lean how far

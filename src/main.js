@@ -108,7 +108,8 @@ function missionCamera(dt, m) {
   const ad = Math.hypot(s.ax - r.x, s.az - r.z) || 1, tx = (s.ax - r.x) / ad, tz = (s.az - r.z) / ad, port = camera.aspect < 1, won = m.phase === 'won';
   // look where you are going, leaning toward the storm so it stays in frame; lean hard when you are hooked to it
   const near = THREE.MathUtils.clamp((520 - m.dist) / 380, 0, 1), hooked = m.phase === 'rip' || m.phase === 'stagger';
-  const wS = !s.alive ? 0 : hooked ? 0.5 : 0.1 + 0.3 * near;
+  // the grain elevator coming down: look down the road at it, not off at the storm
+  const wS = !s.alive ? 0 : hooked ? 0.5 : m.sp && m.sp.busy ? 0.04 : 0.1 + 0.3 * near;
   _d.set(hx * (1 - wS) + tx * wS, 0, hz * (1 - wS) + tz * wS); if (_d.lengthSq() < 0.01) _d.set(hx, 0, hz); _d.normalize();
   if (won) { const a = m.phaseT * 0.25 + Math.atan2(camState.dir.x, camState.dir.z); _d.set(Math.sin(a), 0, Math.cos(a)); }
   if (!camState.init) camState.dir.copy(_d);

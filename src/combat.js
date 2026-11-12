@@ -16,6 +16,7 @@ import { Convoy } from './convoy.js';
 import { Gunner, TARGET } from './gunner.js';
 import { Tether } from './tether.js';
 import { stream } from './daily.js';
+import { SetPiece } from './setpiece.js';
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3();
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -34,7 +35,7 @@ export class Mission {
   constructor(G, def, loadout, upgrades, opts = {}) {
     this.G = G; this.def = def; this.coach = !!opts.coach; this.daily = opts.daily || null; this.seed = opts.seed ?? null; // daily: 'scored' or 'practice'
     // the decisions that make a fight this fight, each from its own stream: seeded (the Daily Storm) the same for everyone
-    const S = (name) => (this.seed === null ? Math.random : stream(this.seed, name)); this.rj = S('juke'); this.ra = S('attack'); this.rt = S('tether'); this.ef = def.ef + (opts.rematch || 0); this.rematch = opts.rematch || 0;
+    const S = (name) => (this.seed === null ? Math.random : stream(this.seed, name)); this.rj = S('juke'); this.ra = S('attack'); this.rt = S('tether'); this.rs = S('setpiece'); this.ef = def.ef + (opts.rematch || 0); this.rematch = opts.rematch || 0;
     const has = (id) => loadout.crew.includes(id), up = upgrades;
     this.crew = loadout.crew.map((id) => CREW.find((c) => c.id === id));
     this.p = {
@@ -60,9 +61,9 @@ export class Mission {
     this.rec = { wheel: [], rounds: [], hits: [], harpoon: [], dorothy: [], kill: [], busHits: 0 };
     this.gn = new Gunner(this, up);
     this.dorothy = new THREE.Mesh(DOROTHY_GEO, new THREE.MeshLambertMaterial({ vertexColors: true })); this.dorothy.scale.setScalar(1.5); this.dorothy.visible = false; G.scene.add(this.dorothy);
-    this.say('start'); this.spawnSats();
+    this.say('start'); this.spawnSats(); this.sp = new SetPiece(this);
   }
-  dispose() { this.leaveBus(); this.G.scene.remove(this.dorothy); this.dorothy.material.dispose(); this.gn.dispose(); this.storm.dispose(); this.convoy.dispose(); for (const s of this.sats) { s.storm.dispose(); this.G.scene.remove(s.mark); } this.rig.dispose(); this.G.fx.reset(); }
+  dispose() { this.sp.dispose(); this.leaveBus(); this.G.scene.remove(this.dorothy); this.dorothy.material.dispose(); this.gn.dispose(); this.storm.dispose(); this.convoy.dispose(); for (const s of this.sats) { s.storm.dispose(); this.G.scene.remove(s.mark); } this.rig.dispose(); this.G.fx.reset(); }
 
   jr(a, b) { return a + this.rj() * (b - a); } // a juke draw
   ar(a, b) { return a + this.ra() * (b - a); } // an attack draw
@@ -133,7 +134,7 @@ export class Mission {
   // ---- the action button at the wheel. In a chase it takes your turret; in the finale it puts you in the seat whose turn it is ----
   act() {
     const s = this.storm, b = s.band; if (this.result || !b) return false;
-    if (this.phase === 'chase') { this.enterGun('manual'); return true; }
+    if (this.phase === 'chase') { if (this.sp.busy) return false; if (this.sp.armed) this.sp.cancel(); this.enterGun('manual'); return true; } // not while the elevator is coming down
     if (this.phase === 'stagger') { this.enterGun('harpoon'); return true; }
     if (this.phase === 'rip') { if (!this.dropped) return false; this.deployNow = true; return true; } // DEPLOY, once she is on the ground (done at the top of the next step: it changes which rig is yours)
     if (this.phase === 'kill') { this.enterGun('kill'); return true; } // phase 5 is fired from the turret
@@ -238,7 +239,7 @@ export class Mission {
   }
   actionState() {
     const ph = this.phase, d = this.dist;
-    if (ph === 'chase') return { label: 'GUNS', ready: true, fill: 0, hint: d > this.zone ? 'AUTODRIVE' : 'IN RANGE' };
+    if (ph === 'chase') return this.sp.busy ? { label: 'GUNS', ready: false, fill: 0, hint: 'NOT NOW' } : { label: 'GUNS', ready: true, fill: 0, hint: d > this.zone ? 'AUTODRIVE' : 'IN RANGE' };
     if (ph === 'stagger') return { label: 'HARPOON', ready: !this.harpoonBusy, danger: true, fill: 0, hint: `${Math.ceil(this.staggerT)} s` };
     if (ph === 'rip') return this.dropped ? { label: 'DEPLOY', ready: true, danger: true, fill: 0, hint: `${Math.ceil(this.hookT)} s` } : { label: 'DOROTHY', ready: false, fill: 0, hint: `${Math.max(0, Math.round((this.ringDist - this.dropR) / 5) * 5)} M` };
     if (ph === 'dorothy') return { label: 'DOROTHY', ready: false, fill: 0, hint: 'AWAY' };
@@ -388,7 +389,7 @@ export class Mission {
     // ---- input: at the wheel, BOOST and the action button; on the gun, the sights and the trigger (src/gunner.js) ----
     if (!over) {
       // crossing into the danger zone puts you on the gun; leave it yourself and it stays your call until you come back in
-      if (this.phase === 'chase' && this.view === 'drive') { if (this.inZone && !this.zoneLatch) { if (this.phaseT > 0.5 && this.autoHold <= 0 && r.stun <= 0 && r.air <= 0 && this.windWait <= 0 && !this.wind && !this.dodging()) this.enterGun('auto'); } else if (dist > this.zone * 1.12) this.zoneLatch = false; }
+      if (this.phase === 'chase' && this.view === 'drive') { if (this.inZone && !this.zoneLatch) { if (this.phaseT > 0.5 && this.autoHold <= 0 && r.stun <= 0 && r.air <= 0 && this.windWait <= 0 && !this.wind && !this.dodging() && !this.sp.armed) this.enterGun('auto'); } else if (dist > this.zone * 1.12) this.zoneLatch = false; }
       this.gn.handle(dt, input);
       if (this.view === 'drive' && input.take('action', FEEL.inputBuffer)) { if (!this.act()) { G.audio.deny(); G.hud.deny('btn-action'); } }
       if (this.view === 'drive' && input.take('boost')) { if (r.boost()) { G.audio.boost(); fx.shake(4); G.kickFov(); const bx = r.x - Math.sin(r.heading) * 3, bz = r.z - Math.cos(r.heading) * 3; fx.flashAt(bx, r.y + 1, bz, 7, '#ff9a3c', 0.18); for (let i = 0; i < 5; i++) fx.puff(bx + rand(-1.5, 1.5), r.y + 0.8, bz + rand(-1.5, 1.5), 4 + i, '#e9e2cc', 0.6, 2); } else { G.audio.deny(); G.hud.deny('btn-boost'); } }
@@ -427,6 +428,7 @@ export class Mission {
     if (this.home) { // you are driving Doc's bus: it is drawn where you are, and your own rig looks after itself
       const u = this.busUnit; u.x = r.x; u.z = r.z; u.heading = r.heading; u.speed = Math.hypot(r.vx, r.vz); this.home.update(dt, this.gn.autodrive(dt, this.home), w, 0, 0);
     }
+    if (!over) this.sp.update(dt); // the grain elevator
     if (r.landed) { r.landed = false; fx.puff(r.x, r.y + 1, r.z, 10); G.audio.impact(); }
     if (r.launch) for (let i = 0; i < 4; i++) fx.puff(r.x - Math.sin(r.heading) * (2.5 + i) + rand(-1, 1), r.y + 0.6, r.z - Math.cos(r.heading) * (2.5 + i) + rand(-1, 1), 4 + i, r.surface === 2 ? '#8d9392' : '#cdb27a', 0.6, 2);
     for (const e of w.collideRig(r)) { if (e.kind === 'smash') { G.audio.smash(); fx.shake(e.tree ? 4 : 2); fx.puff(e.x, e.y + 1.5, e.z, e.tree ? 9 : 6, e.type === 'bale' ? '#d9b45a' : '#cdb27a', 0.6); } else { G.audio.impact(); fx.shake(6); if (e.dmg && !over) this.hurt(e.dmg); } }
@@ -488,7 +490,7 @@ export class Mission {
 
     // ---- attacks ----
     if (!over && s.alive && this.phase === 'chase' && dist < 360) {
-      this.attackT -= dt * (this.inZone ? 1.1 : 1); if (this.attackT <= 0 && this.time - this.seatT >= FEEL.seatQuiet) { const ev = this.def.attackEvery[Math.min(this.stage, this.def.attackEvery.length - 1)]; this.attackT = ev * this.ar(0.8, 1.2) * this.p.tele * (this.view === 'gun' ? FEEL.gunnerBreather : 1); this.attack(); }
+      this.attackT -= dt * (this.inZone ? 1.1 : 1); if (this.attackT <= 0 && this.time - this.seatT >= FEEL.seatQuiet && !this.sp.busy) { const ev = this.def.attackEvery[Math.min(this.stage, this.def.attackEvery.length - 1)]; this.attackT = ev * this.ar(0.8, 1.2) * this.p.tele * (this.view === 'gun' ? FEEL.gunnerBreather : 1); this.attack(); }
     }
 
     // ---- cable, rings, what the storm ate ----
@@ -536,6 +538,7 @@ export class Mission {
     const ph = this.phase, d = this.dist;
     if (this.cine) return this.canSkip() ? (this.G.input.usingTouch ? 'TAP TO SKIP' : 'SPACE TO SKIP') : ph === 'dorothy' ? 'DOROTHY IS READING THE CORE' : '';
     const why = this.result ? '' : this.noteLine(); if (why) return why;
+    const out = this.sp.coach(); if (out) return out;
     if (ph === 'chase') {
       if (this.view === 'gun') {
         const g = this.gn, big = this.hz.some((z) => z.state === 'fly' && z.big);

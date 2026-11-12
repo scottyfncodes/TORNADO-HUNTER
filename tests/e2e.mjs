@@ -245,6 +245,58 @@ try {
     await ctx.close();
   }
 
+  // ---- the grain elevator (2.9): it triggers, it telegraphs, the escape line is clean; never in the finale, hail or the wall ----
+  const elevator = (lane) => page.evaluate(async (lane) => {
+    const { STORMS, SETPIECE } = await import('/src/config.js'); const G = window.__G, frame = () => new Promise((r) => requestAnimationFrame(r));
+    G.setpiece = 'force'; G.startMission(STORMS[0]); G.fast = 3; const m = G.mission, sp = m.sp, log = { lane, hits: 0, warned: [], creak: null, fall: null, held: { auto: true, guns: null, throws: 0 } };
+    m.time = SETPIECE.after + 0.5; m.rig.boostCharge = 0; // past the first minute, boost spent so the payout shows
+    const hurt = m.hurt.bind(m); m.hurt = (n, k) => { const d = hurt(n, k); if (d) log.hits++; return d; };
+    const atk = m.attack.bind(m); m.attack = () => { if (sp.busy) log.held.throws++; return atk(); };
+    const ab = m.rig.addBoost.bind(m.rig); log.paid = []; m.rig.addBoost = (n) => { if (Math.abs(n - SETPIECE.give) < 1e-9) log.paid.push(n); return ab(n); }; // the clean-escape payout, told apart from drift and near-miss top-ups
+    const axes0 = G.input.axes;
+    G.input.axes = () => { const r = m.rig; if (!sp.O) return { steer: 0, throttle: 1 }; const P = sp.frame(r), want = lane === 'escape' ? (sp.tip + sp.half) / 2 : -2; // the middle of the escape lane, or the near lane
+      const tx = r.x + sp.F.x * 40 + sp.N.x * (want - P.u), tz = r.z + sp.F.z * 40 + sp.N.z * (want - P.u), dx = tx - r.x, dz = tz - r.z, l = Math.hypot(dx, dz), hx = Math.sin(r.heading), hz = Math.cos(r.heading);
+      return { steer: Math.max(-1, Math.min(1, (hx * dz / l - hz * dx / l) * 3)), throttle: 1 }; };
+    try {
+      while (sp.state !== 'done' && sp.state !== 'spent' && m.time < 45) {
+        if (sp.state === 'creak' && log.creak === null) log.creak = m.time;
+        if (sp.state === 'fall') {
+          if (log.fall === null) { log.fall = m.time; log.boost0 = m.rig.boostCharge; log.coach = m.coachLine(); log.gunsRefused = !m.act(); log.action = m.actionState().hint; }
+          for (const p of sp.pieces) { if (!p.landed && p.fill.visible && p.marks.every((e) => e.visible)) p.markedUntil = m.time; if (p.landed && p.warned === undefined) { p.warned = +(p.markedUntil - log.fall).toFixed(3); log.warned.push(p.warned); } }
+        }
+        if (sp.busy && m.view === 'gun') log.held.auto = false;
+        await frame();
+      }
+      for (const p of sp.pieces || []) if (p.warned === undefined) { p.warned = +((p.markedUntil ?? 0) - log.fall).toFixed(3); log.warned.push(p.warned); }
+      log.state = sp.state; log.boost1 = m.rig.boostCharge; log.calls = []; log.clean = log.hits === 0;
+      return log;
+    } finally { G.input.axes = axes0; G.setpiece = undefined; G.fast = 1; }
+  }, lane);
+  for (const lane of ['escape', 'near']) {
+    const E = await elevator(lane);
+    console.log(`elevator, ${lane} lane:`, JSON.stringify(E));
+    ok(E.creak !== null && E.fall !== null && E.fall - E.creak >= 0.4, `elevator/${lane}: it did not creak and then fall (${E.creak}, ${E.fall})`);
+    ok(E.warned.length === 3 && E.warned.every((w) => w >= 1.2 - 1 / 30), `elevator/${lane}: a piece came down with under 1.2 s marked (${E.warned})`);
+    ok(E.gunsRefused && E.action === 'NOT NOW' && E.held.auto && E.held.throws === 0, `elevator/${lane}: the game took the wheel, gave the gun, or threw while it fell (${JSON.stringify(E.held)}, ${E.gunsRefused})`);
+    ok(/OR TAKE THE FIELD/.test(E.coach), `elevator/${lane}: no way out on the coach line (${E.coach})`);
+    if (lane === 'escape') ok(E.hits === 0 && E.paid.length === 1 && E.paid[0] === 0.6, `elevator: a truck on the escape line was hit, or not paid 60% of a boost for it (hits ${E.hits}, paid ${E.paid})`);
+    else ok(E.hits >= 1 && E.paid.length === 0, `elevator: a truck holding the near lane was not hit, or was paid (hits ${E.hits}, paid ${E.paid})`);
+  }
+  // the rules: only in a chase at the wheel, never in the finale, a hail core or the debris wall
+  const rules = await page.evaluate(async () => {
+    const { STORMS, SETPIECE } = await import('/src/config.js'); const G = window.__G; G.setpiece = 'force'; G.startMission(STORMS[0]); const m = G.mission, sp = m.sp, W = G.weather; m.time = SETPIECE.after + 1;
+    const out = { chase: sp.eligible() };
+    W.spell = 5; out.hail = sp.eligible(); W.spell = 0; W.nextHail = 3; out.hailSoon = sp.eligible(); W.nextHail = 99;
+    m.surge = { x: 0, z: 0, r: 30 }; out.wall = sp.eligible(); m.surge = null;
+    for (const ph of ['stagger', 'rip', 'dorothy', 'kill', 'surge']) { m.phase = ph; out[ph] = sp.eligible(); } m.phase = 'chase';
+    m.enterGun('manual'); out.gun = sp.eligible(); m.leaveGun(true);
+    // and once it is going the hail waits for it
+    sp.arm(sp.road() || sp.track()); sp.state = 'fall'; sp.fallT = 0; W.spell = 0; W.nextHail = 0.01; const before = W.spells; W.update(0.5, 1, m, m.storm, G.camera); out.hailStarted = W.spells !== before;
+    G.setpiece = undefined; return out;
+  });
+  console.log('elevator rules:', JSON.stringify(rules));
+  ok(rules.chase && !rules.hail && !rules.hailSoon && !rules.wall && !rules.gun && ['stagger', 'rip', 'dorothy', 'kill', 'surge'].every((k) => !rules[k]) && !rules.hailStarted, `elevator: it could come at the wrong time ${JSON.stringify(rules)}`);
+
   // losing still ends the fight
   const lost = await page.evaluate(async () => { const { STORMS } = await import('/src/config.js'); const G = window.__G; G.startMission(STORMS[0]); const m = G.mission; m.rig.hull = 5; m.rig.immune = 0; m.hurt(20); return m.result && { won: m.result.won, reason: m.result.reason }; });
   ok(lost && !lost.won && lost.reason === 'wrecked', 'a wreck did not end the fight'); console.log('wreck:', JSON.stringify(lost));

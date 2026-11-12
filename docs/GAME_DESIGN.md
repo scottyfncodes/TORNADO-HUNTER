@@ -1,6 +1,6 @@
 # TORNADO HUNTER: Game Design
 
-*Design of record. Version 2.8: a grade for every fight and the Daily Storm, one storm a day for everyone. (2.7: the first minute measured and re-paced, a drift worth taking, a reason for every seat change, and cinematics you can skip once seen. 2.6: five phases, a crew member and a vehicle for each, DOROTHY driven to the foot of a harpooned storm that fights the line, and weather.) Tuning numbers live in `src/config.js`.*
+*Design of record. Version 2.9: the grain elevator, the first set piece. (2.8: a grade for every fight and the Daily Storm, one storm a day for everyone. 2.7: the first minute measured and re-paced, a drift worth taking, a reason for every seat change, and cinematics you can skip once seen. 2.6: five phases, a crew member and a vehicle for each, DOROTHY driven to the foot of a harpooned storm that fights the line, and weather.) Tuning numbers live in `src/config.js`.*
 
 ---
 
@@ -290,6 +290,23 @@ The difficulty is what the storm does to you while you hold the zone: the more i
 - **Lightning** tracks you, locks, strikes.
 - **The debris wall** after every rip.
 - **Satellite twisters** (The Sisters), each marked on the ground. A rocket takes one down.
+- **The grain elevator** (below), in about a third of chases.
+
+### The grain elevator
+
+The first set piece: scripted chaos tied to the road. `src/setpiece.js`, tuned by `SETPIECE` in `src/config.js`.
+
+| | |
+|---|---|
+| **When** | About a third of fights (34%); on the Daily Storm the day's seed decides, so on its days it is in everyone's fight. Never in the first, coached storm. Never before 12 s (the first minute belongs to the ranging shot and the zone). Only in a chase, at the wheel, at speed: never in the finale, never on the gun, never with a debris wall, never with a hail core (nor one due within 12 s), never with a crosswind called. |
+| **Where** | 300 m down the road you are driving (the highway or a gravel road, running along it, not crossing it), on the far side from the storm. With no road after 10 s at the wheel, the line you are driving will do. The storm is turned onto it and passes it 60 m off the road, on its own side. |
+| **The warning** | As the storm passes (within 90 m), or when you are four seconds out, it starts to go: THE ELEVATOR IS GOING, a creak, dust at its foot, a tremble. Then, as you arrive, ELEVATOR COMING DOWN: three pieces (two pairs of concrete bins and the tin headhouse between them, 20 m apart) come down across the road in sequence, 1.25, 1.7 and 2.15 s after it starts. Each one leans further and groans as it comes, and the strip it will land on is marked on the ground in the storm's magenta, filling from its foot toward its tip, the edge at the tip drawn heavy, flashing in the last 0.4 s. It is timed so that holding your line puts the first piece on you. The camera looks down the road at it, not off at the storm. |
+| **The way out** | It falls toward the storm and stops 6 m short of the road's edge: that lane, on the storm's side, is the escape line, and keeps your road speed. The field beyond it is the shortcut: wide open, and off-road (field top speed). The coach line says which: KEEP LEFT, OR TAKE THE FIELD. |
+| **The cost** | A piece landing on you: 22 hull and a throw. Pieces lie across the road for 8 s: driving over one costs 45% of your speed, never hull. Then they settle into the field. |
+| **The payoff** | Through clean, nothing landed on you: 60% of a boost charge back (as the debris wall) and a little data. |
+| **While it is going** | The game does not take the wheel (the automatic swing to the gun waits), GUNS reads NOT NOW, the storm holds its throws, and the hail waits for it. Taking the gun yourself while it is still standing waiting lets it be: it stays where it is, inert. |
+
+`node tests/e2e.mjs` plays it: it creaks and then falls, every piece is marked for at least 1.2 s before it lands, the game never takes the wheel or throws while it falls, a truck on the escape line takes no damage and is paid 60%, and a truck that holds the near lane is hit. It also checks that it cannot come in the finale, a hail core, the debris wall or on the gun, and that the hail waits for it. `tests/progress.test.mjs` checks that it comes on about a third of Daily Storm days.
 
 Every one of these is announced before it lands. Nothing does damage without a telegraph of at least 0.9 seconds.
 
@@ -352,6 +369,9 @@ Upgrades (Data): Winch (the line holds longer), Ordnance (guns hit harder, one m
 | A grade for a wreck | not given (2.8) | a letter has to be earned; the wreck keeps its advice line |
 | Leaderboards, accounts, sending a daily result anywhere | not built (2.8) | nothing leaves the device. The share text is the leaderboard |
 | The Daily Storm for a brand-new player | held back until the first storm is beaten (2.8) | the day's storm can be The Sisters |
+| The grain elevator on the gun, or the autodrive dodging it | never (2.9) | the autodrive does not dodge; a set piece is something you drive through, so it only comes at the wheel and the game will not take the wheel while it falls |
+| Rubble that hurts | not built (2.9) | the pieces lying across the road cost speed, never hull: the damage is for being under one as it lands, which you were warned about |
+| Power lines falling in sequence | postponed (2.9) | one set piece, played and tuned, before the next |
 
 ---
 
@@ -365,6 +385,7 @@ src/combat.js    the mission: storm AI, wreckage, the two seats, DOROTHY, harpoo
 src/tether.js    the harpooned storm fighting the line: lunges, telegraphs, escalation, fairness (pure maths, tested under node)
 src/gunner.js    the turret: aim, hits and criticals, rockets and lock-on, autodrive, the weapon you see
 src/weather.js   hail cores and ambient lightning
+src/setpiece.js  the grain elevator: placed on the road ahead, the storm's pass, the telegraph, the fall, the escape line
 src/rig.js       the truck: model, handling, drift, boost
 src/tornado.js   funnel, bands, debris, skirt (shaders)
 src/fx.js        pooled wreckage, tracers, sparks, debris, rockets, explosions, telegraphs, cable
@@ -392,7 +413,7 @@ src/main.js      boot, the three cameras (chase, gun, cinematic) and the swing b
 | **Now** | People play it on real iPhones and answer the questions below |
 | **Feel pass** | Tune aim sensitivity and assist, wreckage rate, rocket count and the hail from that play; haptics; recorded audio where synthesis falls short |
 | **Second technology** | COLD FRONT and CORKSCREW as swaps for the DOROTHY slot |
-| **Set pieces** | Scripted chaos tied to the map: a grain elevator coming down across the highway, power lines falling in sequence |
+| **Set pieces** | Built: the grain elevator (2.9). Next: power lines falling in sequence, a bridge |
 | **The wingman** | The crew vehicles fight on their own between their phases: a second gunner, covering fire |
 | **New country** | A river valley with bridges; a town-edge region |
 
