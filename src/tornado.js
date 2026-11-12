@@ -142,7 +142,7 @@ export class Storm {
   update(dt, t) {
     this.t = t; const u = this.mat.uniforms;
     // movement: ease toward the commanded velocity, lean into it
-    const tx = this.moveX * this.moveSpeed, tz = this.moveZ * this.moveSpeed, k = Math.min(1, dt * 1.8);
+    const tx = this.moveX * this.moveSpeed, tz = this.moveZ * this.moveSpeed, k = Math.min(1, dt * (this.tug ? 4 : 1.8)); // the line bites: it stops quickly
     this.vx += (tx - this.vx) * k; this.vz += (tz - this.vz) * k;
     const tg = this.alive ? this.tug : null, lim = this.world ? 1440 : 1e9;
     if (tg) { // on the line: the anchor travels (slowly), the funnel fights around it

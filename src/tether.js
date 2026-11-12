@@ -54,7 +54,7 @@ export class Tether {
   }
 
   // c: { left: seconds of line left, rip: may it lunge dangerously now (only while the bus is on its way),
-  //      bus: is there a bus to fear for, bx/bz: the bus relative to the anchor, wall: the funnel's contact radius,
+  //      bus: is there a bus to fear for, bx/bz: the bus relative to the anchor, wall: the funnel's contact radius, near: 0..1 how close it is to the ring,
   //      mercy: the bus has just been hit, is airborne, is boxed in by a satellite or has just set DOROTHY down }
   update(dt, c) {
     this.t += dt; this.stepT += dt; this.ev = null;
@@ -85,10 +85,10 @@ export class Tether {
       if (!this.taught) tier = 1; // the first real lunge comes straight away, and wide of the bus: it is the lesson
       else {
         // the breather between dangerous lunges: it twitches through it, and if there is no time left for a twitch it waits
-        const wait = a.gap * this.k.rest - (this.t - this.lastDanger), sp = TETHER.tiers.restless;
+        const near = c.near || 0, wait = a.gap * this.k.rest * (1 - TETHER.nearGap * near) - (this.t - this.lastDanger), sp = TETHER.tiers.restless;
         if (wait > 0 && wait < sp.windup + sp.lunge + sp.recoil) { this.step = 'rest'; this.stepDur = wait; return; }
         if (wait > 0) return this.twitch();
-        const w1 = a.weights[1] * this.k.fury, w2 = a.weights[2] * this.k.fury, roll = R() * (a.weights[0] + w1 + w2);
+        const f = this.k.fury * (1 + TETHER.nearFury * near), w1 = a.weights[1] * f, w2 = a.weights[2] * f, roll = R() * (a.weights[0] + w1 + w2);
         tier = roll < a.weights[0] ? 0 : roll < a.weights[0] + w1 ? 1 : 2;
       }
     }

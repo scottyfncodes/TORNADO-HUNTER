@@ -139,6 +139,7 @@ export class Mission {
     let mercy = this.mercyT > 0 || r.stun > 0 || r.air > 0;
     if (bus && !mercy) for (const st of this.sats) if (!st.dead && Math.hypot(r.x - st.storm.x, r.z - st.storm.z) < TETHER.satGuard) { mercy = true; break; }
     const c = this.tc || (this.tc = {}); c.left = this.hookT; c.rip = bus; c.bus = bus; c.bx = r.x - s.ax; c.bz = r.z - s.az; c.wall = wall; c.mercy = mercy;
+    c.near = bus ? clamp(1 - (this.ringDist - this.dropR) / TETHER.nearRange, 0, 1) : 0; // it lashes out at whatever gets close
     s.tug = te.update(dt, c);
     if (te.ev && te.tier > 0) this.lungeCue(te.ev, c, wall);
     // the ground it tears up as it goes, at the leading edge of the wall
@@ -287,7 +288,7 @@ export class Mission {
   }
   end(won, reason) {
     if (this.result) return; const s = this.storm, fx = this.G.fx;
-    this.leaveBus(); this.leaveGun(); this.phase = won ? 'won' : 'lost'; this.phaseT = 0; this.cine = null; this.clearHazards(true); fx.hideCable(0); fx.hideRing(); this.line = null; this.surge = null; this.wind = null;
+    this.leaveBus(); this.leaveGun(); this.phase = won ? 'won' : 'lost'; this.phaseT = 0; this.cine = null; this.clearHazards(true); fx.hideCable(0); fx.hideRing(); this.line = null; this.tether = null; s.tug = null; this.surge = null; this.wind = null;
     const lines = [['Storm data', Math.round(this.data)]];
     if (won) {
       const fin = this.pay * this.p.dataMul, hull = Math.round(this.pay * 0.4 * (this.rig.hull / this.rig.hullMax) * this.p.dataMul);
@@ -366,7 +367,7 @@ export class Mission {
       if (Math.random() < dt * 12) { s.seam(b, hk.x, hk.z, _a); fx.flashAt(_a.x, _a.y, _a.z, 9, '#ff3f8e', 0.1); }
       fx.shake(this.view === 'gun' ? 0.6 : 2);
       if (this.phase === 'rip') this.hookT -= dt; else if (this.phase === 'kill' && !(this.cine && this.cine.kind === 'rocket')) this.killT -= dt;
-      if ((this.phase === 'rip' && this.hookT <= 0) || (this.phase === 'kill' && this.killT <= 0)) { this.leaveBus(); this.leaveGun(); this.dorothy.visible = false; this.zoneLatch = false; this.phase = 'chase'; this.phaseT = 0; this.line = null; fx.hideCable(0); this.hp = this.stageMax * FEEL.hookRecover; s.thinTarget = 0.42 + 0.58 * s.bandsLeft / s.bands.length; fx.endSwarm(); this.call('LINE LET GO', 'bad', 1.4); G.audio.lineSnap(); }
+      if ((this.phase === 'rip' && this.hookT <= 0) || (this.phase === 'kill' && this.killT <= 0)) { this.leaveBus(); this.leaveGun(); this.dorothy.visible = false; this.zoneLatch = false; this.phase = 'chase'; this.phaseT = 0; this.line = null; fx.hideCable(0); this.hp = this.stageMax * FEEL.hookRecover; s.thinTarget = 0.42 + 0.58 * s.bandsLeft / s.bands.length; fx.endSwarm(); this.tether = null; s.tug = null; this.call('LINE LET GO', 'bad', 1.4); G.audio.lineSnap(); }
     }
 
     // ---- rig ----

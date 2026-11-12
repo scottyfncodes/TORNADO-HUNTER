@@ -116,7 +116,7 @@ export const TETHER = {
   // the line's 15 seconds in three acts, by seconds of line left. weights: restless, aggressive, violent (a draw each time it
   // rests); rest: the pause after a lunge (s); gap: the least time between two dangerous lunges (s)
   acts: [
-    { from: 10, weights: [0.8, 0.2, 0], rest: [0.45, 1.0], gap: 2.6 },          // learn it: mostly restless, the odd lunge
+    { from: 10, weights: [0.8, 0.2, 0], rest: [0.45, 1.0], gap: 2.0 },          // learn it: mostly restless, the odd lunge
     { from: 5, weights: [0.5, 0.36, 0.14], rest: [0.25, 0.6], gap: 1.5 },       // it means it now
     { from: -1, weights: [0.15, 0.5, 0.35], rest: [0.15, 0.4], gap: 0.6 },       // the line is going: never impossible
   ],
@@ -129,6 +129,8 @@ export const TETHER = {
   safety: 6,           // m: how far outside the wall a lunge is pulled short of a bus that cannot get out of the way
   pullRate: 45,        // m/s: how fast a lunge already coming is pulled short (eased: the funnel never jumps)
   hitPad: 3,           // m outside the funnel's wall the bus is hit
+  nearRange: 60,       // m outside the ring: closer than this and it gets angrier (shorter breathers, more dangerous lunges)
+  nearGap: 0.6, nearFury: 3, // at the ring: the breather is this share shorter, dangerous lunges this much likelier
   mercy: 2.6,          // s after the bus is hit, or DOROTHY is set down, that nothing is aimed its way
   satGuard: 34,        // m: a satellite twister this close to the bus and the main funnel lunges away from it
   shake: [0, 3.5, 6],  // camera shake as a lunge goes, close up (none in calm mode)

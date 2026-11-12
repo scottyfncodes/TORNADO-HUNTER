@@ -33,12 +33,13 @@ async function finale(page, { id, seed, driver, scenario = 'full' }) {
     log.stagger = m.phase === 'stagger' && m.gn.seatId === 'harpoon';
     await until(() => { if (m.phase === 'stagger' && !m.harpoonBusy) m.fireHarpoon(); return m.phase === 'rip'; }, 12, 'the harpoon to land');
     G.fast = 2;
-    log.hooked = { bus: !!m.home && m.rig.def.id === 'bus', tether: !!m.tether, seed: m.tetherSeed, mph: m.stormMph, hookT: m.hookT };
+    log.hooked = { bus: !!m.home && m.rig.def.id === 'bus', tether: !!m.tether, seed: m.tetherSeed, hookT: m.hookT };
     log.radius = m.tether.radius; log.wall = m.dropR - FEEL.dropMargin + TETHER.hitPad;
     // ---- record every step on the line ----
     const orig = m.update.bind(m); let px = s.x - s.ax, pz = s.z - s.az, dropAt = null;
     m.update = (dt, t, axes, input) => {
       const was = m.phase; orig(dt, t, axes, input); const te = m.tether;
+      if (was === 'rip' && log.hooked.mph === undefined && m.phaseT >= 1.5) log.hooked.mph = m.stormMph; // its ground speed once the line has bitten
       if (te && was === 'rip') {
         const ox = s.x - s.ax, oz = s.z - s.az; log.maxOff = Math.max(log.maxOff, Math.hypot(ox, oz)); log.maxStep = Math.max(log.maxStep, Math.hypot(ox - px, oz - pz)); px = ox; pz = oz;
         if (te.ev === 'windup' && te.tier > 0) { log.windups.push({ t: m.time, tier: te.tier, dur: te.stepDur, reach: te.reaches(m.tc) }); if (te.reaches(m.tc)) log.threatened++; }

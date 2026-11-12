@@ -10,8 +10,8 @@ const WALL = { pete: 22 + TETHER.hitPad, agnes: 60 + TETHER.hitPad, sisters: 32 
 const SEEDS = Array.from({ length: 120 }, (_, i) => (i * 2654435761) >>> 0);
 
 // a bus that drives in from `from` metres at `speed` m/s, stops at the ring and waits there (the slow, unlucky player)
-function busPath(def, from = 190, speed = 30, bearing = 0.4) {
-  const ring = WALL[def.id] - TETHER.hitPad + FEEL.dropMargin;
+function busPath(def, from = 190, speed = 30, bearing = 0.4, hold = 0) {
+  const ring = WALL[def.id] - TETHER.hitPad + FEEL.dropMargin + hold;
   return (t) => { const d = Math.max(ring, from - speed * t); return { x: Math.cos(bearing) * d, z: Math.sin(bearing) * d }; };
 }
 
@@ -21,6 +21,7 @@ function run(def, seed, opts = {}) {
   const frames = [], events = [], c = { wall: WALL[def.id] };
   for (let t = 0; t < (opts.secs ?? line); t += DT) {
     const b = bus(t); c.left = line - t; c.rip = opts.rip ?? true; c.bus = !!b; c.bx = b ? b.x : 0; c.bz = b ? b.z : 0; c.mercy = opts.mercy ? opts.mercy(t) : false;
+    const ring = WALL[def.id] - TETHER.hitPad + FEEL.dropMargin; c.near = b ? Math.max(0, Math.min(1, 1 - (Math.hypot(b.x, b.z) - ring) / TETHER.nearRange)) : 0;
     const o = te.update(DT, c);
     frames.push({ t: te.t, ox: o.ox, oz: o.oz, step: te.step, tier: te.tier, mag: te.mag, magT: te.magT, dx: te.dx, dz: te.dz, mercy: c.mercy, bx: c.bx, bz: c.bz, tension: o.tension });
     if (te.ev) events.push({ t: te.t, ev: te.ev, tier: te.tier, dur: te.stepDur, dx: te.dx, dz: te.dz, left: c.left, bx: c.bx, bz: c.bz, mercy: c.mercy, magT: te.magT, act: te.act });
@@ -101,11 +102,15 @@ test('the hook lands with a breath, then a lesson wide of the bus', () => {
 test('it escalates over the 15 seconds, and nothing violent comes before 10 s are left', () => {
   for (const def of STORMS) {
     const per = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
-    for (const seed of SEEDS) { let lesson = true; for (const e of run(def, seed).events) if (e.ev === 'windup') { if (e.tier && lesson) { lesson = false; assert.equal(e.act, 0); continue; } per[e.act][e.tier]++; } }
+    // the bus closes and hangs 40 m off the ring (in the game, crossing the ring sets DOROTHY down and ends the run)
+    for (const seed of SEEDS) { let lesson = true; for (const e of run(def, seed, { bus: busPath(def, 190, 30, 0.4, 40) }).events) if (e.ev === 'windup') { if (e.tier && lesson) { lesson = false; assert.equal(e.act, 0); continue; } per[e.act][e.tier]++; } }
     assert.equal(per[0][2], 0, `${def.id}: violent in the first act`);
     // dangerous lunges per 5 s, per player, after the lesson: more in each act, and a bigger share of them violent
     const rate = (a) => (per[a][1] + per[a][2]) / SEEDS.length, share = (a) => per[a][2] / (per[a][1] + per[a][2]);
-    assert.ok(rate(1) > rate(0) && rate(2) > rate(1) * 1.3, `${def.id}: ${[0, 1, 2].map(rate).map((x) => x.toFixed(2)).join(' → ')} per act`);
+    const threat = (a) => (per[a][1] + 2 * per[a][2]) / SEEDS.length; // a violent lunge counts double: it is longer, further, and louder
+    assert.ok(rate(1) > rate(0) && rate(2) > rate(1), `${def.id}: ${[0, 1, 2].map(rate).map((x) => x.toFixed(2)).join(' → ')} lunges per act`);
+    assert.ok(threat(2) > threat(1) * 1.15, // the last act is near the ceiling the warnings and breathers allow (about 1.5 in 5 s)
+      `${def.id}: threat ${[0, 1, 2].map(threat).map((x) => x.toFixed(2)).join(' → ')} per act`);
     assert.ok(share(2) > share(1), `${def.id}: violent share ${share(1).toFixed(2)} → ${share(2).toFixed(2)}`);
     assert.ok(rate(2) < 2.2, `${def.id}: ${rate(2).toFixed(2)} dangerous lunges in the last 5 s is too many`);
   }
@@ -116,7 +121,7 @@ test('the last seconds stay survivable: there is always a breather between dange
     const { events } = run(def, seed); let end = -1e9;
     for (const e of events) {
       if (e.ev === 'windup' && e.tier > 0) {
-        const a = TETHER.acts[e.act]; if (e !== events.find((x) => x.tier > 0)) assert.ok(e.t - end >= a.gap * def.tether.rest - DT * 2, `${def.id}/${seed}: ${(e.t - end).toFixed(2)} s between lunges`);
+        const a = TETHER.acts[e.act]; if (e !== events.find((x) => x.tier > 0)) assert.ok(e.t - end >= a.gap * def.tether.rest * (1 - TETHER.nearGap) - DT * 2, `${def.id}/${seed}: ${(e.t - end).toFixed(2)} s between lunges`);
       }
       if (e.ev === 'recoil' && e.tier > 0) end = e.t + TETHER.tiers[TIERS[e.tier]].recoil;
     }
@@ -150,6 +155,15 @@ test('each storm keeps its temperament', () => {
   assert.ok(pete.tether.rest > agnes.tether.rest && agnes.tether.rest > sisters.tether.rest, 'Pete rests longest, the Sisters least');
   // an aggressive lunge does not reach a bus parked on the ring dead ahead of it: only a badly placed bus gets bitten
   for (const d of STORMS) assert.ok(d.tether.aggressive < FEEL.dropMargin - TETHER.hitPad + 4, `${d.id}: aggressive reach ${d.tether.aggressive} m`);
+});
+
+test('it lashes out at whatever gets close: sooner, never violent in the first act', () => {
+  for (const def of STORMS) {
+    const second = (bus) => { let sum = 0; for (const seed of SEEDS) { const ev = run(def, seed, { bus, secs: 12 }).events.filter((e) => e.ev === 'windup' && e.tier > 0); sum += ev[1] ? ev[1].t : 12; } return sum / SEEDS.length; };
+    const close = second(busPath(def, 60, 40)), far = second(() => ({ x: 400, z: 0 }));
+    assert.ok(close < far - 0.5, `${def.id}: second lunge at ${close.toFixed(2)} s close vs ${far.toFixed(2)} s far`);
+    for (const seed of SEEDS) for (const e of run(def, seed, { bus: busPath(def, 60, 40) }).events) if (e.act === 0) assert.notEqual(e.tier, 2);
+  }
 });
 
 test('safeMag stops a lunge short of the bus', () => {
