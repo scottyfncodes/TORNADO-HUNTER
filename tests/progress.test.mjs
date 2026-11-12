@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import { migrate, FRESH, save } from '../src/save.js';
 import { grade, better, rankOf, LETTERS } from '../src/grade.js';
 import { dayKey, shiftDay, seedOf, dailyFor, stream, extendStreak, liveStreak, shareText, clock } from '../src/daily.js';
-import { GRADE, STORMS, SETPIECE } from '../src/config.js';
+import { GRADE, STORMS, SETPIECE, POWERLINES } from '../src/config.js';
 
 const V1 = fs.readFileSync(new URL('./fixtures/save-v1.json', import.meta.url), 'utf8');
 
@@ -100,4 +100,11 @@ test('the grain elevator comes in about a third of Daily Storms, and the seed de
   let n = 0; const days = 730; for (let i = 0; i < days; i++) { const d = dailyFor(shiftDay('2026-01-01', i)); if (stream(d.seed, 'setpiece')() < SETPIECE.chance) n++; }
   assert.ok(Math.abs(n / days - SETPIECE.chance) < 0.05, `${n} of ${days} days`);
   const d = dailyFor('2026-11-12'); assert.equal(stream(d.seed, 'setpiece')(), stream(d.seed, 'setpiece')());
+});
+
+test('the power lines come on about a fifth of Daily Storm days, and never on the elevator\'s', () => {
+  let lines = 0, both = 0; const days = 730;
+  for (let i = 0; i < days; i++) { const r = stream(dailyFor(shiftDay('2026-01-01', i)).seed, 'setpiece')(), el = r < SETPIECE.chance, ln = !el && r < SETPIECE.chance + POWERLINES.chance; if (ln) lines++; if (el && ln) both++; }
+  assert.ok(Math.abs(lines / days - POWERLINES.chance) < 0.05, `${lines} of ${days} days`); assert.equal(both, 0);
+  assert.ok(POWERLINES.tele0 >= 1.2 && SETPIECE.tele.every((t) => t >= 1.2), 'every piece has at least 1.2 s of warning');
 });

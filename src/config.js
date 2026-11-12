@@ -157,6 +157,21 @@ export const SETPIECE = {
   give: 0.6,           // boost back for a clean escape, as the debris wall
 };
 
+// ---- the power lines, the second set piece (src/setpiece.js). What is not here is SETPIECE's: when it may come, where it
+// stands, the storm's pass, the creak, the fall, the rubble's 8 s and the 60% back. Never in the same fight as the elevator ----
+export const POWERLINES = {
+  chance: 0.2,         // share of fights that get the power lines instead (one draw decides: elevator under 0.34, lines under 0.54)
+  count: 6,            // poles, falling in sequence down the road ahead of you
+  spacing: 26,         // m between them
+  width: 5,            // m: each pole's strip along the road (its crossarm)
+  lane: 6,             // m of road left clear on the storm's side: the escape line, the same as the elevator's
+  setback: 5,          // m from the road's edge to the poles, on the far side
+  tele0: 1.25,         // s of warning for the first pole; each one after lands as you would reach it at the speed you came in at
+  paceMin: 40, paceMax: 90, // m/s: that speed, kept within this (a pole every 0.29 to 0.65 s; never less warning than the first)
+  dmg: 16, fling: 20,  // a pole landing on you: a piece of debris, not a building
+  rubbleDrag: 0.8,     // share of speed kept driving over a downed pole
+};
+
 // ---- the harpooned storm: restrained, not tamed (src/tether.js). Each storm's own reach is STORMS[].tether ----
 export const TETHER = {
   // one lunge of each kind. Seconds; coil is how far the base digs in the other way first (share of the reach), lean how far

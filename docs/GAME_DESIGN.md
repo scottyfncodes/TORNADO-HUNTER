@@ -1,6 +1,6 @@
 # TORNADO HUNTER: Game Design
 
-*Design of record. Version 2.9: the grain elevator, the first set piece. (2.8: a grade for every fight and the Daily Storm, one storm a day for everyone. 2.7: the first minute measured and re-paced, a drift worth taking, a reason for every seat change, and cinematics you can skip once seen. 2.6: five phases, a crew member and a vehicle for each, DOROTHY driven to the foot of a harpooned storm that fights the line, and weather.) Tuning numbers live in `src/config.js`.*
+*Design of record. Version 2.10: the power lines, the second set piece. (2.9: the grain elevator, the first. 2.8: a grade for every fight and the Daily Storm, one storm a day for everyone. 2.7: the first minute measured and re-paced, a drift worth taking, a reason for every seat change, and cinematics you can skip once seen. 2.6: five phases, a crew member and a vehicle for each, DOROTHY driven to the foot of a harpooned storm that fights the line, and weather.) Tuning numbers live in `src/config.js`.*
 
 ---
 
@@ -290,7 +290,7 @@ The difficulty is what the storm does to you while you hold the zone: the more i
 - **Lightning** tracks you, locks, strikes.
 - **The debris wall** after every rip.
 - **Satellite twisters** (The Sisters), each marked on the ground. A rocket takes one down.
-- **The grain elevator** (below), in about a third of chases.
+- **The grain elevator** (below), in about a third of chases, or **the power lines**, in about a fifth. Never both.
 
 ### The grain elevator
 
@@ -306,7 +306,19 @@ The first set piece: scripted chaos tied to the road. `src/setpiece.js`, tuned b
 | **The payoff** | Through clean, nothing landed on you: 60% of a boost charge back (as the debris wall) and a little data. |
 | **While it is going** | The game does not take the wheel (the automatic swing to the gun waits), GUNS reads NOT NOW, the storm holds its throws, and the hail waits for it. Taking the gun yourself while it is still standing waiting lets it be: it stays where it is, inert. |
 
-`node tests/e2e.mjs` plays it: it creaks and then falls, every piece is marked for at least 1.2 s before it lands, the game never takes the wheel or throws while it falls, a truck on the escape line takes no damage and is paid 60%, and a truck that holds the near lane is hit. It also checks that it cannot come in the finale, a hail core, the debris wall or on the gun, and that the hail waits for it. `tests/progress.test.mjs` checks that it comes on about a third of Daily Storm days.
+### The power lines
+
+The second set piece, on the elevator's code and under the elevator's rules: when it may come, where it stands (300 m down your road, on the far side from the storm), the storm's pass, the escape lane on the storm's side with the field beyond it, the coach line, the held wheel, throws and hail, and 60% of a boost for a clean escape. `POWERLINES` in `src/config.js` holds what differs.
+
+| | |
+|---|---|
+| **When** | About a fifth of fights (20%). One draw decides the set piece: under 0.34 the elevator, under 0.54 the lines, otherwise none. So a fight never has both, and the elevator's Daily Storm days are the days they always were. |
+| **What** | Six poles, 26 m apart, strung with two wires a span, a transformer drum on every other one. Chunky, like the rigs: they have to read at phone size from 150 m. |
+| **The warning** | THE LINES ARE GOING: the poles sway on their wires and the wires arc, blue-white. Then POWER LINES COMING DOWN: every strip is marked in magenta at once, down the whole run, and they fill in sequence as the poles go like dominoes. The first has 1.25 s of warning; each one after lands as you would reach it at the speed you came in at (kept within 40 to 90 m/s: a pole every 0.29 to 0.65 s), so every pole has more warning than the one before, never less than 1.2 s. A wire snaps, with a crack and sparks, when either of its poles is down. |
+| **Why it is not the elevator again** | The elevator is one decision made in a second. The lines are a lane held for three seconds over 130 m, with the storm's suction pulling you toward it: hold the covered lanes and every pole in the run is aimed at you. |
+| **The cost** | A pole landing on you: 16 hull and a throw (a piece of debris, not a building). A downed pole costs 20% of your speed to drive over, never hull. They lie there 8 s. |
+
+`node tests/e2e.mjs` plays both set pieces. The elevator: it creaks and then falls, every piece is marked for at least 1.2 s before it lands, the game never takes the wheel or throws while it falls, a truck on the escape line takes no damage and is paid 60%, and a truck that holds the near lane is hit. It also checks that it cannot come in the finale, a hail core, the debris wall or on the gun, and that the hail waits for it. The power lines get the same checks with six poles, plus: every pole's warning is longer than the last, and over 400 fights' worth of draws the shares come out near a third and a fifth with none in the coached storm. `tests/progress.test.mjs` checks the Daily Storm's days: the elevator on about a third, the lines on about a fifth, never the same day. `node tests/perf.mjs` holds the low tier's frame rate through both.
 
 Every one of these is announced before it lands. Nothing does damage without a telegraph of at least 0.9 seconds.
 
@@ -371,7 +383,10 @@ Upgrades (Data): Winch (the line holds longer), Ordnance (guns hit harder, one m
 | The Daily Storm for a brand-new player | held back until the first storm is beaten (2.8) | the day's storm can be The Sisters |
 | The grain elevator on the gun, or the autodrive dodging it | never (2.9) | the autodrive does not dodge; a set piece is something you drive through, so it only comes at the wheel and the game will not take the wheel while it falls |
 | Rubble that hurts | not built (2.9) | the pieces lying across the road cost speed, never hull: the damage is for being under one as it lands, which you were warned about |
-| Power lines falling in sequence | postponed (2.9) | one set piece, played and tuned, before the next |
+| Power lines falling in sequence | built (2.10) | postponed in 2.9 for one set piece at a time; the person asked for it next |
+| Poles on alternating sides, a slalom between them | not built (2.10) | at 140 mph a gate every 26 m is 0.4 s: nobody weaves that on glass. One lane, held, is the test |
+| Live wires on the ground that hurt | not built (2.10) | damage with no clear edge. The wires snap and arc for show; only a pole landing on you costs hull |
+| Two set pieces in one fight | never (2.10) | one draw decides which. A fight has room for one piece of scripted chaos |
 
 ---
 
@@ -385,7 +400,7 @@ src/combat.js    the mission: storm AI, wreckage, the two seats, DOROTHY, harpoo
 src/tether.js    the harpooned storm fighting the line: lunges, telegraphs, escalation, fairness (pure maths, tested under node)
 src/gunner.js    the turret: aim, hits and criticals, rockets and lock-on, autodrive, the weapon you see
 src/weather.js   hail cores and ambient lightning
-src/setpiece.js  the grain elevator: placed on the road ahead, the storm's pass, the telegraph, the fall, the escape line
+src/setpiece.js  the set pieces (grain elevator, power lines): placed on the road ahead, the storm's pass, the telegraph, the fall, the escape line
 src/rig.js       the truck: model, handling, drift, boost
 src/tornado.js   funnel, bands, debris, skirt (shaders)
 src/fx.js        pooled wreckage, tracers, sparks, debris, rockets, explosions, telegraphs, cable
@@ -413,7 +428,7 @@ src/main.js      boot, the three cameras (chase, gun, cinematic) and the swing b
 | **Now** | People play it on real iPhones and answer the questions below |
 | **Feel pass** | Tune aim sensitivity and assist, wreckage rate, rocket count and the hail from that play; haptics; recorded audio where synthesis falls short |
 | **Second technology** | COLD FRONT and CORKSCREW as swaps for the DOROTHY slot |
-| **Set pieces** | Built: the grain elevator (2.9). Next: power lines falling in sequence, a bridge |
+| **Set pieces** | Built: the grain elevator (2.9), the power lines (2.10). Next: a bridge, with the river valley |
 | **The wingman** | The crew vehicles fight on their own between their phases: a second gunner, covering fire |
 | **New country** | A river valley with bridges; a town-edge region |
 
