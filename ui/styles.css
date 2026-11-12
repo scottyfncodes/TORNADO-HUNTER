@@ -159,6 +159,8 @@ b, .num { font-variant-numeric: tabular-nums; }
 .hud-storm.stagger { border-color: var(--accent); }
 .hud-storm.stagger .stab .lbl { color: var(--accent); }
 .hud-storm.stagger .stab-bar i { background: var(--accent); }
+/* a harpooned storm lunging: the plate flashes the storm's magenta; the number stays its ground speed, the anchor's creep */
+.hud-storm.lunge { border-color: var(--accent); } .hud-storm.lunge .storm-mph, .hud-storm.lunge .storm-mph b { color: var(--accent); }
 .hud-right { right: calc(var(--s3) + var(--sr)); top: calc(var(--s3) + var(--st)); display: flex; gap: var(--s2); align-items: stretch; }
 .hud-data { padding: var(--s1) var(--s3); display: flex; align-items: center; gap: var(--s2); min-height: 48px; }
 .hud-data b { color: var(--signal); font-size: var(--t-lg); min-width: 3ch; text-align: right; }

@@ -3,17 +3,18 @@
 //   2 GUNS      inside the danger zone you take the turret (first person, src/gunner.js) and the truck drives itself:
 //               machine gun on the band's seam, rockets for anything armoured, and whatever you do not shoot down lands on you
 //   3 HARPOON   back at the wheel: hook the weakened storm and it is dragged to a crawl
-//   4 DOROTHY   the hooked storm is pinned. You drive Doc's bus right to its foot, DOROTHY is set down there, and you
+//   4 DOROTHY   the hooked storm is restrained, not tamed: it fights the line (src/tether.js). You drive Doc's bus right to its foot, past its lunges, DOROTHY is set down there, and you
 //               deploy the sensors: they are sucked up the funnel (the camera rides with them, the trucks drive themselves)
 //   5 KILL SHOT the turret again: lock the launcher on the critical core, one rocket
 // Storms with more than one band shed the outer ones to gunfire first (a debris wall, a bolt, chase again).
 import * as THREE from '../vendor/three.module.min.js';
-import { FEEL, PALETTE, CREW, BUS } from './config.js';
+import { FEEL, PALETTE, CREW, BUS, TETHER } from './config.js';
 import { Rig } from './rig.js';
 import { box, cyl, merge } from './geo.js';
 import { Storm } from './tornado.js';
 import { Convoy } from './convoy.js';
 import { Gunner, TARGET } from './gunner.js';
+import { Tether } from './tether.js';
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3();
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -48,7 +49,7 @@ export class Mission {
     this.convoy = new Convoy(G.scene, w, G.fx.dustTex); this.convoy.place(this.rig);
     this.phase = 'chase'; this.time = 0; this.phaseT = 0; this.stage = 0; this.data = 0; this.dataShown = 0; this.result = null;
     this.view = 'drive'; this.zoneLatch = false; this.autoHold = 0; this.inZone = false; this.killT = 0; this.cine = null; this.podBusy = false; this.harpoonBusy = false; this.reload = 0; this.shotgunCd = 0; this.mgT = 0; this.firing = 0;
-    this.staggerT = 0; this.hookT = 0; this.home = null; this.busUnit = null; this.dropped = false; this.line = null; this.surge = null; this.wind = null; this.windWait = 0; this.hz = []; this.sats = []; this.attackT = 3.2;
+    this.staggerT = 0; this.hookT = 0; this.tether = null; this.tetherSeed = 0; this.mercyT = 0; this.taughtLunge = false; this.home = null; this.busUnit = null; this.dropped = false; this.line = null; this.surge = null; this.wind = null; this.windWait = 0; this.hz = []; this.sats = []; this.attackT = 3.2;
     this.dist = 330; this.tension = null; this.bark = null; this.barkT = 0; this.callout = null; this.calloutT = 0; this.far = 0;
     this.stats = { snaps: 0, shot: 0, rockets: 0, direct: 0, hits: 0, close: 0, dorothys: 0, fired: 0, crits: 0, sats: 0 };
     this.gn = new Gunner(this, up);
@@ -61,6 +62,8 @@ export class Mission {
   call(text, tone = 'warn', dur = 1.5) { this.callout = { text, tone }; this.calloutT = dur; }
   earn(n) { this.data += n * this.p.dataMul; }
   get dropR() { return this.storm.radiusAt(0.02) + FEEL.dropMargin; } // the ring at the funnel's foot where DOROTHY is set down
+  // the ring is drawn round the line's anchor, not the funnel: you drive to a place, not after every lunge
+  get ringDist() { return Math.hypot(this.rig.x - this.storm.ax, this.rig.z - this.storm.az); }
   get shield() { return this.phase === 'stagger' || this.phase === 'rip' ? 0 : this.hp / this.stageMax; }
   get stability() { return this.shield; }
   get stormMph() { return Math.round(Math.hypot(this.storm.vx, this.storm.vz) * FEEL.mph); }
@@ -107,7 +110,7 @@ export class Mission {
     this.harpoonBusy = true; G.audio.harpoon(); G.fx.shake(3);
     G.fx.launchHarpoon(this.seatMuzzle(_a), (out) => s.seam(b, u.x, u.z, out), () => {
       this.harpoonBusy = false; if (this.phase !== 'stagger' || s.band !== b) { G.fx.hideCable(0); return; }
-      this.phase = 'rip'; this.phaseT = 0; this.hookT = this.p.hook; this.line = { u: u === this.rig ? null : u }; G.audio.twang(); G.audio.stagger(); G.fx.hitStop(FEEL.hitStopHarpoon); G.fx.shake(10); G.fx.slowMo(0.35); this.call('HOOKED: IT IS PINNED', 'good', 1.4);
+      this.phase = 'rip'; this.phaseT = 0; this.hookT = this.p.hook; this.line = { u: u === this.rig ? null : u }; this.restrainStart(); G.audio.twang(); G.audio.stagger(); G.fx.hitStop(FEEL.hitStopHarpoon); G.fx.shake(10); G.fx.slowMo(0.35); this.call('HOOKED', 'good', 1.4);
       s.seam(b, u.x, u.z, _a); G.fx.energy.play(_a.x, _a.y, _a.z, 26, 26, { fps: 48 }); G.fx.ringAt(_a.x, _a.y, _a.z, 60, PALETTE.primary, 0.5); this.leaveGun(); this.takeBus();
     });
     return true;
@@ -126,11 +129,40 @@ export class Mission {
     if (!this.home) return; const bus = this.rig, u = this.busUnit; u.x = bus.x; u.z = bus.z; u.heading = bus.heading; u.speed = Math.hypot(bus.vx, bus.vz); u.driven = false;
     this.home.hull = Math.min(this.home.hull, bus.hull); bus.dispose(); this.rig = this.home; this.home = null; this.busUnit = null;
   }
+  // the line bites, and the storm is restrained, not tamed: from here it fights the line (src/tether.js). G.tetherSeed replays one.
+  restrainStart() { const G = this.G; this.tetherSeed = (G.tetherSeed ?? Math.random() * 4294967296) >>> 0; this.tether = new Tether(this.def.tether, this.tetherSeed); this.mercyT = 0; this.taughtLunge = false; }
+  // each step on the line: the tether decides what the funnel does about it, and the encounter answers (marks, sound, shake)
+  restrain(dt) {
+    const G = this.G, fx = G.fx, s = this.storm, te = this.tether, r = this.rig, bus = this.phase === 'rip' && !!this.home && !this.result, wall = this.dropR - FEEL.dropMargin + TETHER.hitPad;
+    this.mercyT = Math.max(0, this.mercyT - dt);
+    // no lunge is aimed at a bus that has just been hit, is in the air, or has a satellite twister on it
+    let mercy = this.mercyT > 0 || r.stun > 0 || r.air > 0;
+    if (bus && !mercy) for (const st of this.sats) if (!st.dead && Math.hypot(r.x - st.storm.x, r.z - st.storm.z) < TETHER.satGuard) { mercy = true; break; }
+    const c = this.tc || (this.tc = {}); c.left = this.hookT; c.rip = bus; c.bus = bus; c.bx = r.x - s.ax; c.bz = r.z - s.az; c.wall = wall; c.mercy = mercy;
+    s.tug = te.update(dt, c);
+    if (te.ev && te.tier > 0) this.lungeCue(te.ev, c, wall);
+    // the ground it tears up as it goes, at the leading edge of the wall
+    if (te.dangerous && te.step !== 'windup' && Math.random() < dt * (te.tier === 2 ? 26 : 14)) { const px = s.x + te.dx * (wall - 4) + rand(-9, 9), pz = s.z + te.dz * (wall - 4) + rand(-9, 9); fx.puff(px, fx.ground(px, pz) + 2, pz, 12 + te.tier * 3, '#6e5637', 0.9, 5); }
+  }
+  // a dangerous lunge, as the player gets it: winding up (it leans, the line groans, the ground is marked if it can reach you), going, hauled back
+  lungeCue(ev, c, wall) {
+    const G = this.G, fx = G.fx, s = this.storm, te = this.tether, violent = te.tier === 2;
+    if (ev === 'windup') {
+      const threat = te.reaches(c), tx = te.targetX(), tz = te.targetZ(); G.audio.strain(te.stepDur, violent ? 1 : 0.55);
+      if (violent || threat) fx.telegraph(s.ax + tx, s.az + tz, wall, te.landsIn, null, { track: (e) => { e.x = s.ax + tx; e.z = s.az + tz; } }); // where the wall will be: the storm's own magenta
+      if (!this.taughtLunge) { this.taughtLunge = true; this.call('IT IS FIGHTING THE LINE', 'warn', 1.8); }
+      else if (threat) this.call('IT IS LUNGING', 'bad', Math.min(1.6, te.landsIn));
+    } else if (ev === 'lunge') {
+      G.audio.gust(); if (violent) G.audio.boom(0.35);
+      const k = clamp(1 - (this.dist - wall) / 140, 0, 1); if (k > 0) fx.shake(TETHER.shake[te.tier] * k);
+    } else if (ev === 'recoil') G.audio.twang();
+  }
   // at the foot of the funnel: she goes over the tailgate
   dropDorothy() {
-    const G = this.G, r = this.rig, s = this.storm, d = this.dist || 1; this.dropped = true;
+    const G = this.G, r = this.rig, s = this.storm, d = this.ringDist || 1; this.dropped = true;
     r.vx *= 0.35; r.vz *= 0.35; r.speed *= 0.35; r.immune = Math.max(r.immune, 1.2); // brakes on as she goes: a second to turn away before the wall can hurt you
-    const x = r.x + (s.x - r.x) / d * 6, z = r.z + (s.z - r.z) / d * 6; this.dorothy.position.set(x, G.world.heightAt(x, z), z); this.dorothy.rotation.y = Math.random() * 6; this.dorothy.visible = true;
+    // set down on the ring, toward its anchor, and nothing is aimed at the bus while she goes over the tailgate
+    const x = r.x + (s.ax - r.x) / d * 6, z = r.z + (s.az - r.z) / d * 6; this.mercyT = TETHER.mercy; this.dorothy.position.set(x, G.world.heightAt(x, z), z); this.dorothy.rotation.y = Math.random() * 6; this.dorothy.visible = true;
     G.audio.thump(); G.audio.ready_(); G.fx.shake(6); G.fx.hitStop(0.05); G.fx.puff(x, this.dorothy.position.y + 1, z, 10, '#cdb27a', 0.8); G.fx.ringAt(x, this.dorothy.position.y + 2, z, 16, PALETTE.signal, 0.45); this.call('DOROTHY IS DOWN: DEPLOY', 'good', 1.6);
   }
   // the sensors go: up the funnel, and the camera with them. The bus is Doc's again and gets out of there. Then the seat is Sparks'.
@@ -171,7 +203,7 @@ export class Mission {
     const ph = this.phase, d = this.dist;
     if (ph === 'chase') return { label: 'GUNS', ready: true, fill: 0, hint: d > this.zone ? 'AUTODRIVE' : 'IN RANGE' };
     if (ph === 'stagger') return { label: 'HARPOON', ready: !this.harpoonBusy, danger: true, fill: 0, hint: `${Math.ceil(this.staggerT)} s` };
-    if (ph === 'rip') return this.dropped ? { label: 'DEPLOY', ready: true, danger: true, fill: 0, hint: `${Math.ceil(this.hookT)} s` } : { label: 'DOROTHY', ready: false, fill: 0, hint: `${Math.max(0, Math.round((d - this.dropR) / 5) * 5)} M` };
+    if (ph === 'rip') return this.dropped ? { label: 'DEPLOY', ready: true, danger: true, fill: 0, hint: `${Math.ceil(this.hookT)} s` } : { label: 'DOROTHY', ready: false, fill: 0, hint: `${Math.max(0, Math.round((this.ringDist - this.dropR) / 5) * 5)} M` };
     if (ph === 'dorothy') return { label: 'DOROTHY', ready: false, fill: 0, hint: 'AWAY' };
     if (ph === 'kill') return { label: 'KILL SHOT', ready: this.reload <= 0, danger: true, fill: 0, hint: `${Math.ceil(this.killT)} s` };
     return { label: 'GUNS', ready: false, fill: 0, hint: '' };
@@ -194,7 +226,7 @@ export class Mission {
     }
   }
   hurt(n, key = 'hurt') {
-    if (!this.rig.damage(n)) return false; this.stats.hits++;
+    if (!this.rig.damage(n)) return false; this.stats.hits++; this.mercyT = TETHER.mercy;
     const fx = this.G.fx; fx.hitStop(FEEL.hitStopHull); fx.shake(FEEL.shakeHull); fx.flash(0.5, PALETTE.accent); this.G.audio.hurt(); if (Math.random() < 0.6) this.say(key);
     fx.puff(this.rig.x, this.rig.y + 2, this.rig.z, 9, '#2a2f30', 0.8);
     if (this.rig.hull <= 0) this.end(false, 'wrecked'); return true;
@@ -286,7 +318,10 @@ export class Mission {
     if (d > 170) sp = Math.min(sp, FEEL.rigTopSpeedField * this.rig.def.speed * 0.94);
     if (this.phase === 'stagger') sp *= 0.7; else if (this.phase === 'rip' || this.phase === 'dorothy' || this.phase === 'kill') sp *= FEEL.hookedSpeed; // pinned on the line else if (this.phase === 'surge') sp = this.def.run * 1.35;
     if (over) sp = this.phase === 'won' ? 0 : sp * 0.5;
-    s.moveX = a.hx; s.moveZ = a.hz; s.moveSpeed = sp; s.thrash = this.phase === 'stagger' ? 10 : this.phase === 'rip' || this.phase === 'kill' ? 3 : 0; s.update(dt, t);
+    s.moveX = a.hx; s.moveZ = a.hz; s.moveSpeed = sp; s.thrash = this.phase === 'stagger' ? 10 : 0;
+    // on the line the anchor creeps at that speed (what the HUD reads) and the tether does the fighting on top of it
+    if (this.tether && this.line && s.alive && (this.phase === 'rip' || this.phase === 'dorothy' || this.phase === 'kill')) this.restrain(dt); else { s.tug = null; this.tether = null; }
+    s.update(dt, t);
   }
 
   update(dt, t, axes, input) {
@@ -380,13 +415,14 @@ export class Mission {
 
     // ---- contact with the funnel, satellites, the surge ----
     if (!over && this.phase === 'rip' && this.home && s.alive) { // DOROTHY's run: the ring is the place, the wall behind it is too far
-      if (!this.dropped && dist < this.dropR + 4) this.dropDorothy();
-      if (dist < this.dropR - FEEL.dropMargin + 3 && r.immune <= 0) { if (this.hurt(FEEL.dmgTooClose) && r.hull > 0) { r.fling(nx, nz, 30, 5); this.call('TOO CLOSE', 'bad', 0.8); } }
+      if (!this.dropped && this.ringDist < this.dropR + 4) this.dropDorothy();
+      if (dist < this.dropR - FEEL.dropMargin + TETHER.hitPad && r.immune <= 0) { if (this.hurt(FEEL.dmgTooClose) && r.hull > 0) { r.fling(nx, nz, 30, 5); this.call('TOO CLOSE', 'bad', 0.8); } }
     }
     if (!over && s.alive && this.phase === 'chase' && dist < s.killRadius && r.immune <= 0) { if (this.hurt(FEEL.dmgCore) && r.hull > 0) { r.fling(nx, nz, 55); this.call('TOO CLOSE', 'bad'); } }
+    // satellites circle the anchor (the same point as the funnel until it is harpooned): on the line they do not lunge with her
     for (let i = this.sats.length - 1; i >= 0; i--) {
       const st = this.sats[i], m = st.storm; st.hit -= dt;
-      if (!st.dead) { st.ang += s.spin * 0.55 * dt; const rad = 78 + 38 * Math.sin(t * 0.55 + st.i * 2.1); m.spin = s.spin; m.place(s.x + Math.cos(st.ang) * rad, s.z + Math.sin(st.ang) * rad); if (!over && st.hit <= 0 && Math.hypot(r.x - m.x, r.z - m.z) < 7.5) { st.hit = 1.5; if (this.hurt(FEEL.dmgSatellite) && r.hull > 0) { const d = Math.hypot(r.x - m.x, r.z - m.z) || 1; r.fling((r.x - m.x) / d, (r.z - m.z) / d, 24, 6); } } }
+      if (!st.dead) { st.ang += s.spin * 0.55 * dt; const rad = 78 + 38 * Math.sin(t * 0.55 + st.i * 2.1); m.spin = s.spin; m.place(s.ax + Math.cos(st.ang) * rad, s.az + Math.sin(st.ang) * rad); if (!over && st.hit <= 0 && Math.hypot(r.x - m.x, r.z - m.z) < 7.5) { st.hit = 1.5; if (this.hurt(FEEL.dmgSatellite) && r.hull > 0) { const d = Math.hypot(r.x - m.x, r.z - m.z) || 1; r.fling((r.x - m.x) / d, (r.z - m.z) / d, 24, 6); } } }
       m.update(dt, t); st.mark.visible = !st.dead; st.mark.position.set(m.x, m.groundY + 0.5, m.z); if (st.dead && !m.visible) { m.dispose(); G.scene.remove(st.mark); this.sats.splice(i, 1); }
     }
     if (this.phase === 'surge' && this.surge) {
@@ -406,12 +442,12 @@ export class Mission {
     // the band's ring is the shield: wheat segments that go out as it breaks, green when the core is bare, magenta when hooked
     // and it changes colour as it fails: wheat, amber under two thirds, flickering magenta under one third. The funnel thins with it.
     const frac = this.hp / this.stageMax;
-    if (b) { b.exposed = true; b.strain = this.phase === 'chase' || this.phase === 'surge' ? frac : this.phase === 'dorothy' || this.phase === 'kill' ? 0.3 : 1; b.tone = this.phase === 'kill' || this.phase === 'dorothy' ? PALETTE.accent : this.phase === 'rip' ? PALETTE.primary : this.phase === 'stagger' ? PALETTE.signal : s.hit > 0.75 ? '#fff1c2' : frac > 0.66 ? PALETTE.wheat : frac > 0.33 ? PALETTE.primary : Math.sin(t * 22) > -0.3 ? PALETTE.accent : PALETTE.primary; }
+    if (b) { b.exposed = true; b.strain = this.phase === 'chase' || this.phase === 'surge' ? frac : this.phase === 'dorothy' || this.phase === 'kill' ? 0.3 : 1; b.tone = this.phase === 'kill' || this.phase === 'dorothy' ? PALETTE.accent : this.phase === 'rip' ? (this.tether && this.tether.dangerous && Math.sin(t * 24) > 0 ? PALETTE.accent : PALETTE.primary) : this.phase === 'stagger' ? PALETTE.signal : s.hit > 0.75 ? '#fff1c2' : frac > 0.66 ? PALETTE.wheat : frac > 0.33 ? PALETTE.primary : Math.sin(t * 22) > -0.3 ? PALETTE.accent : PALETTE.primary; }
     if (this.phase === 'chase' && s.alive) s.thinTarget = 0.42 + 0.58 * (s.bandsLeft - 0.45 * (1 - frac)) / s.bands.length;
-    if (this.line && b && (this.phase === 'rip' || this.phase === 'dorothy' || this.phase === 'kill')) { const hk = this.line.u; if (hk) this.convoy.muzzle(hk, _a); else r.muzzle(_a); s.seam(b, (hk || r).x, (hk || r).z, _b); fx.setCable(0, _a, _b, (this.phase === 'rip' ? this.hookT : this.killT) < 2.5 && this.phase !== 'dorothy' ? 1.2 : 0.7, t); }
+    if (this.line && b && (this.phase === 'rip' || this.phase === 'dorothy' || this.phase === 'kill')) { const hk = this.line.u; if (hk) this.convoy.muzzle(hk, _a); else r.muzzle(_a); s.seam(b, (hk || r).x, (hk || r).z, _b); const p = this.tether ? this.tether.out.tension : 0.7; fx.setCable(0, _a, _b, (this.phase === 'rip' ? this.hookT : this.killT) < 2.5 && this.phase !== 'dorothy' && p >= 0 ? Math.max(1.2, p) : p, t); } // taut as it winds up, slack as it is hauled back
     else if (!this.harpoonBusy) fx.hideCable(0);
     // the danger zone: amber while you are outside it, green once the guns can reach
-    if (!this.surge) { if (!over && this.phase === 'rip' && this.home && !this.dropped) fx.setRing(s.x, s.z, this.dropR, 1, 0.6 + 0.3 * Math.sin(t * 7), PALETTE.signal, 4); else if (!over && this.phase === 'chase' && dist < this.zone * 2.6) fx.setRing(s.x, s.z, this.zone, 1, this.inZone ? 0.28 : 0.45 + 0.2 * Math.sin(t * 5), this.inZone ? PALETTE.signal : PALETTE.primary, this.inZone ? 3 : 5); else fx.hideRing(); }
+    if (!this.surge) { if (!over && this.phase === 'rip' && this.home && !this.dropped) fx.setRing(s.ax, s.az, this.dropR, 1, 0.6 + 0.3 * Math.sin(t * 7), PALETTE.signal, 4); else if (!over && this.phase === 'chase' && dist < this.zone * 2.6) fx.setRing(s.x, s.z, this.zone, 1, this.inZone ? 0.28 : 0.45 + 0.2 * Math.sin(t * 5), this.inZone ? PALETTE.signal : PALETTE.primary, this.inZone ? 3 : 5); else fx.hideRing(); }
     this.convoy.update(dt, t, this.home || r, s);
     w.update(dt, s);
     for (const e of w.events) { if (e.kind === 'rip') { fx.puff(e.x, e.y + 3, e.z, e.big ? 22 : 9, '#b89a58', 1.2); if (e.cow && dist < 420 && this.time - (this.mooT || -9) > 2.2) { this.mooT = this.time; G.audio.moo(); } if (e.big && dist < 500) { G.audio.smash(); fx.shake(3); } } else if (e.kind === 'land' && Math.hypot(e.x - r.x, e.z - r.z) < 120) fx.puff(e.x, e.y + 1, e.z, 7); }
@@ -450,7 +486,7 @@ export class Mission {
       return 'IN RANGE: TAP GUNS TO TAKE THE TURRET';
     }
     if (ph === 'stagger') return this.gn.locked ? 'LOCKED: FIRE THE HARPOON' : "WINCH'S TRUCK: AIM AT THE GLOW";
-    if (ph === 'rip') return this.dropped ? 'DOROTHY IS DOWN: DEPLOY' : `DOC'S BUS: DRIVE TO ITS FOOT: ${Math.max(0, Math.round((d - this.dropR) / 5) * 5)} M`;
+    if (ph === 'rip') return this.dropped ? 'DOROTHY IS DOWN: DEPLOY' : `DOC'S BUS: DRIVE TO ITS FOOT: ${Math.max(0, Math.round((this.ringDist - this.dropR) / 5) * 5)} M`;
     if (ph === 'dorothy') return 'DOROTHY IS READING THE CORE';
     if (ph === 'kill') return this.gn.locked ? 'LOCKED: FIRE THE KILL SHOT' : "SPARKS' TRUCK: AIM AT THE GLOW";
     if (ph === 'surge' && this.surge) { const gap = Math.hypot(this.rig.x - this.surge.x, this.rig.z - this.surge.z) - this.surge.r; return gap > 0 ? `OUTRUN THE WALL: ${Math.round(gap / 5) * 5} M BEHIND YOU` : 'OUTRUN THE WALL'; }

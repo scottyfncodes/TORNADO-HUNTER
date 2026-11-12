@@ -51,7 +51,7 @@ export const FEEL = {
   shotgunReload: 4,         // s
   staggerSeconds: 7,          // s the core stays exposed after the shield breaks: land the harpoon
   hookSeconds: 15,            // s the line holds a hooked storm: time to drive Doc's bus to its foot and set DOROTHY down
-  hookedSpeed: 0.04,          // share of its speed a hooked storm keeps: pinned, near enough
+  hookedSpeed: 0.04,          // share of its speed a hooked storm keeps: the anchor creeps at this, the lunges are on top (TETHER)
   dropMargin: 17,             // m outside the funnel's wall where DOROTHY is set down
   dmgTooClose: 12,            // driving the bus into the wall
   hookRecover: 0.5,           // share of shield it rebuilds if the line lets go before the kill shot
@@ -104,6 +104,36 @@ export const FEEL = {
   soundSpeed: 343,            // m/s: thunder arrives when it should
 };
 
+// ---- the harpooned storm: restrained, not tamed (src/tether.js). Each storm's own reach is STORMS[].tether ----
+export const TETHER = {
+  // one lunge of each kind. Seconds; coil is how far the base digs in the other way first (share of the reach), lean how far
+  // the top leans into it (the funnel's lean units), writhe how much harder the funnel twists, tension how hard the line pulls (>1 straining)
+  tiers: {
+    restless:   { windup: 0.22, lunge: 0.3, hold: 0, recoil: 0.55, coil: 0.15, lean: 0.06, writhe: 0.15, tension: 0.55 },
+    aggressive: { windup: 0.95, lunge: 0.34, hold: 0.12, recoil: 1.05, coil: 0.14, lean: 0.26, writhe: 0.7, tension: 1.25 },
+    violent:    { windup: 1.45, lunge: 0.42, hold: 0.28, recoil: 1.4, coil: 0.2, lean: 0.45, writhe: 1.25, tension: 1.5 },
+  },
+  // the line's 15 seconds in three acts, by seconds of line left. weights: restless, aggressive, violent (a draw each time it
+  // rests); rest: the pause after a lunge (s); gap: the least time between two dangerous lunges (s)
+  acts: [
+    { from: 10, weights: [0.8, 0.2, 0], rest: [0.45, 1.0], gap: 2.6 },          // learn it: mostly restless, the odd lunge
+    { from: 5, weights: [0.5, 0.36, 0.14], rest: [0.25, 0.6], gap: 1.5 },       // it means it now
+    { from: -1, weights: [0.15, 0.5, 0.35], rest: [0.15, 0.4], gap: 0.6 },       // the line is going: never impossible
+  ],
+  opening: 1.4,        // s of shivering only once the hook lands, then the first lunge, wide of the bus
+  agitRate: 0.8,       // 1/s: how fast the shiver and the strain build between acts
+  jitterMax: 1.6,      // the restless shiver grows to this many times its size by the last act
+  shiverLean: 0.03, writheAgit: 0.3,
+  tensionRest: 0.35, tensionAgit: 0.35, tensionFray: 0.9, slack: 0.55,
+  reach: 12,           // m outside the wall: a lunge that lands this close to the bus is a threat (marked on the ground, called out)
+  safety: 6,           // m: how far outside the wall a lunge is pulled short of a bus that cannot get out of the way
+  pullRate: 45,        // m/s: how fast a lunge already coming is pulled short (eased: the funnel never jumps)
+  hitPad: 3,           // m outside the funnel's wall the bus is hit
+  mercy: 2.6,          // s after the bus is hit, or DOROTHY is set down, that nothing is aimed its way
+  satGuard: 34,        // m: a satellite twister this close to the bus and the main funnel lunges away from it
+  shake: [0, 3.5, 6],  // camera shake as a lunge goes, close up (none in calm mode)
+};
+
 export const WORLD = { scale: 3, size: 3072, yScale: 1.6, roadSpacing: 512, roadOffset: 256, roadHalf: 6.5, highwayHalf: 9 };
 
 // Super tornadoes: a temperament each, not a bigger number. `run` is ground speed in m/s.
@@ -116,6 +146,8 @@ export const STORMS = [
     r0: 11, r1: 74, height: 310, suckR: 115, suck: 12, killR: 15, dorothyRange: 135,
     attackEvery: [2.8, 2.2], attacks: [['debris', 'debris', 'crosswind', 'big'], ['debris', 'big', 'lightning', 'crosswind', 'debris']],
     volley: [1, 2], unlocks: null,
+    // harpooned: the teacher. Small lunges, long warnings, long breathers. Metres of reach, and multipliers on TETHER
+    tether: { jitter: 1.5, restless: 3, aggressive: 9, violent: 17, windup: 1.2, rest: 1.35, fury: 0.7 },
   },
   {
     id: 'agnes', name: 'Big Agnes', ef: 3, type: 'Wedge', bands: 3, stageHp: 300, zone: 240,
@@ -125,6 +157,7 @@ export const STORMS = [
     r0: 30, r1: 150, height: 340, suckR: 200, suck: 17, killR: 36, dorothyRange: 175,
     attackEvery: [2.7, 2.3, 1.9], attacks: [['field', 'big', 'debris'], ['field', 'big', 'lightning', 'field'], ['field', 'field', 'big', 'lightning']],
     volley: [2, 2, 3], unlocks: 'bulldog',
+    tether: { jitter: 2.5, restless: 5, aggressive: 14, violent: 30, windup: 1.05, rest: 1.1, fury: 0.95 }, // a lot of storm moving a long way
   },
   {
     id: 'sisters', name: 'The Sisters', ef: 4, type: 'Multi-vortex', bands: 3, stageHp: 240, zone: 215,
@@ -134,6 +167,7 @@ export const STORMS = [
     r0: 16, r1: 96, height: 320, suckR: 130, suck: 13, killR: 20, dorothyRange: 145,
     attackEvery: [2.9, 2.5, 2.1], attacks: [['debris', 'lightning', 'crosswind'], ['debris', 'big', 'lightning', 'crosswind'], ['field', 'big', 'lightning', 'debris']],
     volley: [2, 2, 3], satellites: [3, 4, 5], unlocks: 'whippet',
+    tether: { jitter: 2, restless: 4, aggressive: 12, violent: 24, windup: 1, rest: 0.95, fury: 1.1 }, // the angriest; her satellites keep circling the anchor
   },
 ];
 
