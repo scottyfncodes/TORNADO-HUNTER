@@ -121,7 +121,8 @@ export class Tether {
     if (this.step === 'windup') { // it gathers itself: the base digs in the other way, the top leans and twists toward where it is going, the line tightens
       const e = ease(u); s = -sp.coil * Math.sin(u * Math.PI / 2); l = L * e; w = W * e; p += (P - p) * e;
     } else if (this.step === 'lunge') { // it snaps out; the top whips back over the base
-      s = -sp.coil + (1 + sp.coil) * ease(u); // still at the end of the windup, so it goes without a jump in speed either l = L + (-0.45 * L - L) * ease(u); w = W; p = P;
+      // it starts from rest at the end of the windup, so it goes without a jump in speed either
+      s = -sp.coil + (1 + sp.coil) * ease(u); l = L + (-0.45 * L - L) * ease(u); w = W; p = P;
     } else if (this.step === 'hold') { // at the end of the line, taut
       s = 1; l = -0.45 * L + 0.25 * L * ease(u); w = W; p = P + 0.1 * Math.sin(u * 40);
     } else if (this.step === 'recoil') { // the line hauls it back past the anchor, and it settles
