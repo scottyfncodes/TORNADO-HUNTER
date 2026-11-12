@@ -14,7 +14,7 @@ An arcade chase-combat game in two seats (third person at the wheel, first perso
 
 Whenever the game changes your seat for you, the line under the storm says why, and how to take the wheel back. The DOROTHY ride and the kill-shot camera play in full the first time; after that a tap skips them.
 
-In about a third of chases a grain elevator stands beside the road ahead. The storm passes it, it creaks, and as you arrive it comes down across the road in three pieces, the ground under each marked in magenta: keep to the lane it does not reach, or take the field.
+In about a third of chases a grain elevator stands beside the road ahead. The storm passes it, it creaks, and as you arrive it comes down across the road in three pieces, the ground under each marked in magenta: keep to the lane it does not reach, or take the field. In about a fifth it is a run of six power poles instead, going down like dominoes ahead of you: the same lane, held for three seconds. Never both in one fight.
 
 Hail cores and lightning come and go over a fight: stones on the lens, a slick road, the distance closing in, and thunder that arrives when the distance says it should.
 
@@ -41,6 +41,7 @@ node --test tests/*.test.mjs   # the tether, the handling, saves (a real v1 save
 node tests/e2e.mjs             # the finale on every storm; seat reasons; skipping cinematics; the Daily Storm; a v1 save loaded cold
 node tests/firstminute.mjs     # the first 60 s of every storm, every beat timed, every callout checked (AUDIT=1 for the timeline)
 node tests/layout.mjs          # 44 px targets, 12 px text, no overlaps at 667x375, 844x390, 390x844 (SHOTS=dir to save them)
+node tests/perf.mjs            # the low-detail tier holds its frame rate through both set pieces
 node tests/driving.probe.mjs   # what the handling numbers mean: corners, drifts, the cost of a tree
 node tests/fullfight.mjs       # whole fights by the test aimer: what the grade sees (GRADE is calibrated from it)
 ```
@@ -55,7 +56,7 @@ node tests/fullfight.mjs       # whole fights by the test aimer: what the grade 
 | `src/grade.js` | The grade for a fight, and the one line on what would have raised it |
 | `src/daily.js` | The Daily Storm: the day in Denver, its seed and streams, the streak, the share text |
 | `src/save.js` | The save (`tornado-hunter/v1`), and `migrate()` for every older one |
-| `src/setpiece.js` | The grain elevator: placed on the road ahead, the storm's pass, the telegraph, the fall, the escape line |
+| `src/setpiece.js` | The set pieces, the grain elevator and the power lines: placed on the road ahead, the storm's pass, the telegraph, the fall, the escape line |
 | `src/tether.js` | The harpooned storm fighting the line: lunges, telegraphs, escalation, fairness |
 | `tests/` | The tether and the handling under Node; the finale, the first minute and the layout in a browser |
 | `src/gunner.js` | The turret: first-person aim, hits and criticals, rockets and lock-on, autodrive, the weapon you see |
