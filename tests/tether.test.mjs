@@ -85,7 +85,18 @@ test('the windup reads: the line goes taut (>1) before a dangerous lunge, and sl
     const { frames } = run(def, SEEDS[3]);
     const lungeIdx = frames.findIndex((f, i) => i && f.step === 'lunge' && f.tier > 0 && frames[i - 1].step === 'windup');
     assert.ok(lungeIdx > 0); assert.ok(frames[lungeIdx - 1].tension > 1, `tension at the end of the windup ${frames[lungeIdx - 1].tension}`);
+    const going = frames.slice(lungeIdx).filter((f, i, a) => f.tier > 0 && (f.step === 'lunge' || f.step === 'hold') && a.slice(0, i + 1).every((g) => g.step === 'lunge' || g.step === 'hold'));
+    assert.ok(going.length > 10 && going.every((f) => f.tension > 1), 'the line is not taut through the lunge itself');
     const recoil = frames.slice(lungeIdx).filter((f) => f.step === 'recoil' && f.tier > 0); assert.ok(recoil.some((f) => f.tension < 0), 'no slack in the recoil');
+  }
+});
+
+test('lean and writhe carry through the lunge: the top whips, it does not go limp', () => {
+  for (const def of STORMS) {
+    const te = new Tether(def.tether, SEEDS[5]), c = { left: 15, rip: true, bus: true, bx: 120, bz: 30, wall: WALL[def.id], mercy: false, near: 0 };
+    let prev = null, worst = 0, sawLunge = false;
+    for (let t = 0; t < 12; t += DT) { const o = te.update(DT, c); const lean = Math.hypot(o.lx, o.lz); if (te.tier > 0 && te.step === 'lunge') { sawLunge = true; assert.ok(o.writhe >= te.spec.writhe, 'writhe dropped during the lunge'); } if (prev !== null) worst = Math.max(worst, Math.abs(lean - prev)); prev = lean; }
+    assert.ok(sawLunge); assert.ok(worst < 0.06, `${def.id}: lean jumped ${worst.toFixed(3)} in one frame`);
   }
 });
 
