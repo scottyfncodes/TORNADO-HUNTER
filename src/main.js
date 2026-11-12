@@ -13,6 +13,8 @@ import { Mission } from './combat.js';
 import { Hud } from './hud.js';
 import { Weather } from './weather.js';
 import { UI } from './ui.js';
+import { grade, better } from './grade.js';
+import { dayKey, dailyFor, extendStreak } from './daily.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('view');
@@ -55,18 +57,27 @@ G.makeRig = () => {
 G.kickFov = () => { G.fovKick = 10; };
 G.onScreen = (name) => { G.state = name === 'results' ? 'over' : name; input.setEnabled(false); input.setMode('drive'); document.body.classList.remove('playing'); G.hud.show(false); };
 G.startMission = (def, opts = {}) => {
-  if (G.mission) G.mission.dispose(); if (G.attract) { G.attract.dispose(); G.attract = null; }
+  abandon(); if (G.mission) G.mission.dispose(); if (G.attract) { G.attract.dispose(); G.attract = null; }
   G.world.reset(); G.fx.reset(); G.lastOpts = { def, opts }; input.setMode('drive'); view.name = 'drive'; view.t = 1;
   G.mission = new Mission(G, def, save.s.loadout, save.s.upgrades, opts); G.weather.begin(G.mission);
   G.ui.hide(); G.hud.show(true); G.hud.begin(G.mission); G.state = 'playing'; G.paused = false; G.banked = false; G.resultShown = false;
   document.body.classList.add('playing'); input.clear(); input.setEnabled(true); camState.init = false; audio.suspend(false); document.activeElement && document.activeElement.blur && document.activeElement.blur();
   if (!save.s.seenCoach) { save.s.seenCoach = true; save.write(); }
 };
-G.restart = () => { if (G.lastOpts) G.startMission(G.lastOpts.def, G.lastOpts.opts); };
-G.toHQ = () => { if (G.mission) { G.mission.dispose(); G.mission = null; } G.paused = false; spawnAttract(); G.ui.show('hq'); };
+// a scored Daily Storm left before the end (quit, or restarted) is spent: one scored attempt a day, and it does not extend the streak
+function abandon() { const m = G.mission; if (m && m.daily === 'scored' && !m.result) { save.s.daily.result = { abandoned: true, won: false, time: m.time, storm: m.def.name }; save.write(); } }
+// a restart of the scored Daily Storm is practice: the attempt has been used
+G.restart = () => { if (!G.lastOpts) return; abandon(); const o = G.lastOpts.opts; G.startMission(G.lastOpts.def, o.daily === 'scored' ? { ...o, daily: 'practice' } : o); };
+G.toHQ = () => { abandon(); if (G.mission) { G.mission.dispose(); G.mission = null; } G.paused = false; spawnAttract(); G.ui.show('hq'); };
+// the Daily Storm: today's storm in Denver, the same for everyone. 'scored' spends today's one scored attempt, 'practice' is free
+G.startDaily = (mode, day = dayKey()) => {
+  const D = dailyFor(day), d = save.s.daily; if (d.day !== day) { save.s.daily = { day, used: false, result: null }; }
+  if (mode === 'scored') { if (save.s.daily.used) mode = 'practice'; else { save.s.daily.used = true; save.write(); } }
+  G.tetherSeed = undefined; G.startMission(D.storm, { daily: mode, seed: D.seed, day });
+};
 G.setPaused = (on) => {
   if (G.state !== 'playing' && !G.paused) return; G.paused = on; input.setEnabled(!on); document.body.classList.toggle('playing', !on);
-  if (on) { G.ui.screens.pause.hidden = false; if (!input.usingTouch) $('p-resume').focus({ preventScroll: true }); } else { G.ui.screens.pause.hidden = true; input.clear(); document.activeElement && document.activeElement.blur && document.activeElement.blur(); }
+  if (on) { G.ui.syncPause(G.mission); G.ui.screens.pause.hidden = false; if (!input.usingTouch) $('p-resume').focus({ preventScroll: true }); } else { G.ui.screens.pause.hidden = true; input.clear(); document.activeElement && document.activeElement.blur && document.activeElement.blur(); }
   audio.suspend(on);
 };
 function spawnAttract() {
@@ -77,6 +88,9 @@ function spawnAttract() {
 
 function bank(res) {
   const s = save.s, first = res.won && !s.kills[res.storm.id]; let unlock = '';
+  // the grade, the best one per storm, and today's Daily Storm
+  const g = grade(res); res.grade = g; res.bestBefore = s.grades[res.storm.id] || null; if (g.letter) s.grades[res.storm.id] = res.bestBefore ? better(g.letter, res.bestBefore) : g.letter;
+  if (res.daily === 'scored') { s.daily.result = { won: res.won, letter: g.letter, time: res.time, storm: res.storm.name, rows: res.rows }; s.streak = extendStreak(s.streak, s.daily.day); }
   s.data += res.data; s.bands += res.stats.snaps;
   if (res.won) {
     s.kills[res.storm.id] = (s.kills[res.storm.id] || 0) + 1; if (!s.best[res.storm.id] || res.time < s.best[res.storm.id]) s.best[res.storm.id] = Math.round(res.time);

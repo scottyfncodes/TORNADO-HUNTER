@@ -1,6 +1,6 @@
 # TORNADO HUNTER: Game Design
 
-*Design of record. Version 2.7: the first minute measured and re-paced, a drift worth taking, a reason for every seat change, and cinematics you can skip once seen. (2.6: five phases, a crew member and a vehicle for each, DOROTHY driven to the foot of a harpooned storm that fights the line, and weather.) Tuning numbers live in `src/config.js`.*
+*Design of record. Version 2.8: a grade for every fight and the Daily Storm, one storm a day for everyone. (2.7: the first minute measured and re-paced, a drift worth taking, a reason for every seat change, and cinematics you can skip once seen. 2.6: five phases, a crew member and a vehicle for each, DOROTHY driven to the foot of a harpooned storm that fights the line, and weather.) Tuning numbers live in `src/config.js`.*
 
 ---
 
@@ -127,6 +127,34 @@ What was late or stacked, and what changed (2.7):
 - **The near miss was luck**, and against a sharp gunner it barely happened, because everything was shot down. The ranging shot makes it the first lesson, at about 4.4 s.
 - **Callouts overwrote each other**: BAND SHOT OFF was replaced by GET CLEAR in the same frame, every band of every fight; a CROSSWIND warning was cut 0.01 s later by GUNS UP, and the crosswind then hit a truck the player had just been taken off. Callouts are ranked and queued (section 5); the automatic swing to the gun waits out a called crosswind or a piece about to land on you; the storm holds its throw for 0.8 s after any seat change.
 - **Not fixed, on purpose: the first band for a sloppy gunner** (27 to 32 s, against 19 to 23). It is aim: the same storm falls in 15 to 20 s to a gunner on the seam. Shortening the band would make it fall in 13 to a good one, and the fight lengths in this section were left as they were. Whether a real thumb lands nearer the sharp or the sloppy line is question 4.
+
+### After the fight: the grade
+
+The results screen reads the fight back in five numbers, the ones a grade is made of, and gives it a letter. Destroying the storm earns one; a wreck does not.
+
+| Part | Weight | Full marks | Nothing |
+|---|---|---|---|
+| Time | 35% | at par: Pete 40 s, Agnes 72 s, the Sisters 75 s (about 10% over a gunner who never misses) | 2.2 times par |
+| Hull left | 25% | all of it | none |
+| Accuracy | 15% | 85% of turret rounds on something you can hurt | 30% |
+| Critical hits | 15% | Pete 170, Agnes 360, the Sisters 275 | none |
+| Near misses | 10% | 8 | none |
+
+S from 90, A from 75, B from 60, C from 45, D below. The best letter per storm is kept, and the screen says NEW BEST when you beat it. Under the letter, one line says what would have raised it, in your own units, choosing the change that is the smallest share of what that part still had to give: *2 crits short of A*, *9 s faster for A*, *14 more hull for A*. When no one thing can do it, the two biggest levers together: *30 more hull and 7 s faster for S*. Doing exactly what the line says does reach the letter: `tests/progress.test.mjs` checks it across 216 fights.
+
+Calibrated by `node tests/fullfight.mjs`, whole fights played by the test aimer: one that never misses the seam grades A, and S with a few near misses and little damage taken; one that lags the target grades B to D.
+
+### The Daily Storm
+
+One storm a day, the same for everyone. The day is the date in America/Denver; its seed picks the storm and seeds a stream for each kind of decision the fight makes: the jukes, the attacks (what is thrown, how wide, how often), the hail, the lightning, the line (the tether's seed). Each stream is drawn only at its own events, so the sequence is the same whatever your frame rate, rig or calm setting; the hail and the lightning have separate streams because calm mode spaces the lightning out. Your rig, crew and upgrades are your own.
+
+- **One scored attempt a day.** Starting it spends it. Restarting it from the pause menu (it reads *Restart as practice*) or quitting (*Quit: run is spent*) ends it; only one played to the end, won or wrecked, counts toward the streak.
+- **Unlimited practice** of the same storm after that, marked PRACTICE on the storm plate (DAILY for the scored run).
+- **Share** puts a spoiler-free result on the system share sheet, or the clipboard where there is none: the storm, the grade and the time, and a row of squares per phase. 🚚 a square per band at the wheel (green no hull lost, amber some, magenta 25 or more), 🎯 a square per band on the gun (accuracy 75% and over, 45%, under), 🪝 a square per harpoon window (magenta a miss), 📡 per DOROTHY run (amber if the bus was hit, magenta if the line ran out), 🚀 per kill-shot window (green in the first half). No route, no seed, no link.
+- **The streak** on the title counts consecutive Denver days with a scored run played to the end. It holds through the next day until that day is played, and breaks after a day missed.
+- **Nothing leaves the device.** The result, the best grades and the streak live in the save; Share hands text to the player and nothing else.
+
+The Daily Storm opens on the title once the first storm has been beaten, so nobody's first fight is The Sisters.
 
 ---
 
@@ -320,6 +348,10 @@ Upgrades (Data): Winch (the line holds longer), Ordnance (guns hit harder, one m
 | BAND CRACKING and BAND FAILING as headline callouts | demoted to chatter (2.7) | they lost the channel to every threat; the crack you hear, the ring and the bar carry them |
 | A random first attack | replaced by the ranging shot (2.7) | measured: the first wreckage could take 23 or 41 seconds when the dice rolled lightning and crosswind |
 | `driftGrip` | removed (2.7) | a tuning number nothing read |
+| The results screen's data breakdown (storm data, storm destroyed, hull intact) | folded into one line (2.8) | the screen now reads the fight back; the data is one total under it |
+| A grade for a wreck | not given (2.8) | a letter has to be earned; the wreck keeps its advice line |
+| Leaderboards, accounts, sending a daily result anywhere | not built (2.8) | nothing leaves the device. The share text is the leaderboard |
+| The Daily Storm for a brand-new player | held back until the first storm is beaten (2.8) | the day's storm can be The Sisters |
 
 ---
 
@@ -340,13 +372,16 @@ src/convoy.js    the camper truck and the bus
 src/world.js     terrain, ground texture, roads, towns, props
 src/sky.js       sky dome, wall cloud, rain, light
 src/audio.js     synthesised engine, wind, guns, explosions
-src/hud.js       in-mission HUD     src/ui.js   title, headquarters, results
+src/hud.js       in-mission HUD     src/ui.js   title, headquarters, results, the Daily Storm, Share
+src/grade.js     the letter for a fight and the line that would have raised it (pure)
+src/daily.js     the Daily Storm: the Denver day, its seed and streams, the streak, the share text (pure)
+src/save.js      the save, and migrate() for every older one
 src/main.js      boot, the three cameras (chase, gun, cinematic) and the swing between them, frame loop, resolution governor
 ```
 
-**Tests.** `node --test tests/*.test.mjs`: the tether's movement and the truck's handling, under Node. `node tests/e2e.mjs`: the finale on every storm, the seat-change reasons and the cinematics, in a browser. `node tests/firstminute.mjs`: the first minute of every storm, played by a scripted player at two gunning skills, every beat timed and every callout checked for being read (`AUDIT=1` prints the timeline). `node tests/layout.mjs`: the interface bar at the three sizes (`SHOTS=<folder>` saves screenshots). `node tests/driving.probe.mjs` prints the handling numbers.
+**Tests.** `node --test tests/*.test.mjs`: the tether's movement, the truck's handling, saves (a real version 1 save), grades and the Daily Storm, under Node. `node tests/e2e.mjs`: the finale on every storm, the seat-change reasons, the cinematics, the Daily Storm (one scored attempt, the same fight at two frame rates, Share) and a version 1 save loaded cold, in a browser. `node tests/fullfight.mjs`: whole fights by the test aimer at two skills, read the way the results screen reads them. `node tests/firstminute.mjs`: the first minute of every storm, played by a scripted player at two gunning skills, every beat timed and every callout checked for being read (`AUDIT=1` prints the timeline). `node tests/layout.mjs`: the interface bar at the three sizes (`SHOTS=<folder>` saves screenshots). `node tests/driving.probe.mjs` prints the handling numbers.
 
-**Saves.** Same key and shape as version 1 (`tornado-hunter/v1`). Data, kills, owned rigs, upgrades and crew carry over. The `winch` and `cable` upgrade levels keep their value and now mean "the line holds longer" and "ordnance" (guns hit harder, one more rocket in the rack per level).
+**Saves.** Same key and shape as version 1 (`tornado-hunter/v1`). Data, kills, owned rigs, upgrades and crew carry over. The `winch` and `cable` upgrade levels keep their value and now mean "the line holds longer" and "ordnance" (guns hit harder, one more rocket in the rack per level). Fields are only ever added: `seen` (2.7, the cinematics watched), `grades`, `daily` and `streak` (2.8). `migrate()` in `src/save.js` fills in whatever an older save lacks and turns anything unreadable into a fresh start; `tests/fixtures/save-v1.json` is a real version 1 save, loaded by the unit tests and cold in the browser.
 
 ---
 
@@ -370,4 +405,4 @@ src/main.js      boot, the three cameras (chase, gun, cinematic) and the swing b
 3. Could you tell what was about to hit you in time to do something about it?
 4. On the gun, could you hold the seam with a thumb? Did you ever take the wheel back on purpose, and did being put on the gun ever feel like having it taken away? (A scripted gunner on the seam sheds the first band in 15 to 20 s, a sloppy one in 27 to 32: which one is a person?)
 5. Harpoon, DOROTHY, lock, kill shot: did that finale feel like the best moment of the fight? Was losing control during the DOROTHY shot welcome or annoying?
-6. Did you start the next storm without being asked?
+6. Did you start the next storm without being asked? Did the line under the grade make you try again? Did you come back for tomorrow's storm?

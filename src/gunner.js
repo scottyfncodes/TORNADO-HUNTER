@@ -221,6 +221,7 @@ export class Gunner {
 
   shoot(assist) {
     const m = this.m, G = this.G, fx = G.fx, snd = m.gun.sound, every = m.gun.every, sp = snd === 'minigun' ? 0.011 : snd === 'cannon' ? 0.002 : 0.005;
+    m.stats.rounds++; m.rec.rounds[m.stage] = (m.rec.rounds[m.stage] || 0) + 1; // every round, for accuracy
     this.dir(_d); _d.x += (Math.random() - 0.5) * sp; _d.y += (Math.random() - 0.5) * sp; _d.z += (Math.random() - 0.5) * sp; _d.normalize();
     const h = this.trace(_o, _d, assist, this.hit); this.muzzlePoint(_m);
     if (!h.kind && !this.farPoint(_o, _d, h.point)) h.point.copy(_o).addScaledVector(_d, 420);
@@ -228,7 +229,7 @@ export class Gunner {
     this.recoil = 1; this.kick += snd === 'cannon' ? 0.012 : 0.0045; this.flashT = 0.045; if (snd === 'cannon') fx.shake(2);
     const far = h.kind ? h.t : _o.distanceTo(h.point), k = Math.max(1, far * 0.028), P = h.point;
     if (!h.kind) { if (far < 400 && Math.random() < 0.5) fx.puff(P.x, P.y + 0.4, P.z, 1.5 * k, '#b89a58', 0.4, 2); return; }
-    const crit = h.crit, mul = crit ? FEEL.gunCrit : 1; m.stats.fired++;
+    const crit = h.crit, mul = crit ? FEEL.gunCrit : 1; m.stats.fired++; m.rec.hits[m.stage] = (m.rec.hits[m.stage] || 0) + 1;
     if (h.kind === 'haz') {
       const z = h.ref, hz = z.h, T = TARGET[hz.kind]; z.hp -= m.p.mgDps * every * mul; hz.hitFlash = 1; hz.dmg = clamp(1 - z.hp / z.max, 0, 1);
       fx.flashAt(P.x, P.y, P.z, (crit ? 3.4 : 2.2) * k, crit ? '#fff1c4' : '#ffd27a', 0.07); fx.sparks(P.x, P.y, P.z, crit ? 5 : 2, k, 14, crit ? '#fff1c4' : '#ffd27a');

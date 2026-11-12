@@ -8,13 +8,14 @@
 //   5 KILL SHOT the turret again: lock the launcher on the critical core, one rocket
 // Storms with more than one band shed the outer ones to gunfire first (a debris wall, a bolt, chase again).
 import * as THREE from '../vendor/three.module.min.js';
-import { FEEL, PALETTE, CREW, BUS, TETHER } from './config.js';
+import { FEEL, PALETTE, CREW, BUS, TETHER, GRADE } from './config.js';
 import { Rig } from './rig.js';
 import { box, cyl, merge } from './geo.js';
 import { Storm } from './tornado.js';
 import { Convoy } from './convoy.js';
 import { Gunner, TARGET } from './gunner.js';
 import { Tether } from './tether.js';
+import { stream } from './daily.js';
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3();
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -31,7 +32,9 @@ const SMALL = ['cow', 'bale', 'cow', 'door', 'cow', 'sign'], BIG = ['car', 'trac
 
 export class Mission {
   constructor(G, def, loadout, upgrades, opts = {}) {
-    this.G = G; this.def = def; this.coach = !!opts.coach; this.ef = def.ef + (opts.rematch || 0); this.rematch = opts.rematch || 0;
+    this.G = G; this.def = def; this.coach = !!opts.coach; this.daily = opts.daily || null; this.seed = opts.seed ?? null; // daily: 'scored' or 'practice'
+    // the decisions that make a fight this fight, each from its own stream: seeded (the Daily Storm) the same for everyone
+    const S = (name) => (this.seed === null ? Math.random : stream(this.seed, name)); this.rj = S('juke'); this.ra = S('attack'); this.rt = S('tether'); this.ef = def.ef + (opts.rematch || 0); this.rematch = opts.rematch || 0;
     const has = (id) => loadout.crew.includes(id), up = upgrades;
     this.crew = loadout.crew.map((id) => CREW.find((c) => c.id === id));
     this.p = {
@@ -42,7 +45,7 @@ export class Mission {
     this.zone = def.zone; this.pay = def.pay; this.stageMax = def.stageHp * (1 + this.rematch * 0.3); this.hp = this.stageMax;
     const w = G.world, [rx, rz, hd] = STARTS[def.id] || STARTS.pete, fx = Math.sin(hd), fz = Math.cos(hd), lead = def.lead || FEEL.startLead;
     this.storm = new Storm(G.scene, G.sky.uniforms, def, w, { low: !!G.low }); this.storm.place(rx + fx * lead + fz * 40, rz + fz * lead - fx * 40);
-    this.ai = { hx: fx, hz: fz, jukeT: rand(3.5, 5), pending: null, edgeCd: 0 };
+    this.ai = { hx: fx, hz: fz, jukeT: this.jr(3.5, 5), pending: null, edgeCd: 0 };
     this.rig = G.makeRig(); const gun = this.rig.def.gun, gk = (has('june') ? 1.3 : 1); this.gun = gun;
     Object.assign(this.p, { mgRange: FEEL.mgRange * gun.range * gk, mgDps: FEEL.mgDebrisDps * gun.dps * gk, gunStorm: FEEL.gunStormDps * gun.dps * gk * (1 + up.cable * 0.1) });
     this.rig.place(rx, rz, hd, w); this.rig.vx = fx * 40; this.rig.vz = fz * 40; this.rig.speed = 40;
@@ -52,13 +55,17 @@ export class Mission {
     this.staggerT = 0; this.hookT = 0; this.tether = null; this.tetherSeed = 0; this.mercyT = 0; this.taughtLunge = false; this.home = null; this.busUnit = null; this.dropped = false; this.line = null; this.surge = null; this.wind = null; this.windWait = 0; this.hz = []; this.sats = []; this.attackT = 3.2;
     this.dist = lead; this.tension = null; this.bark = null; this.barkT = 0; this.callout = null; this.calloutT = 0; this.calloutUp = 0; this.callQ = []; this.far = 0;
     this.seatT = -9; this.attacks = 0; this.lastAttack = ''; this.seatWhy = ''; this.seatNote = null; this.skipped = false;
-    this.stats = { snaps: 0, shot: 0, rockets: 0, direct: 0, hits: 0, close: 0, dorothys: 0, fired: 0, crits: 0, sats: 0 };
+    this.stats = { snaps: 0, shot: 0, rockets: 0, direct: 0, hits: 0, close: 0, dorothys: 0, fired: 0, rounds: 0, crits: 0, sats: 0 }; // fired: turret rounds that hit something, rounds: all of them
+    // how each phase went, for the share text: hull lost at the wheel and the turret's rounds per band, each window of the finale
+    this.rec = { wheel: [], rounds: [], hits: [], harpoon: [], dorothy: [], kill: [], busHits: 0 };
     this.gn = new Gunner(this, up);
     this.dorothy = new THREE.Mesh(DOROTHY_GEO, new THREE.MeshLambertMaterial({ vertexColors: true })); this.dorothy.scale.setScalar(1.5); this.dorothy.visible = false; G.scene.add(this.dorothy);
     this.say('start'); this.spawnSats();
   }
   dispose() { this.leaveBus(); this.G.scene.remove(this.dorothy); this.dorothy.material.dispose(); this.gn.dispose(); this.storm.dispose(); this.convoy.dispose(); for (const s of this.sats) { s.storm.dispose(); this.G.scene.remove(s.mark); } this.rig.dispose(); this.G.fx.reset(); }
 
+  jr(a, b) { return a + this.rj() * (b - a); } // a juke draw
+  ar(a, b) { return a + this.ra() * (b - a); } // an attack draw
   say(key, who) { const c = who || this.crew[(Math.random() * this.crew.length) | 0]; if (!c) return; this.bark = { name: c.name, text: c.barks[key] }; this.barkT = 3.4; }
   // one callout at a time, and everything that matters gets read. pri: 4 a turn in the fight (BAND SHOT OFF, WEAKENED: they
   // clear the sky), 3 a threat, 2 a beat, 1 chatter (BOOM, CLOSE CALL, the band cracking: the sound and the bar carry it). Nothing is replaced before it has been up FEEL.calloutRead unless by something more urgent, and a beat that
@@ -139,7 +146,7 @@ export class Mission {
     this.harpoonBusy = true; G.audio.harpoon(); G.fx.shake(3);
     G.fx.launchHarpoon(this.seatMuzzle(_a), (out) => s.seam(b, u.x, u.z, out), () => {
       this.harpoonBusy = false; if (this.phase !== 'stagger' || s.band !== b) { G.fx.hideCable(0); return; }
-      this.phase = 'rip'; this.phaseT = 0; this.hookT = this.p.hook; this.line = { u: u === this.rig ? null : u }; this.restrainStart(); G.audio.twang(); G.audio.stagger(); G.fx.hitStop(FEEL.hitStopHarpoon); G.fx.shake(10); G.fx.slowMo(0.35); this.call('HOOKED', 'good', 1.4);
+      this.rec.harpoon.push('g'); this.phase = 'rip'; this.phaseT = 0; this.hookT = this.p.hook; this.line = { u: u === this.rig ? null : u }; this.restrainStart(); G.audio.twang(); G.audio.stagger(); G.fx.hitStop(FEEL.hitStopHarpoon); G.fx.shake(10); G.fx.slowMo(0.35); this.call('HOOKED', 'good', 1.4);
       s.seam(b, u.x, u.z, _a); G.fx.energy.play(_a.x, _a.y, _a.z, 26, 26, { fps: 48 }); G.fx.ringAt(_a.x, _a.y, _a.z, 60, PALETTE.primary, 0.5); this.leaveGun(); this.takeBus();
     });
     return true;
@@ -150,7 +157,7 @@ export class Mission {
     const G = this.G, u = this.convoy.unit('dorothy'); if (this.home || !u) return;
     const bus = new Rig(G.scene, BUS, G.sky.envMap, { hull: 1, boost: 1, recharge: 1, glow: null, ghost: true });
     bus.place(u.x, u.z, u.heading, G.world); bus.vx = Math.sin(u.heading) * u.speed; bus.vz = Math.cos(u.heading) * u.speed; bus.speed = u.speed; bus.hullMax = this.rig.hullMax; bus.hull = this.rig.hull; bus.gripMul = this.rig.gripMul;
-    this.home = this.rig; this.rig = bus; this.busUnit = u; u.driven = true; this.dropped = false; this.dorothy.visible = false;
+    this.home = this.rig; this.rig = bus; this.busUnit = u; u.driven = true; this.rec.busHits = 0; this.dropped = false; this.dorothy.visible = false;
     const c = CREW.find((x) => x.id === u.crew); this.bark = { name: c.name, text: c.barks.seat }; this.barkT = 3; this.note("HOOKED: DOC'S BUS, YOU DRIVE");
   }
   // hand the bus back to Doc where it stands, and you are back in your own rig
@@ -159,7 +166,7 @@ export class Mission {
     this.home.hull = Math.min(this.home.hull, bus.hull); bus.dispose(); this.rig = this.home; this.home = null; this.busUnit = null;
   }
   // the line bites, and the storm is restrained, not tamed: from here it fights the line (src/tether.js). G.tetherSeed replays one.
-  restrainStart() { const G = this.G; this.tetherSeed = (G.tetherSeed ?? Math.random() * 4294967296) >>> 0; this.tether = new Tether(this.def.tether, this.tetherSeed); this.mercyT = 0; this.taughtLunge = false; }
+  restrainStart() { const G = this.G; this.tetherSeed = (G.tetherSeed ?? this.rt() * 4294967296) >>> 0; this.tether = new Tether(this.def.tether, this.tetherSeed); this.mercyT = 0; this.taughtLunge = false; }
   // each step on the line: the tether decides what the funnel does about it, and the encounter answers (marks, sound, shake)
   restrain(dt) {
     const G = this.G, fx = G.fx, s = this.storm, te = this.tether, r = this.rig, bus = this.phase === 'rip' && !!this.home && !this.result, wall = this.dropR - FEEL.dropMargin + TETHER.hitPad;
@@ -198,7 +205,7 @@ export class Mission {
   // the sensors go: up the funnel, and the camera with them. The bus is Doc's again and gets out of there. Then the seat is Sparks'.
   sendDorothy() {
     const G = this.G, s = this.storm; if (this.phase !== 'rip' || this.result || !this.dropped) return false;
-    _a.copy(this.dorothy.position); _a.y += 3; this.leaveBus(); const r = this.rig;
+    _a.copy(this.dorothy.position); _a.y += 3; this.rec.dorothy.push(this.rec.busHits ? 'y' : 'g'); this.leaveBus(); const r = this.rig;
     this.phase = 'dorothy'; this.phaseT = 0; this.stats.dorothys++; G.audio.probeLaunch(); this.clearHazards(true); r.immune = Math.max(r.immune, FEEL.dorothySeconds + 0.6);
     this.cine = { kind: 'pod', pos: G.fx.swarmCenter, at: this.time }; this.call('DOROTHY IS FLYING', 'good', 1.6);
     G.fx.flashAt(_a.x, _a.y, _a.z, 12, PALETTE.signal, 0.3); G.fx.launchSwarm(_a, s, FEEL.dorothySeconds, () => {
@@ -213,7 +220,7 @@ export class Mission {
   killShot() {
     const G = this.G, r = this.rig; if (this.phase !== 'kill' || this.reload > 0 || this.result) return false;
     if (this.dist > FEEL.rocketRange) { this.call('OUT OF RANGE', 'warn', 0.7); return false; }
-    this.reload = FEEL.rocketReload; G.audio.rocket(); G.fx.shake(4);
+    this.reload = FEEL.rocketReload; G.audio.rocket(); G.fx.shake(4); this.rec.kill.push(this.killT >= this.p.kill / 2 ? 'g' : 'y');
     this.seatMuzzle(_a); G.fx.flashAt(_a.x, _a.y, _a.z, 7, '#ffb14a', 0.12); G.fx.puff(_a.x, _a.y, _a.z, 5, '#e9e2cc', 0.5, 2);
     const rk = G.fx.rocket(_a.clone(), (out) => this.aimPoint(out), FEEL.rocketSpeed * 0.7, (pt) => { this.cine = null; this.sawCine('kill'); this.skipped = false; this.rocketHit(pt); });
     if (rk) { this.cine = { kind: 'rocket', pos: rk.p, at: this.time }; G.fx.slowMo(0.5); r.immune = Math.max(r.immune, 1.5); }
@@ -257,6 +264,7 @@ export class Mission {
   }
   hurt(n, key = 'hurt') {
     if (!this.rig.damage(n)) return false; this.stats.hits++; this.mercyT = TETHER.mercy;
+    if (this.home) this.rec.busHits++; else if ((this.phase === 'chase' || this.phase === 'surge') && this.view === 'drive') this.rec.wheel[this.stage] = (this.rec.wheel[this.stage] || 0) + n;
     const fx = this.G.fx; fx.hitStop(FEEL.hitStopHull); fx.shake(FEEL.shakeHull); fx.flash(0.5, PALETTE.accent); this.G.audio.hurt(); if (Math.random() < 0.6) this.say(key);
     fx.puff(this.rig.x, this.rig.y + 2, this.rig.z, 9, '#2a2f30', 0.8);
     if (this.rig.hull <= 0) this.end(false, 'wrecked'); return true;
@@ -292,16 +300,16 @@ export class Mission {
   clearHazards(all) { for (const z of this.hz) if (z.state !== 'gone' && (all || z.state === 'fly')) this.dropHazard(z, 'land'); this.hz.length = 0; this.G.fx.clearTelegraphs(); }
   attack() {
     const stage = Math.min(this.stage, this.def.attacks.length - 1), list = this.def.attacks[stage], THROWS = ['debris', 'big', 'field'];
-    const G = this.G, fx = G.fx, r = this.rig, pick = (a) => a[(Math.random() * a.length) | 0];
+    const G = this.G, fx = G.fx, r = this.rig, pick = (a) => a[(this.ra() * a.length) | 0], rand = (a, b) => this.ar(a, b);
     // its first throw of the fight is a ranging shot: one piece, a truck's width wide. Then never two attacks in a row
     // that throw nothing (lightning, crosswind), so the wreckage keeps coming.
     let kind = this.attacks === 0 ? 'ranging' : pick(list);
     if (kind !== 'ranging' && !THROWS.includes(kind) && !THROWS.includes(this.lastAttack) && this.lastAttack) kind = pick(list.filter((k) => THROWS.includes(k)));
     this.attacks++; this.lastAttack = kind === 'ranging' ? 'debris' : kind;
-    if (kind === 'ranging') { const side = Math.random() < 0.5 ? 1 : -1; this.throwAt(pick(SMALL), 1.0, side * FEEL.rangingWide, 0, true); G.audio.whistle(1.3); }
+    if (kind === 'ranging') { const side = this.ra() < 0.5 ? 1 : -1; this.throwAt(pick(SMALL), 1.0, side * FEEL.rangingWide, 0, true); G.audio.whistle(1.3); }
     else if (kind === 'debris') { const n = this.def.volley[stage] + (this.rematch ? 1 : 0); for (let i = 0; i < n; i++) this.throwAt(pick(SMALL), 1.0 + i * 0.14, i ? rand(-13, 13) : rand(-1.5, 1.5), i * 0.16); G.audio.whistle(1.3); }
     else if (kind === 'big') { this.throwAt(pick(BIG), 1.0, rand(-3, 3)); G.audio.whistle(1.7); this.call('INCOMING', 'bad', 0.9); }
-    else if (kind === 'field') { const gun = this.view === 'gun', gap = gun ? -1 : (Math.random() * 4) | 0; [-21, -7, 7, 21].forEach((o, i) => { if (i !== gap && !(gun && (i === 0 || i === 3))) this.throwAt(i % 2 ? pick(BIG) : pick(SMALL), 1.0, o + rand(-2, 2), i * 0.1); }); G.audio.whistle(1.8); this.call('DEBRIS FIELD', 'bad', 1.1); }
+    else if (kind === 'field') { const gun = this.view === 'gun', gap = gun ? -1 : (this.ra() * 4) | 0; [-21, -7, 7, 21].forEach((o, i) => { if (i !== gap && !(gun && (i === 0 || i === 3))) this.throwAt(i % 2 ? pick(BIG) : pick(SMALL), 1.0, o + rand(-2, 2), i * 0.1); }); G.audio.whistle(1.8); this.call('DEBRIS FIELD', 'bad', 1.1); }
     else if (kind === 'lightning') {
       const dur = Math.max(FEEL.telegraphMin, 1.3 * this.p.tele), lock = dur - 0.5;
       fx.telegraph(r.x, r.z, 11, dur, (e) => {
@@ -309,7 +317,7 @@ export class Mission {
         G.sky.strike(1); fx.flash(0.7); G.audio.thunder(); fx.shake(6); const d = Math.hypot(r.x - e.x, r.z - e.z); if (d < 10.5) this.hurt(FEEL.dmgLightning); else if (d < 24) this.closeCall();
       }, { lock, track: (e, dt) => { const k = Math.min(1, dt * 5), lead = this.view === 'gun' ? 0.16 : 0.3; e.x += (r.x + r.vx * lead - e.x) * k; e.z += (r.z + r.vz * lead - e.z) * k; } }); // on the gun you cannot swerve: it trails a truck at speed and finds a slow one
       G.audio.warn();
-    } else if (kind === 'crosswind') { const side = Math.random() < 0.5 ? 1 : -1; this.windWait = Math.max(FEEL.telegraphMin, 0.95 * this.p.tele); this.windSide = side; this.call(side > 0 ? 'CROSSWIND  >>>' : '<<<  CROSSWIND', 'bad', this.windWait + 0.4); G.audio.warn(); }
+    } else if (kind === 'crosswind') { const side = this.ra() < 0.5 ? 1 : -1; this.windWait = Math.max(FEEL.telegraphMin, 0.95 * this.p.tele); this.windSide = side; this.call(side > 0 ? 'CROSSWIND  >>>' : '<<<  CROSSWIND', 'bad', this.windWait + 0.4); G.audio.warn(); }
   }
 
   // ---- the harpoon pays off ----
@@ -325,7 +333,7 @@ export class Mission {
     if (s.bandsLeft === 0) { this.end(true, 'destroyed'); return; }
     // it does not take that quietly: a wall of debris rolls out from where it stood, and it bolts
     this.phase = 'surge'; this.phaseT = 0; this.surge = { x: s.x, z: s.z, r: 24, hit: false }; this.hp = this.stageMax; this.attackT = 4.5;
-    const a = Math.atan2(s.z - r.z, s.x - r.x) + rand(-0.9, 0.9); this.ai.hx = Math.cos(a); this.ai.hz = Math.sin(a); this.ai.pending = null; this.ai.jukeT = rand(3, 4.5);
+    const a = Math.atan2(s.z - r.z, s.x - r.x) + this.jr(-0.9, 0.9); this.ai.hx = Math.cos(a); this.ai.hz = Math.sin(a); this.ai.pending = null; this.ai.jukeT = this.jr(3, 4.5);
     const n = this.gn.resupply(); this.call(n ? `GET CLEAR  ·  +${n} ROCKETS` : 'GET CLEAR', 'bad', 1.6, 3, true); G.audio.warn(); r.immune = Math.max(r.immune, 0.4);
   }
   end(won, reason) {
@@ -339,7 +347,7 @@ export class Mission {
       for (let i = 0; i < 4; i++) fx.anim(0.25 + i * 0.3, () => {}, () => { fx.explode(s.x + rand(-20, 20), s.groundY + 20 + i * 28, s.z + rand(-20, 20), 22); this.G.audio.boom(0.8); fx.shake(8); });
       fx.shardBurst(s.x, s.groundY + 14, s.z, 20, this.rig, (i) => this.G.audio.pickup(i));
     } else { this.G.audio.fail(); this.rig.dead = true; const d = this.dist || 1; this.rig.fling((this.rig.x - s.x) / d, (this.rig.z - s.z) / d, 24, 13); fx.explode(this.rig.x, this.rig.y + 2, this.rig.z, 14); this.G.audio.boom(0.9); }
-    this.result = { won, reason, storm: this.def, data: Math.round(this.data), lines, time: this.time, stats: this.stats, rematch: this.rematch };
+    this.result = { won, reason, storm: this.def, data: Math.round(this.data), lines, time: this.time, stats: this.stats, rematch: this.rematch, hull: Math.max(0, this.rig.hull), hullMax: this.rig.hullMax, rows: this.rows(), daily: this.daily };
   }
 
   // ---- the storm has somewhere to be ----
@@ -349,9 +357,9 @@ export class Mission {
     if (a.pending) { a.pending.t -= dt; if (a.pending.t <= 0) { a.hx = Math.cos(a.pending.ang); a.hz = Math.sin(a.pending.ang); a.pending = null; } }
     else if ((this.phase === 'chase' || this.phase === 'surge') && (out ? a.edgeCd <= 0 : a.jukeT <= 0 && this.phase === 'chase')) {
       const cur = Math.atan2(a.hz, a.hx); let ang;
-      if (out) { ang = Math.atan2(-s.z, -s.x) + rand(-0.6, 0.6); a.edgeCd = 2.5; }
-      else { ang = cur + (Math.random() < 0.5 ? 1 : -1) * rand(this.def.jukeAngle[0], this.def.jukeAngle[1]); const fx2 = s.x + Math.cos(ang) * 420, fz2 = s.z + Math.sin(ang) * 420; if (Math.abs(fx2) > BOUND || Math.abs(fz2) > BOUND) ang = Math.atan2(-s.z, -s.x) + rand(-0.7, 0.7); }
-      a.pending = { ang, t: out ? 0.3 : 0.75 }; a.jukeT = rand(this.def.juke[0], this.def.juke[1]) * (1 - 0.1 * this.stage);
+      if (out) { ang = Math.atan2(-s.z, -s.x) + this.jr(-0.6, 0.6); a.edgeCd = 2.5; }
+      else { ang = cur + (this.rj() < 0.5 ? 1 : -1) * this.jr(this.def.jukeAngle[0], this.def.jukeAngle[1]); const fx2 = s.x + Math.cos(ang) * 420, fz2 = s.z + Math.sin(ang) * 420; if (Math.abs(fx2) > BOUND || Math.abs(fz2) > BOUND) ang = Math.atan2(-s.z, -s.x) + this.jr(-0.7, 0.7); }
+      a.pending = { ang, t: out ? 0.3 : 0.75 }; a.jukeT = this.jr(this.def.juke[0], this.def.juke[1]) * (1 - 0.1 * this.stage);
       if (d < 420 && !out) { let turn = ang - cur; turn = Math.atan2(Math.sin(turn), Math.cos(turn)); if (Math.abs(turn) > 0.5 && this.view === 'drive') { if (this.coach && !this.taughtDrift) { this.taughtDrift = true; this.call('BRAKE + STEER = DRIFT', 'good', 2.2); } else this.call('IT IS TURNING', 'warn', 0.9, 1); } }
     }
     let sp = this.def.run * (1 + this.rematch * 0.1) * (1 + 0.06 * this.stage);
@@ -391,7 +399,7 @@ export class Mission {
 
     // ---- the storm moves ----
     this.drive(dt, t, over);
-    if (this.phase === 'stagger') { this.staggerT -= dt; if (this.staggerT <= 0 && !this.harpoonBusy) { this.leaveGun(); this.phase = 'chase'; this.phaseT = 0; this.hp = this.stageMax * FEEL.staggerRecover; this.zoneLatch = false; this.call('SHIELD REFORMING', 'bad', 1.4); this.note('MISSED IT: YOUR WHEEL, CLOSE IN'); G.audio.warn(); } }
+    if (this.phase === 'stagger') { this.staggerT -= dt; if (this.staggerT <= 0 && !this.harpoonBusy) { this.rec.harpoon.push('r'); this.leaveGun(); this.phase = 'chase'; this.phaseT = 0; this.hp = this.stageMax * FEEL.staggerRecover; this.zoneLatch = false; this.call('SHIELD REFORMING', 'bad', 1.4); this.note('MISSED IT: YOUR WHEEL, CLOSE IN'); G.audio.warn(); } }
 
     // ---- forces on the rig: suction, crosswind, the cable ----
     let ax = 0, az = 0; this.tension = null;
@@ -411,7 +419,7 @@ export class Mission {
       if (Math.random() < dt * 12) { s.seam(b, hk.x, hk.z, _a); fx.flashAt(_a.x, _a.y, _a.z, 9, '#ff3f8e', 0.1); }
       fx.shake(this.view === 'gun' ? 0.6 : 2);
       if (this.phase === 'rip') this.hookT -= dt; else if (this.phase === 'kill' && !(this.cine && this.cine.kind === 'rocket')) this.killT -= dt;
-      if ((this.phase === 'rip' && this.hookT <= 0) || (this.phase === 'kill' && this.killT <= 0)) { this.leaveBus(); this.leaveGun(); this.dorothy.visible = false; this.zoneLatch = false; this.phase = 'chase'; this.phaseT = 0; this.line = null; fx.hideCable(0); this.hp = this.stageMax * FEEL.hookRecover; s.thinTarget = 0.42 + 0.58 * s.bandsLeft / s.bands.length; fx.endSwarm(); this.tether = null; s.tug = null; this.call('LINE LET GO', 'bad', 1.4); this.note('THE LINE WENT: YOUR WHEEL AGAIN'); G.audio.lineSnap(); }
+      if ((this.phase === 'rip' && this.hookT <= 0) || (this.phase === 'kill' && this.killT <= 0)) { this.rec[this.phase === 'rip' ? 'dorothy' : 'kill'].push('r'); this.leaveBus(); this.leaveGun(); this.dorothy.visible = false; this.zoneLatch = false; this.phase = 'chase'; this.phaseT = 0; this.line = null; fx.hideCable(0); this.hp = this.stageMax * FEEL.hookRecover; s.thinTarget = 0.42 + 0.58 * s.bandsLeft / s.bands.length; fx.endSwarm(); this.tether = null; s.tug = null; this.call('LINE LET GO', 'bad', 1.4); this.note('THE LINE WENT: YOUR WHEEL AGAIN'); G.audio.lineSnap(); }
     }
 
     // ---- rig ----
@@ -480,7 +488,7 @@ export class Mission {
 
     // ---- attacks ----
     if (!over && s.alive && this.phase === 'chase' && dist < 360) {
-      this.attackT -= dt * (this.inZone ? 1.1 : 1); if (this.attackT <= 0 && this.time - this.seatT >= FEEL.seatQuiet) { const ev = this.def.attackEvery[Math.min(this.stage, this.def.attackEvery.length - 1)]; this.attackT = ev * rand(0.8, 1.2) * this.p.tele * (this.view === 'gun' ? FEEL.gunnerBreather : 1); this.attack(); }
+      this.attackT -= dt * (this.inZone ? 1.1 : 1); if (this.attackT <= 0 && this.time - this.seatT >= FEEL.seatQuiet) { const ev = this.def.attackEvery[Math.min(this.stage, this.def.attackEvery.length - 1)]; this.attackT = ev * this.ar(0.8, 1.2) * this.p.tele * (this.view === 'gun' ? FEEL.gunnerBreather : 1); this.attack(); }
     }
 
     // ---- cable, rings, what the storm ate ----
@@ -501,6 +509,15 @@ export class Mission {
     s.mat.uniforms.uCore.value += (core - s.mat.uniforms.uCore.value) * Math.min(1, dt * 10);
     this.far = dist > 460 ? this.far + dt : 0;
     this.dataShown += (this.data - this.dataShown) * Math.min(1, dt * 8);
+  }
+  // the share text's rows: one square per band at the wheel and on the gun, one per window of the finale
+  rows() {
+    const R = this.rec, n = Math.min(this.stage + (this.result || this.phase === 'won' ? 0 : 1), this.storm.bands.length), chase = [], guns = [];
+    for (let i = 0; i < Math.max(1, n); i++) {
+      const w = R.wheel[i] || 0, S = GRADE.share; chase.push(w <= 0 ? 'g' : w < S.hullOk ? 'y' : 'r');
+      const a = R.rounds[i] ? (R.hits[i] || 0) / R.rounds[i] : 0; guns.push(!R.rounds[i] ? 'y' : a >= S.accGood ? 'g' : a >= S.accOk ? 'y' : 'r');
+    }
+    return { chase, guns, harpoon: R.harpoon.slice(), dorothy: R.dorothy.slice(), kill: R.kill.slice() };
   }
   mg(dt, pos, every) {
     const G = this.G, r = this.rig; r.aim = Math.atan2(pos.x - r.x, pos.z - r.z); this.firing = 0.15; this.mgT -= dt; if (this.mgT > 0) return; this.mgT = every;

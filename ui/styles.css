@@ -119,6 +119,26 @@ b, .num { font-variant-numeric: tabular-nums; }
 .tally .total { color: var(--text); font-weight: 700; font-size: var(--t-lg); padding-top: var(--s2); }
 .tally dd.total { color: var(--signal); }
 .unlock { padding: var(--s2) var(--s3); background: var(--surface); border-left: 4px solid var(--primary); font-weight: 600; }
+/* the grade: one letter, the best one under it, and the one thing that would have raised it */
+.res-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s4); }
+.res-titles { display: grid; gap: var(--s2); min-width: 0; }
+.grade { display: grid; justify-items: center; align-content: center; gap: 2px; min-width: 80px; padding: var(--s2) var(--s3) var(--s2); background: var(--surface); border: 2px solid var(--line); border-radius: 4px; }
+.grade b { font-family: var(--display); font-weight: 400; font-size: 52px; line-height: 0.95; color: var(--primary); }
+.grade span { font-size: var(--t-xs); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.grade[data-l="S"] b { color: var(--signal); } .grade[data-l="B"] b { color: var(--wheat); } .grade[data-l="C"] b, .grade[data-l="D"] b { color: var(--text); }
+.grade.new { border-color: var(--primary); }
+.grade.new span { color: var(--primary); }
+.res-hint { font-weight: 700; font-size: var(--t-sm); letter-spacing: 0.08em; text-transform: uppercase; color: var(--primary); }
+.res-hint:empty { display: none; }
+.tally dd small { font-size: var(--t-xs); font-weight: 600; color: var(--muted); margin-left: var(--s1); }
+/* the title's Daily Storm: today's storm beside PLAY, and the streak under them */
+.title-actions { display: flex; flex-wrap: wrap; gap: var(--s3); align-items: stretch; }
+.daily-btn { display: inline-grid; justify-items: start; align-content: center; gap: 2px; min-height: 52px; padding: var(--s1) var(--s4); text-align: left; }
+.daily-k { font-size: var(--t-xs); letter-spacing: 0.14em; color: var(--muted); line-height: 1; }
+.daily-v { font-size: var(--t-md); color: var(--wheat); line-height: 1.1; }
+.daily-line { display: flex; flex-wrap: wrap; gap: 0 var(--s3); font-size: var(--t-sm); color: var(--muted); }
+.daily-line .streak { color: var(--primary); font-weight: 700; letter-spacing: 0.04em; }
+.daily-line .streak:empty { display: none; }
 .btn-row { display: flex; gap: var(--s3); flex-wrap: wrap; }
 .btn-row .slab { flex: 1; }
 .btn-col { display: grid; gap: var(--s3); }
@@ -301,13 +321,21 @@ body:not(.playing) #lens { display: none; }
   .panel { padding: var(--s4); gap: var(--s2); }
   /* short landscape screens: results in two columns so the buttons are never below the fold */
   .screen-results .panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--s5); row-gap: var(--s2); width: min(100%, 660px); align-items: start; }
-  .screen-results .panel > .eyebrow, .screen-results .panel > h2, .screen-results .panel > .res-sub, .screen-results .panel > .unlock { grid-column: 1; }
+  .screen-results .panel > .eyebrow, .screen-results .panel > .res-head, .screen-results .panel > .res-hint, .screen-results .panel > .unlock { grid-column: 1; }
   .screen-results .panel > .tally { grid-column: 2; grid-row: 1 / span 3; padding: var(--s2) 0; }
   .screen-results .panel > .btn-row { grid-column: 2; grid-row: 4; }
   .screen-results .panel h2 { font-size: 26px; }
+  .grade { min-width: 68px; padding: var(--s1) var(--s2); } .grade b { font-size: 40px; }
+  /* the buttons go under the grade, where there is room: never below the fold */
+  .screen-results .panel > .btn-row { grid-column: 1; grid-row: 4; align-self: end; }
+  .screen-results .panel > .tally { grid-row: 1 / span 4; }
+  .screen-results .btn-row { gap: var(--s2); }
+  .screen-results #res-share:not([hidden]) { flex-basis: 100%; }
   .btn-col { grid-template-columns: 1fr 1fr; }
   .btn-col .slab-primary { grid-column: 1 / -1; }
   .title-block { gap: var(--s3); }
+  /* the credit goes to the open corner, clear of the title block */
+  .screen-title .haveanapp-byline { left: auto; right: calc(var(--s3) + var(--sr)); text-align: right; }
   .pad { transform: scale(0.92); transform-origin: bottom right; }
 }
 /* ---- portrait and narrow ---- */
@@ -316,7 +344,10 @@ body:not(.playing) #lens { display: none; }
   .radar { max-width: 240px; justify-self: center; width: 100%; }
   .screen-title { align-items: center; justify-content: flex-start; padding-top: calc(9vh + var(--st)); }
   .title-block { align-items: center; text-align: center; margin-left: 0; width: 100%; }
-  .title-block .slab { width: 100%; }
+  .title-block .slab, .title-actions { width: 100%; }
+  .title-actions { flex-direction: column; }
+  .daily-btn { justify-items: center; text-align: center; }
+  .daily-line { justify-content: center; }
   .hq-head h2 { font-size: var(--t-lg); }
   .hq-foot { flex-direction: column; align-items: stretch; }
   .hq-foot .slab { width: 100%; }
