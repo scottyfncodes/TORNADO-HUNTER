@@ -142,7 +142,7 @@ The results screen reads the fight back in five numbers, the ones a grade is mad
 
 S from 90, A from 75, B from 60, C from 45, D below. The best letter per storm is kept, and the screen says NEW BEST when you beat it. Under the letter, one line says what would have raised it, in your own units, choosing the change that is the smallest share of what that part still had to give: *2 crits short of A*, *9 s faster for A*, *14 more hull for A*. When no one thing can do it, the two biggest levers together: *30 more hull and 7 s faster for S*. Doing exactly what the line says does reach the letter: `tests/progress.test.mjs` checks it across 216 fights.
 
-Calibrated by `node tests/fullfight.mjs`, whole fights played by the test aimer: one that never misses the seam grades A, and S with a few near misses and little damage taken; one that lags the target grades B to D.
+Calibrated by `node tests/fullfight.mjs`, whole fights played by the test aimer with a driver who never dodges: one that never misses the seam grades A on every storm (75 to 89 in the last run of 18 fights; S needs a few near misses and little damage taken); one that lags the target and lets go of the trigger grades B to D when it survives, and is wrecked in most fights against the two big storms.
 
 ### The Daily Storm
 

@@ -119,7 +119,8 @@ export const FEEL = {
 // ---- the results screen: a letter per fight (src/grade.js). Destroying the storm earns one; each part is 0..1, weighted ----
 // Calibrated by tests/fullfight.mjs: a gunner who never misses the seam takes Pete in 36 to 38 s with 160 to 175 crits, Agnes
 // in 66 to 68 s (350 to 370), the Sisters in 65 to 78 s (270 to 280), and grades A, or S with a few near misses and little damage.
-// One who lags the target and lets go of the trigger takes Pete in about 85 s, the big two in 110 to 130 s, and grades B to D.
+// One who lags the target and lets go of the trigger takes Pete in about 85 s, the big two in 110 to 130 s, and grades B to D when
+// it survives (with a driver who never dodges it is wrecked in most fights against the big two).
 export const GRADE = {
   weights: { time: 0.35, hull: 0.25, acc: 0.15, crits: 0.15, close: 0.1 },
   par: { pete: 40, agnes: 72, sisters: 75 }, // s: full marks for time at par (about 10% over a gunner who never misses), none at timeZero times par
