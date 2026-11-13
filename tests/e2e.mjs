@@ -363,6 +363,18 @@ try {
     m.rig.immune = 0; m.attackT = 0.4; m.hurt(4); out.wheelAttackT = +m.attackT.toFixed(2); // at the wheel you can dodge: no breather
     G.setpiece = undefined; return out;
   });
+  // the crew's shell on the gun (6.4 s to come round) is kept for a piece that will hit: one that lands 18 m wide is let go
+  const shell = await page.evaluate(async () => {
+    const { STORMS } = await import('/src/config.js'); const G = window.__G, frame = () => new Promise((r) => requestAnimationFrame(r));
+    G.setpiece = 'never'; G.startMission(STORMS[1]); const m = G.mission, s = m.storm, ends = new Map(), drop = m.dropHazard.bind(m); m.dropHazard = (z, how) => { if (!ends.has(z)) ends.set(z, how); return drop(z, how); }; m.attackT = 99;
+    m.rig.place(s.x + 170, s.z, -Math.PI / 2, G.world); m.rig.vx = -40; m.rig.speed = 40; for (let i = 0; i < 20; i++) await frame(); if (m.view !== 'gun') m.enterGun('auto'); for (let i = 0; i < 25; i++) await frame();
+    const one = async (lat) => { m.attackT = 99; m.shotgunCd = 0; m.rig.immune = 0; m.throwAt('cow', 1.0, lat); const z = m.hz[m.hz.length - 1]; G.fast = 3; while (!ends.has(z) && z.h.t < z.h.dur + 0.5) await frame(); G.fast = 1; return ends.get(z) || 'none'; };
+    const out = { gunWide: await one(18), gunHit: await one(0) }; m.leaveGun(true); for (let i = 0; i < 30; i++) await frame(); out.wheelWide = await one(18);
+    G.setpiece = undefined; return out;
+  });
+  console.log('the crew shotgun:', JSON.stringify(shell));
+  ok(shell.gunWide === 'land' && shell.gunHit === 'shotgun', `on the gun the shell was not kept for the piece that would hit (wide: ${shell.gunWide}, on target: ${shell.gunHit})`);
+  ok(shell.wheelWide === 'shotgun', `at the wheel the crew no longer blast whatever comes close (${shell.wheelWide})`);
   console.log('turret fairness:', JSON.stringify(fair));
   ok(fair.willHit[0] === true && fair.willHit[1] === false && fair.hitMarks === 1 && fair.ring[0] > 0 && fair.ring[0] < 1, `the piece that will hit is not the one marked (${JSON.stringify(fair.willHit)}, ${fair.hitMarks} marks, ring ${fair.ring})`);
   ok(/INCOMING/.test(fair.coach) && /bad/.test(fair.tone) && fair.clear, `a hit coming is not named on the coach line, or its mark is under the plates (${fair.coach}, ${fair.tone}, clear ${fair.clear})`);

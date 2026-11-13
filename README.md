@@ -38,12 +38,12 @@ Tests (Node 22, no dependencies; the browser test uses Playwright with Chromium)
 
 ```
 node --test tests/*.test.mjs   # the tether, the handling, saves (a real v1 save), grades and the Daily Storm
-node tests/e2e.mjs             # the finale on every storm; seat reasons; skipping cinematics; the Daily Storm; a v1 save loaded cold
+node tests/e2e.mjs             # the finale on every storm; seat reasons; skipping cinematics; turret fairness; the Daily Storm; a v1 save loaded cold
 node tests/firstminute.mjs     # the first 60 s of every storm, every beat timed, every callout checked (AUDIT=1 for the timeline)
 node tests/layout.mjs          # 44 px targets, 12 px text, no overlaps at 667x375, 844x390, 390x844 (SHOTS=dir to save them)
 node tests/perf.mjs            # the low-detail tier holds its frame rate through both set pieces
 node tests/driving.probe.mjs   # what the handling numbers mean: corners, drifts, the cost of a tree
-node tests/fullfight.mjs       # whole fights by the test aimer: what the grade sees (GRADE is calibrated from it)
+node tests/fullfight.mjs       # whole fights by the test aimer at three skills: what the grade sees (GRADE is calibrated from it)
 ```
 
 ## Where things are

@@ -190,7 +190,7 @@ export class Gunner {
     const m = this.m, G = this.G, fx = G.fx, ph = m.phase; this.noteT -= dt; this.hitT -= dt; this.reload = Math.max(0, this.reload - dt); this.shotT -= dt;
     this.recoil = Math.max(0, this.recoil - dt * 9); this.kick *= Math.exp(-dt * 14); this.flashT -= dt; this.swapT = Math.min(1, this.swapT + dt * 5);
     this.swayX *= Math.exp(-dt * 9); this.swayY *= Math.exp(-dt * 9);
-    const seam = this.placeSeam(dt); this.eye(_o); if (G.bot) this.bot(_o);
+    const seam = this.placeSeam(dt); this.eye(_o); if (G.bot) this.bot(_o, dt);
     const assist = this.touch ? FEEL.aimAssist : 1, a = this.trace(_o, this.dir(_d), assist, this.aim);
     // touch: the sights ride along with whatever they are on, half as fast as it moves. On the critical core they hold for
     // everyone: the truck is circling it, and the kill shot is a lock to take, not a target to chase.
@@ -331,13 +331,24 @@ export class Gunner {
   }
 
   // tests only: an aimer that tracks the most urgent thing and holds the trigger
-  bot(o) {
+  bot(o, dt = 0) {
     const m = this.m; let z = null, soon = 1e9; this.botFire = false; if (m.phase !== 'chase') { _p.copy(this.weak).sub(o); this.botFire = this.locked && !this.wasFiring; }
     else {
       for (const h of m.hz) if (h && h.state === 'fly' && h.h.dur - h.h.t < soon && h.h.t > 0.25) { soon = h.h.dur - h.h.t; z = h; }
       if (this.G.bot === 'storm') z = null;
       if (z) { _p.set(z.h.x, z.h.y, z.h.z).sub(o); const want = z.big && this.rockets > 0 && !this.G.botGunOnly ? 'rocket' : 'mg'; if (this.weapon !== want) this.setWeapon(want); this.botFire = want === 'mg' || (this.locked && !this.wasFiring); }
       else { if (this.weapon !== 'mg') this.setWeapon('mg'); _p.copy(this.weak).sub(o); this.botFire = m.inZone; }
+    }
+    // G.botAim { deg, delay, rest }: a thumb. It takes `delay` s to swing onto a new target (and keeps firing where it was),
+    // its sights sit `deg` degrees off whatever it is tracking (so a small piece far away is missed, a close one is hit),
+    // and it is off the trigger a share of the time. A model of a mediocre player, for tests/fullfight.mjs.
+    const A = this.G.botAim;
+    if (A && m.phase === 'chase') {
+      const key = z || 'seam'; if (key !== this.botKey) { this.botKey = key; this.botSwing = A.delay; }
+      if (this.botSwing > 0) { this.botSwing -= dt; this.botFire = this.weapon === 'mg' && m.inZone; return; } // still on the way over: the sights stay where they were
+      const t = this.weakT, rad = A.deg * Math.PI / 180, yaw = Math.atan2(_p.x, _p.z) + rad * Math.sin(t * 1.7 + 0.6 * Math.sin(t * 0.37)), pit = Math.atan2(_p.y, Math.hypot(_p.x, _p.z)) + rad * 0.6 * Math.sin(t * 2.3 + 1);
+      if (Math.sin(t * 0.9) < A.rest) this.botFire = false;
+      this.yaw = yaw; this.pitch = clamp(pit, FEEL.gunPitchMin, FEEL.gunPitchMax); return;
     }
     // G.botLag (0..1): a sloppy aimer whose sights wander off the target and who lets go of the trigger now and then
     const lag = this.G.botLag || 0; if (lag && m.phase === 'chase') { const t = this.weakT, w = lag * 22 * Math.sin(t * 1.7), l = Math.hypot(_p.x, _p.z) || 1; _p.x += -_p.z / l * w; _p.z += _p.x / l * w; _p.y += lag * 6 * Math.sin(t * 2.3); if (Math.sin(t * 0.9) < -0.5) this.botFire = false; }

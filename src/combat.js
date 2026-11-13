@@ -465,7 +465,7 @@ export class Mission {
         }
         const left = h.dur - h.t, d3 = Math.hypot(hd, h.y - r.y);
         if (h.t > 0.2 && d3 < this.p.mgRange && left < soonest && !z.ranging) { soonest = left; target = z; }
-        if (!over && this.shotgunCd <= 0 && d3 < FEEL.shotgunRange && left < 0.5 && !(z.ranging && Math.hypot(h.tx - r.x, h.tz - r.z) > z.rad)) this.shotgun(z);
+        if (!over && this.shotgunCd <= 0 && d3 < FEEL.shotgunRange && left < 0.5 && !(z.ranging && Math.hypot(h.tx - r.x, h.tz - r.z) > z.rad) && (this.view !== 'gun' || this.willHit(z))) this.shotgun(z); // on the gun the shell is slow to come round again: it is kept for a piece that will hit
       } else { // a wreck on the ground: go round it, or let the shotgun clear it
         z.life -= dt; if (Math.random() < dt * 5) fx.puff(h.x, h.y + 2, h.z, 5, '#2a2420', 1.0, 5);
         const ahead = (h.x - r.x) * r.vx + (h.z - r.z) * r.vz > 0;

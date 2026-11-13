@@ -1,6 +1,6 @@
 # TORNADO HUNTER: Game Design
 
-*Design of record. Version 2.10: the power lines, the second set piece. (2.9: the grain elevator, the first. 2.8: a grade for every fight and the Daily Storm, one storm a day for everyone. 2.7: the first minute measured and re-paced, a drift worth taking, a reason for every seat change, and cinematics you can skip once seen. 2.6: five phases, a crew member and a vehicle for each, DOROTHY driven to the foot of a harpooned storm that fights the line, and weather.) Tuning numbers live in `src/config.js`.*
+*Design of record. Version 2.11: the turret made fair, after the live build was played start to finish by a scripted player: the harpoon only says LOCKED when it can fire, wreckage that will hit you is ringed in the sky where the gunner is looking, armour can be shot down, and a first win grades B or C. (2.10: the power lines, the second set piece. 2.9: the grain elevator, the first. 2.8: a grade for every fight and the Daily Storm, one storm a day for everyone. 2.7: the first minute measured and re-paced, a drift worth taking, a reason for every seat change, and cinematics you can skip once seen. 2.6: five phases, a crew member and a vehicle for each, DOROTHY driven to the foot of a harpooned storm that fights the line, and weather.) Tuning numbers live in `src/config.js`.*
 
 ---
 
@@ -103,6 +103,8 @@ It holds the truck at 70% of the danger zone's radius: straight at the storm whe
 
 The storm is a little kinder to a truck that cannot weave: it throws about 30% less often, a debris field is the two pieces that would have hit rather than four with a gap, and its lightning trails a truck at speed. In exchange the crew's shotgun reloads 60% slower.
 
+On the gun there is no dodging at all, so three more rules hold there (2.11). A piece thrown while you are on the turret is in the air 0.3 s longer (`FEEL.gunnerAir`): 1.85 s for a bale, 2.2 s for a tractor (less on a rematch, never under the 0.9 s floor). After any hit taken on the turret the storm holds its next throw for at least 4 s (`FEEL.gunnerMercy`): one hit is a lesson, three in a row before the sights have come round is a wreck you watched. And the autodrive's own mistakes are free: if it clips a barn you lose speed, not hull.
+
 Miss the harpoon window and the storm recovers 40% of its strength; let the line go before the kill shot and it recovers 50%. A mistake costs seconds, never the fight.
 
 ### The first 60 seconds
@@ -134,15 +136,17 @@ The results screen reads the fight back in five numbers, the ones a grade is mad
 
 | Part | Weight | Full marks | Nothing |
 |---|---|---|---|
-| Time | 35% | at par: Pete 40 s, Agnes 72 s, the Sisters 75 s (about 10% over a gunner who never misses) | 2.2 times par |
+| Time | 35% | at par: Pete 40 s, Agnes 72 s, the Sisters 75 s (about 10% over a gunner who never misses) | 3 times par (2.2 until 2.11) |
 | Hull left | 25% | all of it | none |
-| Accuracy | 15% | 85% of turret rounds on something you can hurt | 30% |
+| Accuracy | 15% | 85% of turret rounds on something you can hurt | 20% (30% until 2.11) |
 | Critical hits | 15% | Pete 170, Agnes 360, the Sisters 275 | none |
 | Near misses | 10% | 8 | none |
 
-S from 90, A from 75, B from 60, C from 45, D below. The best letter per storm is kept, and the screen says NEW BEST when you beat it. Under the letter, one line says what would have raised it, in your own units, choosing the change that is the smallest share of what that part still had to give: *2 crits short of A*, *9 s faster for A*, *14 more hull for A*. When no one thing can do it, the two biggest levers together: *30 more hull and 7 s faster for S*. Doing exactly what the line says does reach the letter: `tests/progress.test.mjs` checks it across 216 fights.
+S from 90, A from 75, B from 55, C from 25, D below (B from 60 and C from 45 until 2.11). The best letter per storm is kept, and the screen says NEW BEST when you beat it. Under the letter, one line says what would have raised it, in your own units, choosing the change that is the smallest share of what that part still had to give: *2 crits short of A*, *9 s faster for A*, *14 more hull for A*. When no one thing can do it, the two biggest levers together: *30 more hull and 7 s faster for S*. Doing exactly what the line says does reach the letter: `tests/progress.test.mjs` checks it across 216 fights.
 
-Calibrated by `node tests/fullfight.mjs`, whole fights played by the test aimer with a driver who never dodges: one that never misses the seam grades A on every storm (75 to 89 in the last run of 18 fights; S needs a few near misses and little damage taken); one that lags the target and lets go of the trigger grades B to D when it survives, and is wrecked in most fights against the two big storms.
+**The bottom of the scale moved in 2.11; the top did not.** Three first wins of Skinny Pete were played on the live 2.10 build through real input (touch on a phone-sized screen in both orientations, arrow keys on a desktop): 68 to 112 s, 12 to 52 hull left, 35 to 71% accuracy. They graded C, D and D. A first win is the moment the game most needs to say *again*, and D says *you were bad at this*. Time no longer scores nothing until three times par, accuracy until 20%, and B and C start lower: the same three fights grade B, B and C. Par, the crit and near-miss targets, and S and A were left alone: full marks still sit where a gunner who never misses lands.
+
+Calibrated by `node tests/fullfight.mjs`, whole fights played by the test aimer with a driver who never dodges, at three skills. *Sharp* never leaves the seam. *Thumb* is fitted to the real-input phone fights: sights 3.5 degrees off what they track, 0.4 s to swing onto a new target, off the trigger some of the time, rockets for armour; it takes Pete in about 70 s at 70% accuracy, as the phone run did. *Novice* is rougher (5 degrees, 0.5 s) and never touches the rockets. FULLFIGHT_RESULTS
 
 ### The Daily Storm
 
@@ -205,12 +209,30 @@ Protecting the truck and hurting the storm are different jobs done by different 
 
 | Weapon | Who fires | Job | Limits |
 |---|---|---|---|
-| **The rig's gun** | you, on the turret (hold FIRE). At the wheel the crew fire it at wreckage only, at three quarters of your rate | weakens the band; shoots wreckage out of the air | nothing reaches the storm from outside the zone; bullets barely mark a satellite twister |
-| **Rockets** | you, on the turret (swap, hold the reticle on a target 0.4 s to lock, FIRE) | one rocket ends a car, a tractor or a satellite twister and anything within 17 m of it; takes 18% off a band | 3 in the rack (4 at most), 2 more after every band |
+| **The rig's gun** | you, on the turret (hold FIRE). At the wheel the crew fire it at wreckage only, at three quarters of your rate | weakens the band; shoots wreckage out of the air: about three quarters of a second on a bale or a door, a second and a third on a car or a tractor (2.8 s until 2.11, longer than it was in the air) | nothing reaches the storm from outside the zone; bullets barely mark a satellite twister |
+| **Rockets** | you, on the turret (swap, hold the reticle on a target 0.4 s to lock, FIRE) | one rocket ends a car, a tractor or a satellite twister and anything within 17 m of it, at once: the quick answer to armour, where the gun is the slow one; takes 18% off a band | 3 in the rack (4 at most), 2 more after every band |
 | **Shotgun** | the crew, automatically | the last-second save: blasts whatever is about to hit you, and clears wrecks off the road | 22 m range, 4 s between shots (6.4 s while you are on the gun) |
-| **Harpoon** | you, from Winch's harpoon truck (phase 3) | hooks the weakened storm and anchors it, so the bus can reach its foot (it lunges, the line hauls it back); the line runs from his truck, and your rig is free | only on a weakened storm; 7 s window; needs a lock |
+| **Harpoon** | you, from Winch's harpoon truck (phase 3) | hooks the weakened storm and anchors it, so the bus can reach its foot (it lunges, the line hauls it back); the line runs from his truck, and your rig is free | only on a weakened storm; 7 s window, which does not start running until Winch is in range (below); needs a lock |
 | **DOROTHY** | you, driving Doc's science bus to the funnel's foot, then DEPLOY (phase 4) | a swarm of sensors, sucked up to swirl inside the funnel, weakens it further and turns the core critical | only on a hooked storm |
 | **The kill shot** | you, from Sparks' rocket truck (phase 5) | the launcher, locked on the critical core | one job, one shot; it does not come out of the rack |
+
+### The harpoon says only what is true (2.11)
+
+Winch's truck starts the harpoon phase wherever the convoy happens to be: measured on the live 2.10 build across nine fights, 260 to 496 m from the storm, against a harpoon range of 230 m. The reticle locked anyway, 0.4 s into the window, and the trigger then refused with CLOSING IN for 0.8 to 5.2 s while the countdown ran: the worst hook landed 6.2 s into the window, on a player who had done everything right.
+
+- **No lock out of range.** The reticle stays grey, the fire button is dark and reads CLOSING IN, the plate under the reticle says CLOSING IN, and the coach line counts the distance down: WINCH IS CLOSING IN: 140 M.
+- **The window waits for him.** While you are on the harpoon and he is out of range the countdown holds, for up to 6 s (`FEEL.harpoonCloseMax`); past that it runs, so a truck that is stuck cannot hold the storm weakened for ever. The window you get is the 7 s the table promises, from the moment you could have used it.
+- **The same rule for the kill shot.** The launcher locks only once Sparks is in rocket range. No number changed there; it already refused the shot.
+- **Nothing you did not do costs hull.** A truck on autodrive that clips a building loses speed, not hull: crash damage is for the hands on the wheel.
+
+### Seeing it coming from the gun (2.11)
+
+Wreckage is marked on the ground where it will land. At the wheel that is in front of you. On the gun the camera is pitched up at the storm and the ground under the truck is off the bottom of the screen: across nine scripted fights on the live 2.10 build, nearly every point of hull was lost on the turret, to pieces whose only warning was out of frame.
+
+- **A piece that will hit you is ringed, in the sky.** Each frame the game asks of every piece in the air: where will the truck be when it lands, and is that inside its circle (with 30% to spare, `FEEL.threatMargin`)? If so its bracket becomes a round mark with an amber ring that closes on it as it comes down, shut when it lands, and cream in the last 0.8 s. Pieces that will miss keep the plain bracket, dimmer than before, so the one that matters is the one you see.
+- **Off the screen, it is an arrow with the same ring**, on the edge it is coming from, kept clear of the coach line and the storm plate. Two from the same direction share one arrow. The arrow that points at the storm steps aside while it is up.
+- **The coach line says so**, in magenta, ahead of anything else it had to say: INCOMING: SHOOT IT DOWN, or ARMOUR INCOMING: SWAP TO ROCKETS when it is a car or a tractor and there is a rocket in the rack.
+- **The ranging shot is never ringed**: it is aimed to miss.
 
 ### Knowing a shot landed
 
@@ -227,7 +249,7 @@ Critical hits are something you aim for, not a dice roll: on the storm it is the
 
 Damage shows on the target as well as in a bar. Wreckage chars as it is hit, trails smoke from 30% damage and burns from 65%. The band's lit segments go out as it weakens, it turns from wheat to amber under two thirds and flickers magenta under one third, the funnel thins with it, and each threshold is a crack you hear. Under the reticle a small plate names whatever you are hitting and shows what is left of it, cream then amber then magenta; it goes away a second after you stop.
 
-The reticle is the weapon: an open cross for the gun, corner brackets with a ring that closes into a lock for the launcher. It is cream at rest, amber on something you can hurt, magenta on the seam or a lock, grey out of range. Each piece of wreckage in the air carries a magenta bracket (double for armour, flashing in its last 0.8 s), and an arrow on the edge of the screen when it is out of frame.
+The reticle is the weapon: an open cross for the gun, corner brackets with a ring that closes into a lock for the launcher. It is cream at rest, amber on something you can hurt, magenta on the seam or a lock, grey out of range. Each piece of wreckage in the air carries a magenta bracket (double for armour, flashing in its last 0.8 s), and an arrow on the edge of the screen when it is out of frame; the ones that will hit you are ringed (above).
 
 **Each rig mounts a different gun.** The Mule's machine gun is the all-rounder. The Bulldog's minigun does 35% more damage but sprays. The Whippet's autocannon fires slow, heavy, dead-straight shots. They sound different and you see a different weapon in front of you: a jacketed barrel, six barrels in a turning cage, one long barrel with a slotted brake.
 
@@ -387,6 +409,15 @@ Upgrades (Data): Winch (the line holds longer), Ordnance (guns hit harder, one m
 | Poles on alternating sides, a slalom between them | not built (2.10) | at 140 mph a gate every 26 m is 0.4 s: nobody weaves that on glass. One lane, held, is the test |
 | Live wires on the ground that hurt | not built (2.10) | damage with no clear edge. The wires snap and arc for show; only a pole landing on you costs hull |
 | Two set pieces in one fight | never (2.10) | one draw decides which. A fight has room for one piece of scripted chaos |
+| A harpoon lock on a storm Winch cannot reach | removed (2.11) | measured on the live build: LOCKED at 0.4 s, the trigger refused for up to 5.2 s of a 7 s window. The reticle now says only what is true, and the window waits (at most 6 s) for his truck |
+| Hull lost while the autodrive was driving into something | removed (2.11) | a crash you did not steer is not your mistake. It still costs the speed |
+| Ground markers as the only warning on the gun | replaced (2.11) | the gun camera looks up; the marker is under the truck. The piece that will hit is ringed in the sky, with a closing ring, and the coach line says so |
+| A tractor only a rocket could stop | changed (2.11) | 170 hit points against 1.9 s in the air: with the rack empty it was a hit nothing could prevent. 80, and 0.3 s longer in the air on the gun |
+| D for a first win | changed (2.11) | three real-input first wins graded C, D, D. The bottom of the scale was moved (section 2); par, S and A were not |
+| Taking less damage on the gun (a flat discount) | not done (2.11) | it hides the problem. The pieces are slower, rarer after a hit, marked and shootable instead; a hit still costs what it says |
+| Crosswind arrows repeated in the gun's sky | not done (2.11) | a crosswind shoves the truck, which the autodrive is driving; on the gun there is nothing to do about it. It is still called |
+| A dodge button on the gun | never (2.11) | one seat at a time. DRIVE is the dodge, and it sits beside the trigger |
+| Adaptive music, a longer win sting | postponed (2.11) | the live build's audio was measured flat (no music; the win is silent after 3 s). It is the next pass; fairness on the turret came first |
 
 ---
 
@@ -415,7 +446,7 @@ src/save.js      the save, and migrate() for every older one
 src/main.js      boot, the three cameras (chase, gun, cinematic) and the swing between them, frame loop, resolution governor
 ```
 
-**Tests.** `node --test tests/*.test.mjs`: the tether's movement, the truck's handling, saves (a real version 1 save), grades and the Daily Storm, under Node. `node tests/e2e.mjs`: the finale on every storm, the seat-change reasons, the cinematics, the Daily Storm (one scored attempt, the same fight at two frame rates, Share) and a version 1 save loaded cold, in a browser. `node tests/fullfight.mjs`: whole fights by the test aimer at two skills, read the way the results screen reads them. `node tests/firstminute.mjs`: the first minute of every storm, played by a scripted player at two gunning skills, every beat timed and every callout checked for being read (`AUDIT=1` prints the timeline). `node tests/layout.mjs`: the interface bar at the three sizes (`SHOTS=<folder>` saves screenshots). `node tests/driving.probe.mjs` prints the handling numbers.
+**Tests.** `node --test tests/*.test.mjs`: the tether's movement, the truck's handling, saves (a real version 1 save), grades and the Daily Storm, under Node. `node tests/e2e.mjs`: the finale on every storm, the seat-change reasons, the cinematics, the turret's fairness rules (the harpoon out of range, the ring on a piece that will hit, the breather after a hit), the Daily Storm (one scored attempt, the same fight at two frame rates, Share) and a version 1 save loaded cold, in a browser. `node tests/fullfight.mjs`: whole fights by the test aimer at three skills (sharp, thumb, novice: `SKILLS=`, `AIM=deg,delay,rest`), read the way the results screen reads them. `node tests/firstminute.mjs`: the first minute of every storm, played by a scripted player at two gunning skills, every beat timed and every callout checked for being read (`AUDIT=1` prints the timeline). `node tests/layout.mjs`: the interface bar at the three sizes (`SHOTS=<folder>` saves screenshots). `node tests/driving.probe.mjs` prints the handling numbers.
 
 **Saves.** Same key and shape as version 1 (`tornado-hunter/v1`). Data, kills, owned rigs, upgrades and crew carry over. The `winch` and `cable` upgrade levels keep their value and now mean "the line holds longer" and "ordnance" (guns hit harder, one more rocket in the rack per level). Fields are only ever added: `seen` (2.7, the cinematics watched), `grades`, `daily` and `streak` (2.8). `migrate()` in `src/save.js` fills in whatever an older save lacks and turns anything unreadable into a fresh start; `tests/fixtures/save-v1.json` is a real version 1 save, loaded by the unit tests and cold in the browser.
 
@@ -438,7 +469,7 @@ src/main.js      boot, the three cameras (chase, gun, cinematic) and the swing b
 
 1. With the storm out of frame, is the truck fun to drive on its own?
 2. Does catching the tornado feel like something you did, or something the game allowed?
-3. Could you tell what was about to hit you in time to do something about it?
+3. Could you tell what was about to hit you in time to do something about it? On the gun, did you see the ring, and did you shoot the ringed piece or keep working the seam?
 4. On the gun, could you hold the seam with a thumb? Did you ever take the wheel back on purpose, and did being put on the gun ever feel like having it taken away? (A scripted gunner on the seam sheds the first band in 15 to 20 s, a sloppy one in 27 to 32: which one is a person?)
 5. Harpoon, DOROTHY, lock, kill shot: did that finale feel like the best moment of the fight? Was losing control during the DOROTHY shot welcome or annoying?
 6. Did you start the next storm without being asked? Did the line under the grade make you try again? Did you come back for tomorrow's storm?

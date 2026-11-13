@@ -97,10 +97,10 @@ export const FEEL = {
   gunCrit: 2.2,               // a hit on the seam (storm) or dead centre (wreckage)
   gunWreckRange: 250,         // m: wreckage can be engaged as soon as it leaves the funnel
   gunSatMul: 0.1,             // bullets barely mark a satellite twister: that is a rocket's job
-  wreckHp: 45, wreckHpBig: 110, // what it takes to shoot a bale, or a tractor, out of the air (a tractor was 170 until 2.11: 2.8 s of perfect fire against 1.9 s in the air, so with the rack empty armour was a hit you could do nothing about)
+  wreckHp: 45, wreckHpBig: 80, // what it takes to shoot a bale, or a tractor, out of the air (a tractor was 170 until 2.11: 2.8 s of perfect fire against 1.9 s in the air, so with the rack empty armour was a hit you could do nothing about)
   crewGunShare: 0.75,         // the crew covering you at the wheel shoot at three quarters of the rate you do
   gunnerAir: 0.3,             // s longer a thrown piece is in the air while you are on the gun: shooting it down is the only answer there
-  gunnerMercy: 3.2,           // s after a hit on the gun before the storm throws again: no chains of hits you could not dodge
+  gunnerMercy: 4,             // s after a hit on the gun before the storm throws again: no chains of hits you could not dodge (Agnes throws every 3 s there)
   threatMargin: 1.3,          // a piece that will land within this many of its own radii of where the truck will be is marked as a hit coming
   gunnerBreather: 1.4,        // the storm throws this much less often at a truck that cannot weave
   gunnerShotgun: 1.6,         // and the crew's last-second shotgun is this much slower: on the gun, the sky is your job
@@ -127,12 +127,12 @@ export const FEEL = {
 // a win that was slow, battered and wild all at once. Before 2.11 those same fights graded C, D and D.
 export const GRADE = {
   weights: { time: 0.35, hull: 0.25, acc: 0.15, crits: 0.15, close: 0.1 },
-  par: { pete: 45, agnes: 75, sisters: 78 }, // s: full marks for time at par (about 10% over a gunner who never misses), none at timeZero times par
-  timeZero: 3,                              // (2.2 until 2.11: a 90-second win of Skinny Pete scored nothing for time)
-  accZero: 0.2, accFull: 0.75,              // share of turret rounds that hit something you can hurt (0.3 and 0.85 until 2.11)
-  crits: { pete: 140, agnes: 300, sisters: 230 }, // critical hits for full marks (170, 360, 275 until 2.11)
-  close: 6,                                 // near misses for full marks (8 until 2.11)
-  letters: [['S', 90], ['A', 75], ['B', 55], ['C', 25], ['D', 0]], // (B from 60 and C from 45 until 2.11)
+  par: { pete: 40, agnes: 72, sisters: 75 }, // s: full marks for time at par (about 10% over a gunner who never misses), none at timeZero times par
+  timeZero: 3,                              // (2.2 until 2.11: a 90-second first win of Skinny Pete scored nothing for time)
+  accZero: 0.2, accFull: 0.85,              // share of turret rounds that hit something you can hurt (nothing below 0.3 until 2.11)
+  crits: { pete: 170, agnes: 360, sisters: 275 }, // critical hits for full marks
+  close: 8,                                 // near misses for full marks
+  letters: [['S', 90], ['A', 75], ['B', 55], ['C', 25], ['D', 0]], // (B from 60 and C from 45 until 2.11: the bottom of the scale was moved, the top was not)
   share: { accGood: 0.75, accOk: 0.45, hullOk: 25 }, // the share text's squares: the turret's accuracy on a band, hull lost at the wheel
 };
 
