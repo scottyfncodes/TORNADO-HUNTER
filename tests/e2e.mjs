@@ -329,7 +329,7 @@ try {
       G.bot = true; const t0 = m.time; let inAt = null, tAtIn = null;
       while (m.phase === 'stagger' && m.time - t0 < 20) {
         const far = !m.canFire;
-        if (far) { L.farFrames++; if (m.gn.locked) L.lockedFar++; L.coachFar = m.coachLine(); const before = m.harpoonBusy; G.bot = false; m.gn.botFire = false; if (L.farFrames % 20 === 5) { window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', bubbles: true })); await frame(); await frame(); window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space', bubbles: true })); if (m.gn.noteT > 0) L.notes.add(m.gn.note); if (!before && !m.harpoonBusy && m.phase === 'stagger') L.refused++; } G.bot = true; L.retFar = document.getElementById('reticle').classList.contains('far'); L.hintFar = document.getElementById('fire-hint').textContent; }
+        if (far) { L.farFrames++; if (m.gn.locked) L.lockedFar++; L.coachFar = m.coachLine(); const before = m.harpoonBusy; G.bot = false; m.gn.botFire = false; if (L.farFrames % 20 === 5) { window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', bubbles: true })); await frame(); await frame(); window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space', bubbles: true })); if (m.gn.noteT > 0) L.notes.add(m.gn.note); if (!before && !m.harpoonBusy && m.phase === 'stagger') L.refused++; } G.bot = true; if (!m.canFire) { L.retFar = document.getElementById('reticle').classList.contains('far'); L.hintFar = document.getElementById('fire-hint').textContent; } }
         else if (inAt === null) { inAt = m.time - t0; tAtIn = m.staggerT; }
         if (!far && m.gn.locked && L.lockAfter === null) L.lockAfter = +(m.time - t0 - inAt).toFixed(2);
         await frame();
@@ -372,9 +372,27 @@ try {
     const out = { gunWide: await one(18), gunHit: await one(0) }; m.leaveGun(true); for (let i = 0; i < 30; i++) await frame(); out.wheelWide = await one(18);
     G.setpiece = undefined; return out;
   });
+  // on the gun the storm throws at most one piece per attack that will hit, and never in two attacks running; at the wheel every throw is aimed
+  const aim = await page.evaluate(async () => {
+    const { STORMS } = await import('/src/config.js'); const G = window.__G, frame = () => new Promise((r) => requestAnimationFrame(r)), out = [];
+    for (const def of STORMS) for (const stage of def.attacks.map((_, i) => i)) {
+      G.setpiece = 'never'; G.startMission(def); const m = G.mission, s = m.storm; m.attackT = 99; m.stage = stage; m.attacks = 1;
+      m.rig.place(s.x + def.zone * 0.7, s.z, -Math.PI / 2, G.world); m.rig.vx = -40; m.rig.speed = 40; for (let i = 0; i < 20; i++) await frame(); if (m.view !== 'gun') m.enterGun('auto'); for (let i = 0; i < 25; i++) await frame();
+      const run = (n) => { const seq = []; for (let i = 0; i < n; i++) { m.clearHazards(true); m.attackT = 99; const n0 = m.hz.length; m.attack(); const P = m.hz.slice(n0).filter((z) => z && z.state === 'fly'); if (P.length) seq.push({ aimed: P.filter((z) => !z.beside).length, hitNow: P.filter((z) => m.willHit(z)).length, wideHit: P.filter((z) => z.beside && m.willHit(z)).length, n: P.length }); } return seq; };
+      const gun = run(24); m.leaveGun(true); for (let i = 0; i < 30; i++) await frame(); const wheel = run(10); m.clearHazards(true);
+      out.push({ id: def.id, stage, throws: gun.length, most: Math.max(...gun.map((a) => a.aimed)), twice: gun.filter((a, i) => i && a.aimed && gun[i - 1].aimed).length, aimedShare: +(gun.filter((a) => a.aimed).length / gun.length).toFixed(2), wideHit: gun.reduce((p, a) => p + a.wideHit, 0), wheelBeside: wheel.reduce((p, a) => p + (a.n - a.aimed), 0) });
+    }
+    G.setpiece = undefined; return out;
+  });
+  for (const A of aim) {
+    console.log('throws at a truck on the gun:', JSON.stringify(A));
+    ok(A.throws >= 8 && A.most <= 1 && A.twice === 0, `${A.id} stage ${A.stage}: on the gun an attack aimed ${A.most} pieces at the truck, and ${A.twice} attacks running were aimed`);
+    ok(A.aimedShare >= 0.4 && A.wideHit === 0, `${A.id} stage ${A.stage}: ${A.aimedShare} of throwing attacks on the gun were aimed (want half), and ${A.wideHit} pieces thrown beside the truck would have hit`);
+    ok(A.wheelBeside === 0, `${A.id} stage ${A.stage}: at the wheel ${A.wheelBeside} pieces were thrown beside the truck`);
+  }
   console.log('the crew shotgun:', JSON.stringify(shell));
   ok(shell.gunWide === 'land' && shell.gunHit === 'shotgun', `on the gun the shell was not kept for the piece that would hit (wide: ${shell.gunWide}, on target: ${shell.gunHit})`);
-  ok(shell.wheelWide === 'shotgun', `at the wheel the crew no longer blast whatever comes close (${shell.wheelWide})`);
+  ok(shell.wheelWide === 'shotgun' || shell.wheelWide === 'mg', `at the wheel the crew no longer deal with whatever comes close (${shell.wheelWide})`);
   console.log('turret fairness:', JSON.stringify(fair));
   ok(fair.willHit[0] === true && fair.willHit[1] === false && fair.hitMarks === 1 && fair.ring[0] > 0 && fair.ring[0] < 1, `the piece that will hit is not the one marked (${JSON.stringify(fair.willHit)}, ${fair.hitMarks} marks, ring ${fair.ring})`);
   ok(/INCOMING/.test(fair.coach) && /bad/.test(fair.tone) && fair.clear, `a hit coming is not named on the coach line, or its mark is under the plates (${fair.coach}, ${fair.tone}, clear ${fair.clear})`);

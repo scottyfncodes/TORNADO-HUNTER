@@ -55,7 +55,7 @@ export class Mission {
     this.view = 'drive'; this.zoneLatch = false; this.autoHold = 0; this.inZone = false; this.killT = 0; this.cine = null; this.podBusy = false; this.harpoonBusy = false; this.reload = 0; this.shotgunCd = 0; this.mgT = 0; this.firing = 0;
     this.staggerT = 0; this.hookT = 0; this.tether = null; this.tetherSeed = 0; this.mercyT = 0; this.taughtLunge = false; this.home = null; this.busUnit = null; this.dropped = false; this.line = null; this.surge = null; this.wind = null; this.windWait = 0; this.hz = []; this.sats = []; this.attackT = 3.2;
     this.dist = lead; this.tension = null; this.bark = null; this.barkT = 0; this.callout = null; this.calloutT = 0; this.calloutUp = 0; this.callQ = []; this.far = 0;
-    this.seatT = -9; this.attacks = 0; this.lastAttack = ''; this.seatWhy = ''; this.seatNote = null; this.skipped = false;
+    this.seatT = -9; this.attacks = 0; this.lastAttack = ''; this.lastAimed = false; this.seatWhy = ''; this.seatNote = null; this.skipped = false;
     this.stats = { snaps: 0, shot: 0, rockets: 0, direct: 0, hits: 0, close: 0, dorothys: 0, fired: 0, rounds: 0, crits: 0, sats: 0 }; // fired: turret rounds that hit something, rounds: all of them
     // how each phase went, for the share text: hull lost at the wheel and the turret's rounds per band, each window of the finale
     this.rec = { wheel: [], rounds: [], hits: [], harpoon: [], dorothy: [], kill: [], busHits: 0 };
@@ -287,7 +287,7 @@ export class Mission {
   dodging() { const r = this.rig; if (this.inZone && this.zoneT > FEEL.seatWait) return false; return this.hz.some((z) => { if (z.state !== 'fly') return false; const left = Math.max(0, z.h.dur - z.h.t); return Math.hypot(z.h.tx - r.x - r.vx * left, z.h.tz - r.z - r.vz * left) < z.rad * 2.4 + 8; }); } // where it lands, against where you will be
 
   // ---- wreckage: thrown at where you are going, marked on the ground, shootable in the air ----
-  throwAt(kind, lead, lateral, extra = 0, ranging = false) {
+  throwAt(kind, lead, lateral, extra = 0, ranging = false, beside = false) {
     // on the gun the only answer is to shoot it down, so it hangs in the air a little longer for you (FEEL.gunnerAir)
     const G = this.G, r = this.rig, s = this.storm, big = BIG.includes(kind), dur = Math.max(FEEL.telegraphMin, (big ? 1.9 : 1.55) * this.p.tele) + extra + (this.view === 'gun' ? FEEL.gunnerAir : 0);
     const sp = Math.hypot(r.vx, r.vz), ux = sp > 4 ? r.vx / sp : Math.sin(r.heading), uz = sp > 4 ? r.vz / sp : Math.cos(r.heading);
@@ -300,7 +300,7 @@ export class Mission {
     const track = ranging ? (e) => { const left = Math.max(0, h.dur - h.t), q = this.rig, sp = Math.hypot(q.vx, q.vz) || 1; e.x = clamp(q.x + q.vx * left - q.vz / sp * lateral, -1480, 1480); e.z = clamp(q.z + q.vz * left + q.vx / sp * lateral, -1480, 1480); h.tx = e.x; h.tz = e.z; h.ty = G.fx.ground(e.x, e.z) + 1; }
       : (e, dt) => { const left = Math.max(0.2, h.dur - h.t), k = Math.min(1, dt * 4); e.x += (clamp(r.x + r.vx * left * lead + off.x, -1480, 1480) - e.x) * k; e.z += (clamp(r.z + r.vz * left * lead + off.z, -1480, 1480) - e.z) * k; h.tx = e.x; h.tz = e.z; h.ty = G.fx.ground(e.x, e.z) + 1; };
     const tele = G.fx.telegraph(tx, tz, rad, dur + 0.05, null, { lock: ranging ? dur + 1 : lock, track });
-    const hp = big ? FEEL.wreckHpBig : FEEL.wreckHp; this.hz.push({ h, big, hp, max: hp, rad, state: 'fly', tele, ranging });
+    const hp = big ? FEEL.wreckHpBig : FEEL.wreckHp; this.hz.push({ h, big, hp, max: hp, rad, state: 'fly', tele, ranging, beside });
   }
   dropHazard(z, how) { // shot down, landed small, or blasted
     const G = this.G, h = z.h; if (z.tele) { z.tele.on = false; z.tele.g.visible = false; }
@@ -316,13 +316,18 @@ export class Mission {
     const G = this.G, fx = G.fx, r = this.rig, pick = (a) => a[(this.ra() * a.length) | 0], rand = (a, b) => this.ar(a, b);
     // its first throw of the fight is a ranging shot: one piece, a truck's width wide. Then never two attacks in a row
     // that throw nothing (lightning, crosswind), so the wreckage keeps coming.
+    // On the gun the truck holds a steady line and cannot dodge: a throw aimed at it always arrives. So there the storm
+    // throws at most one piece per attack that will hit, and never in two attacks running; the rest land beside the truck,
+    // and the ring (hud.js) says which is which. The side and the distance are drawn for every attack, whatever the seat,
+    // so the day's storm makes the same draws for everyone.
+    const gun = this.view === 'gun', ws = this.ra() < 0.5 ? 1 : -1, wb = this.ra(), aimed = !gun || !this.lastAimed, beside = (rad, side = ws) => side * rad * (1.6 + 0.5 * wb);
     let kind = this.attacks === 0 ? 'ranging' : pick(list);
     if (kind !== 'ranging' && !THROWS.includes(kind) && !THROWS.includes(this.lastAttack) && this.lastAttack) kind = pick(list.filter((k) => THROWS.includes(k)));
-    this.attacks++; this.lastAttack = kind === 'ranging' ? 'debris' : kind;
+    this.attacks++; this.lastAttack = kind === 'ranging' ? 'debris' : kind; if (THROWS.includes(kind)) this.lastAimed = aimed; else if (kind === 'ranging') this.lastAimed = false;
     if (kind === 'ranging') { const side = this.ra() < 0.5 ? 1 : -1; this.throwAt(pick(SMALL), 1.0, side * FEEL.rangingWide, 0, true); G.audio.whistle(1.3); }
-    else if (kind === 'debris') { const n = this.def.volley[stage] + (this.rematch ? 1 : 0); for (let i = 0; i < n; i++) this.throwAt(pick(SMALL), 1.0 + i * 0.14, i ? rand(-13, 13) : rand(-1.5, 1.5), i * 0.16); G.audio.whistle(1.3); }
-    else if (kind === 'big') { this.throwAt(pick(BIG), 1.0, rand(-3, 3)); G.audio.whistle(1.7); this.call('INCOMING', 'bad', 0.9); }
-    else if (kind === 'field') { const gun = this.view === 'gun', gap = gun ? -1 : (this.ra() * 4) | 0; [-21, -7, 7, 21].forEach((o, i) => { if (i !== gap && !(gun && (i === 0 || i === 3))) this.throwAt(i % 2 ? pick(BIG) : pick(SMALL), 1.0, o + rand(-2, 2), i * 0.1); }); G.audio.whistle(1.8); this.call('DEBRIS FIELD', 'bad', 1.1); }
+    else if (kind === 'debris') { const n = this.def.volley[stage] + (this.rematch ? 1 : 0); for (let i = 0; i < n; i++) { const lat = i ? rand(-13, 13) : rand(-1.5, 1.5), far = gun && (i > 0 || !aimed); this.throwAt(pick(SMALL), 1.0 + i * 0.14, far ? beside(7.5, i % 2 ? -ws : ws) + lat * 0.1 : lat, i * 0.16, false, far); } G.audio.whistle(1.3); }
+    else if (kind === 'big') { const lat = rand(-3, 3); this.throwAt(pick(BIG), 1.0, aimed ? lat : beside(10), 0, false, !aimed); G.audio.whistle(1.7); this.call('INCOMING', 'bad', 0.9); }
+    else if (kind === 'field') { const gap = gun ? -1 : (this.ra() * 4) | 0; [-21, -7, 7, 21].forEach((o, i) => { if (i !== gap && !(gun && (i === 0 || i === 3))) this.throwAt(i % 2 ? pick(BIG) : pick(SMALL), 1.0, (gun ? (i === 1 ? beside(10) : aimed ? 0 : beside(7.5, -ws)) : o) + rand(-2, 2), i * 0.1, false, gun && !(i === 2 && aimed)); }); G.audio.whistle(1.8); this.call('DEBRIS FIELD', 'bad', 1.1); } // on the gun: the armour comes down beside you, and the small piece is the one at you (or beside you too, on the other side)
     else if (kind === 'lightning') {
       const dur = Math.max(FEEL.telegraphMin, 1.3 * this.p.tele), lock = dur - 0.5;
       fx.telegraph(r.x, r.z, 11, dur, (e) => {
@@ -459,7 +464,7 @@ export class Mission {
       if (z.state === 'fly') {
         if (h.t >= h.dur) { // it lands
           fx.puff(h.tx, h.ty + 1, h.tz, z.big ? 20 : 12, '#b89a58', 1.1); G.audio.impact(); if (hd < 60) fx.shake(z.big ? 7 : 4);
-          if (!over) { if (hd < z.rad) this.hurt(z.big ? FEEL.dmgBigDebris : FEEL.dmgDebris); else if (hd < z.rad * 2.4) this.closeCall(); }
+          if (!over) { if (hd < z.rad) this.hurt(z.big ? FEEL.dmgBigDebris : FEEL.dmgDebris); else if (hd < z.rad * 2.4 && !z.beside) this.closeCall(); } // (a piece thrown beside a truck on the gun is not a dodge)
           if (z.big) { z.state = 'wreck'; z.life = 9; h.landed = true; h.x = h.tx; h.y = h.ty + 0.6; h.z = h.tz; h.m.rotation.set(rand(-0.4, 0.4), rand(0, 6), rand(-0.5, 0.5)); if (z.tele) { z.tele.on = false; z.tele.g.visible = false; } } else this.dropHazard(z, 'land');
           continue;
         }
@@ -469,8 +474,8 @@ export class Mission {
       } else { // a wreck on the ground: go round it, or let the shotgun clear it
         z.life -= dt; if (Math.random() < dt * 5) fx.puff(h.x, h.y + 2, h.z, 5, '#2a2420', 1.0, 5);
         const ahead = (h.x - r.x) * r.vx + (h.z - r.z) * r.vz > 0;
-        if (!over && this.shotgunCd <= 0 && hd < FEEL.shotgunRange + spd * 0.12 && ahead) this.shotgun(z);
-        else if (!over && hd < 4.4) { this.hurt(FEEL.dmgWreck); r.vx *= 0.5; r.vz *= 0.5; r.speed *= 0.5; this.dropHazard(z, 'ram'); }
+        if (!over && this.view !== 'gun' && this.shotgunCd <= 0 && hd < FEEL.shotgunRange + spd * 0.12 && ahead) this.shotgun(z);
+        else if (!over && hd < 4.4) { if (this.view !== 'gun') this.hurt(FEEL.dmgWreck); r.vx *= 0.5; r.vz *= 0.5; r.speed *= 0.5; this.dropHazard(z, 'ram'); }
         else if (z.life <= 0 || hd > 700) this.dropHazard(z, 'land');
       }
     }

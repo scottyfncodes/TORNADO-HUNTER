@@ -334,7 +334,7 @@ export class Gunner {
   bot(o, dt = 0) {
     const m = this.m; let z = null, soon = 1e9; this.botFire = false; if (m.phase !== 'chase') { _p.copy(this.weak).sub(o); this.botFire = this.locked && !this.wasFiring; }
     else {
-      for (const h of m.hz) if (h && h.state === 'fly' && h.h.dur - h.h.t < soon && h.h.t > 0.25) { soon = h.h.dur - h.h.t; z = h; }
+      for (const h of m.hz) if (h && h.state === 'fly' && h.h.dur - h.h.t < soon && h.h.t > 0.25 && m.willHit(h)) { soon = h.h.dur - h.h.t; z = h; } // it reads the ring: only a piece that will hit is worth leaving the seam for
       if (this.G.bot === 'storm') z = null;
       if (z) { _p.set(z.h.x, z.h.y, z.h.z).sub(o); const want = z.big && this.rockets > 0 && !this.G.botGunOnly ? 'rocket' : 'mg'; if (this.weapon !== want) this.setWeapon(want); this.botFire = want === 'mg' || (this.locked && !this.wasFiring); }
       else { if (this.weapon !== 'mg') this.setWeapon('mg'); _p.copy(this.weak).sub(o); this.botFire = m.inZone; }

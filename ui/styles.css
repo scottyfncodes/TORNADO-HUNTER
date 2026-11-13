@@ -279,7 +279,7 @@ body:not(.gunning) .gun-only, body.gunning .drive-only { display: none; }
 .marks i.big::before { inset: 1px; border-width: 4px; }
 .marks i.big::after { content: ""; position: absolute; inset: 11px; background: var(--accent); transform: rotate(45deg); box-shadow: 0 0 0 1.5px var(--ink); }
 .marks i.urgent::before { border-color: #fff1c2; animation: ready 0.24s steps(2) infinite; }
-.marks i.off::before { inset: auto; left: 4px; top: 2px; border: 11px solid transparent; border-top: 0; border-bottom: 20px solid var(--accent); transform: none; box-shadow: none; filter: drop-shadow(0 2px 0 var(--ink)); }
+.marks i.off::before { inset: auto; left: 6px; top: 1px; border: 9px solid transparent; border-top: 0; border-bottom: 26px solid var(--accent); transform: none; box-shadow: none; filter: drop-shadow(0 2px 0 var(--ink)); }
 .marks i.off::after { display: none; }
 .marks i.off.urgent::before { border-color: transparent; border-bottom-color: #fff1c2; }
 /* a piece that will land on the truck: heavier, and a ring that closes on it as it comes (--k: 1 far, 0 landing).

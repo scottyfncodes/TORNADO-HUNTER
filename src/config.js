@@ -121,18 +121,18 @@ export const FEEL = {
 };
 
 // ---- the results screen: a letter per fight (src/grade.js). Destroying the storm earns one; each part is 0..1, weighted ----
-// Calibrated by tests/fullfight.mjs and by the fights played through real input on the live build (2.11): full marks sit where
-// a gunner who never misses lands, but the scale no longer starts there. A first win by a person (Pete in 70 s with a third
-// to a half of the hull, two shots in three on target) is a B; a win scraped with the hull nearly gone is a C; D is for
-// a win that was slow, battered and wild all at once. Before 2.11 those same fights graded C, D and D.
+// Calibrated by tests/fullfight.mjs (2.11, on the corrected test clock) and by fights played through real input on the live
+// build. A clean fight by a gunner who never misses is par and grades S (Pete 46 s, Agnes 76, the Sisters 79); with a hit
+// or two it is an A. A thumb fitted to the real-input fights (70% accuracy) grades A or B; a rougher one that never touches
+// the rockets, B or C. Three real first wins of Skinny Pete (68 to 112 s, 12 to 52 hull left) graded C, D, D on the 2.10 scale.
 export const GRADE = {
   weights: { time: 0.35, hull: 0.25, acc: 0.15, crits: 0.15, close: 0.1 },
-  par: { pete: 40, agnes: 72, sisters: 75 }, // s: full marks for time at par (about 10% over a gunner who never misses), none at timeZero times par
+  par: { pete: 45, agnes: 78, sisters: 80 }, // s: full marks for time at par (a clean fight by a gunner who never misses), none at timeZero times par. (40, 72, 75 until 2.11: measured on a test clock that ran wreckage ahead of the truck; no played fight reached them)
   timeZero: 3,                              // (2.2 until 2.11: a 90-second first win of Skinny Pete scored nothing for time)
   accZero: 0.2, accFull: 0.85,              // share of turret rounds that hit something you can hurt (nothing below 0.3 until 2.11)
   crits: { pete: 170, agnes: 360, sisters: 275 }, // critical hits for full marks
-  close: 8,                                 // near misses for full marks
-  letters: [['S', 90], ['A', 75], ['B', 55], ['C', 25], ['D', 0]], // (B from 60 and C from 45 until 2.11: the bottom of the scale was moved, the top was not)
+  close: 5,                                 // near misses for full marks (8 until 2.11: a near miss is a dodge at the wheel, and most of a fight is on the gun)
+  letters: [['S', 90], ['A', 75], ['B', 55], ['C', 25], ['D', 0]], // (B from 60 and C from 45 until 2.11)
   share: { accGood: 0.75, accOk: 0.45, hullOk: 25 }, // the share text's squares: the turret's accuracy on a band, hull lost at the wheel
 };
 
