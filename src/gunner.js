@@ -200,7 +200,7 @@ export class Gunner {
       this.lastRef = a.ref; this.lastAz = az; this.lastEl = el;
     } else this.lastRef = null;
     // rockets want a moment on the target; then they follow it
-    const rocket = this.weapon === 'rocket', locks = rocket || this.weapon === 'harpoon', lockable = locks && (a.kind === 'haz' || a.kind === 'sat' || a.kind === 'core' || (a.kind === 'band' && m.inZone));
+    const rocket = this.weapon === 'rocket', locks = rocket || this.weapon === 'harpoon', lockable = locks && m.canFire && (a.kind === 'haz' || a.kind === 'sat' || a.kind === 'core' || (a.kind === 'band' && m.inZone)); // no lock on a shot that would be refused
     if (lockable) { if (this.lock && this.lock.ref === a.ref) this.lockT += dt; else { this.lock = { kind: a.kind, ref: a.ref }; this.lockT = 0; this.locked = false; } this.lockLost = 0; }
     else if (this.lock) { this.lockLost += dt; if (this.lockLost > 0.3 || !locks) { this.lock = null; this.lockT = 0; this.locked = false; } }
     if (this.lock && this.lock.kind === 'haz' && this.lock.ref.state === 'gone') { this.lock = null; this.lockT = 0; this.locked = false; }
@@ -208,7 +208,7 @@ export class Gunner {
     // the trigger
     const firing = input.firing || !!this.botFire, edge = firing && !this.wasFiring; this.wasFiring = firing;
     if (ph === 'kill') { if (edge) { if (locked) m.killShot(); else if (m.reload <= 0) { this.say('AIM AT THE CORE'); G.audio.deny(); G.hud.deny('btn-fire'); } } }
-    else if (ph === 'stagger') { if (edge && !m.harpoonBusy) { if (!locked) { this.say('AIM AT THE GLOW'); G.audio.deny(); G.hud.deny('btn-fire'); } else if (m.fireHarpoon()) { this.recoil = 1.6; this.kick += 0.03; } else G.hud.deny('btn-fire'); } }
+    else if (ph === 'stagger') { if (edge && !m.harpoonBusy) { if (!m.canFire) { this.say('CLOSING IN', 0.8); G.audio.deny(); G.hud.deny('btn-fire'); } else if (!locked) { this.say('AIM AT THE GLOW'); G.audio.deny(); G.hud.deny('btn-fire'); } else if (m.fireHarpoon()) { this.recoil = 1.6; this.kick += 0.03; } else G.hud.deny('btn-fire'); } }
     else if (ph !== 'chase') { /* nothing to shoot at between phases */ }
     else if (rocket) { if (edge) this.fireRocket(); }
     else if (firing && this.shotT <= 0) { this.shotT = m.gun.every; this.shoot(assist); }
@@ -336,7 +336,7 @@ export class Gunner {
     else {
       for (const h of m.hz) if (h && h.state === 'fly' && h.h.dur - h.h.t < soon && h.h.t > 0.25) { soon = h.h.dur - h.h.t; z = h; }
       if (this.G.bot === 'storm') z = null;
-      if (z) { _p.set(z.h.x, z.h.y, z.h.z).sub(o); const want = z.big && this.rockets > 0 ? 'rocket' : 'mg'; if (this.weapon !== want) this.setWeapon(want); this.botFire = want === 'mg' || (this.locked && !this.wasFiring); }
+      if (z) { _p.set(z.h.x, z.h.y, z.h.z).sub(o); const want = z.big && this.rockets > 0 && !this.G.botGunOnly ? 'rocket' : 'mg'; if (this.weapon !== want) this.setWeapon(want); this.botFire = want === 'mg' || (this.locked && !this.wasFiring); }
       else { if (this.weapon !== 'mg') this.setWeapon('mg'); _p.copy(this.weak).sub(o); this.botFire = m.inZone; }
     }
     // G.botLag (0..1): a sloppy aimer whose sights wander off the target and who lets go of the trigger now and then

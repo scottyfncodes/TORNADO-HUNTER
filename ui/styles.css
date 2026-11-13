@@ -282,6 +282,14 @@ body:not(.gunning) .gun-only, body.gunning .drive-only { display: none; }
 .marks i.off::before { inset: auto; left: 4px; top: 2px; border: 11px solid transparent; border-top: 0; border-bottom: 20px solid var(--accent); transform: none; box-shadow: none; filter: drop-shadow(0 2px 0 var(--ink)); }
 .marks i.off::after { display: none; }
 .marks i.off.urgent::before { border-color: transparent; border-bottom-color: #fff1c2; }
+/* a piece that will land on the truck: heavier, and a ring that closes on it as it comes (--k: 1 far, 0 landing).
+   Pieces that will miss stay as they were, dimmer beside it */
+.marks i.hit { border-radius: 50%; outline: 3px solid var(--accent); outline-offset: calc(4px + var(--k, 0) * 30px); box-shadow: 0 0 0 1.5px var(--ink); }
+.marks i.hit:not(.off)::before { border-width: 4px; inset: 3px; }
+.marks i.hit.big:not(.off)::before { inset: 0; border-width: 5px; }
+.marks i.hit.urgent { outline-color: #fff1c2; }
+.marks i.hit.off { box-shadow: none; }
+.marks i:not(.hit)::before, .marks i:not(.hit)::after { opacity: 0.6; }
 
 /* hail on the lens */
 #lens { position: fixed; inset: 0; z-index: 6; pointer-events: none; overflow: hidden; }

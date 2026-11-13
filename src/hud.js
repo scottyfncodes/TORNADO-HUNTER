@@ -81,7 +81,7 @@ export class Hud {
     this.set('bus', !gun && !!m.home, (v) => { if (!gun) $('mph-lbl').textContent = v ? 'mph · Doc\'s bus' : 'mph'; }); // at the wheel of someone else's vehicle
     if (gun) this.gunner(dt, m, g, camera);
     // green: why the game just changed your seat (and how to get the wheel back). Magenta: you are losing it. Amber: do this
-    const line = m.coachLine(), n = m.seatNote, tone = n && (line === n.text || line === n.shown) ? 'seat' : /SKIP$/.test(line) ? '' : /CATCH|CLOSER|OUTRUN|GET INSIDE|ARMOUR|TAKE THE FIELD/.test(line) ? 'bad' : /FIRE|GLOW|KILL|BOOST|TAP GUNS|DEPLOY|ITS FOOT|SEAM|LOCK/.test(line) ? 'good' : '';
+    const line = m.coachLine(), n = m.seatNote, tone = n && (line === n.text || line === n.shown) ? 'seat' : /SKIP$/.test(line) ? '' : /CATCH|CLOSER|OUTRUN|GET INSIDE|ARMOUR|INCOMING|TAKE THE FIELD/.test(line) ? 'bad' : /FIRE|GLOW|KILL|BOOST|TAP GUNS|DEPLOY|ITS FOOT|SEAM|LOCK/.test(line) ? 'good' : '';
     this.set('coach', line, (v) => { $('hud-coach').textContent = v; }); this.set('coachTone', tone, (v) => { $('hud-coach').className = 'coach ' + v; });
     const call = m.calloutT > 0 && m.callout ? m.callout : null;
     this.set('callout', call ? call.text + call.tone : '', () => { const e = $('hud-callout'); e.hidden = !call; if (call) { e.textContent = call.text; e.className = 'callout ' + call.tone; } this.last.clash = null; });
@@ -92,8 +92,9 @@ export class Hud {
     // an arrow on the screen edge when the storm is out of frame
     _v.set(s.x, s.groundY + 40, s.z).project(camera);
     const off = _v.z > 1 || Math.abs(_v.x) > 1.02 || Math.abs(_v.y) > 1.2;
-    this.set('arrowOn', off && s.alive, (v) => { $('storm-arrow').hidden = !v; });
-    if (off && s.alive) {
+    const arrow = off && s.alive && !(gun && this.hotOn);
+    this.set('arrowOn', arrow, (v) => { $('storm-arrow').hidden = !v; });
+    if (arrow) {
       let x = _v.x, y = _v.y; if (_v.z > 1) { x = -x; y = -y; } const k = 1 / Math.max(Math.abs(x), Math.abs(y), 0.001); x *= k * 0.86; y *= k * 0.7;
       const W = window.innerWidth, H = window.innerHeight, py = Math.max(H * 0.36, Math.min(H * 0.78, (-y * 0.5 + 0.5) * H)); // keep it off the plates and the pad
       $('storm-arrow').style.transform = `translate(${(x * 0.5 + 0.5) * W - 15}px, ${py - 15}px) rotate(${Math.atan2(x, y)}rad)`;
@@ -107,31 +108,43 @@ export class Hud {
     // whose seat: your own speed while the truck drives itself, or the crew member and the vehicle you are sitting on
     this.set('seat', SEAT[g.seatId] || '', (v) => { $('rig-mph').hidden = !!v; $('mph-lbl').textContent = v || 'mph · auto'; });
     // reticle: cream at rest, amber on something you can hurt, magenta on the seam (or a lock), dim when out of range
-    const reach = a.kind === 'haz' || a.kind === 'sat' || a.kind === 'core' || (a.kind === 'band' && m.inZone);
+    const can = m.canFire, reach = a.kind === 'haz' || a.kind === 'sat' || (a.kind === 'core' && can) || (a.kind === 'band' && m.inZone);
     this.set('aim', !a.kind ? '' : !reach ? 'far' : g.locked || (a.crit && !rk) ? 'hot' : 'on', (v) => { this.ret.classList.toggle('on', v === 'on'); this.ret.classList.toggle('hot', v === 'hot'); this.ret.classList.toggle('far', v === 'far'); });
     this.set('lock', locks ? Math.round(Math.min(1, g.lockT / FEEL.rocketLockSeconds) * 12) : 0, (v) => { this.ret.style.setProperty('--lock', v / 12); });
-    const note = g.noteT > 0 ? g.note : g.locked ? 'LOCKED' : locks && g.lock ? 'LOCKING' : '';
+    const note = g.noteT > 0 ? g.note : g.locked ? 'LOCKED' : locks && g.lock ? 'LOCKING' : kill && !can && a.kind === 'core' ? 'CLOSING IN' : '';
     this.set('note', note, (v) => { const e = $('ret-note'); e.hidden = !v; e.textContent = v; e.classList.toggle('hot', v === 'LOCKED'); });
     if (this.targetT > 0) { this.targetT -= dt; if (this.targetT <= 0) this.set('tOn', false, () => { $('ret-info').hidden = true; }); }
     // the pad
     this.set('fLabel', w === 'harpoon' ? 'Harpoon' : kill ? 'Kill shot' : 'Fire', (v) => { $('fire-label').textContent = v; });
-    this.set('fHint', kill ? (m.phase === 'dorothy' ? 'AWAY' : `${Math.ceil(m.phase === 'stagger' ? m.staggerT : m.killT)} s`) : rk ? `ROCKET ${g.rockets}/${g.rocketMax}` : m.gun.name.toUpperCase(), (v) => { $('fire-hint').textContent = v; });
-    this.set('fState', kill ? (g.locked ? 3 : 2) : rk ? (g.locked ? 3 : g.rockets > 0 && g.reload <= 0 ? 1 : 0) : 1, (v) => { const b = $('btn-fire'); b.classList.toggle('ready', v === 1 || v === 2); b.classList.toggle('danger', v === 3); if (v === 3 && kill) this.onReady && this.onReady(); });
+    this.set('fHint', kill ? (m.phase === 'dorothy' ? 'AWAY' : !can ? 'CLOSING IN' : `${Math.ceil(m.phase === 'stagger' ? m.staggerT : m.killT)} s`) : rk ? `ROCKET ${g.rockets}/${g.rocketMax}` : m.gun.name.toUpperCase(), (v) => { $('fire-hint').textContent = v; });
+    this.set('fState', kill ? (g.locked ? 3 : can ? 2 : 0) : rk ? (g.locked ? 3 : g.rockets > 0 && g.reload <= 0 ? 1 : 0) : 1, (v) => { const b = $('btn-fire'); b.classList.toggle('ready', v === 1 || v === 2); b.classList.toggle('danger', v === 3); if (v === 3 && kill) this.onReady && this.onReady(); });
     this.set('sLabel', rk ? 'Gun' : 'Rockets', (v) => { $('swap-label').textContent = v; });
     this.set('sHint', kill ? '' : rk ? '' : `${g.rockets} LEFT`, (v) => { $('swap-hint').textContent = v; });
     this.set('sOff', !kill && !rk && g.rockets <= 0, (v) => { $('btn-swap').classList.toggle('off', v); });
     this.set('solo', kill, (v) => { $('btn-swap').classList.toggle('gone', v); $('btn-drive').classList.toggle('gone', v); }); // the kill shot is one button
-    // what is coming at the truck: a bracket on each piece in the air, an arrow at the edge when it is out of frame
-    let n = 0;
-    for (const z of m.hz) {
-      if (n >= this.marks.length) break; if (!z || z.state !== 'fly') continue; const h = z.h, k = this.marks[n++], left = h.dur - h.t;
-      _v.set(h.x, h.y, h.z).project(camera); let x = _v.x, y = _v.y; const behind = _v.z > 1, off = behind || Math.abs(x) > 0.94 || y > 0.56 || y < -0.8; // off the picture, or under the plates along the top
-      if (!off && Math.abs(x) * W < 84 && Math.abs(y) * H < 84) { n--; continue; } // the reticle is already on it
-      if (off) { if (behind) { x = -x; y = -y; } const s = 1 / Math.max(Math.abs(x) / 0.9, y > 0 ? y / 0.56 : -y / 0.72, 0.001); x *= s; y *= s; }
-      const cls = (z.big ? 'big ' : '') + (left < 0.8 ? 'urgent ' : '') + (off ? 'off' : '');
+    // what is coming at the truck: a bracket on each piece in the air, an arrow at the edge when it is out of frame. A piece that
+    // will land on the truck is marked as such, first, with a ring that closes on it as it comes: the circle on the ground,
+    // brought up to where the gunner is looking
+    let n = 0; const fly = this.fly || (this.fly = []); fly.length = 0;
+    // the top of the picture belongs to the plates and the coach line: marks stop below them (measured, it differs by screen)
+    if (!this.topAt || this.clock - this.topAt > 1) { this.topAt = this.clock; const cb = $('hud-coach').getBoundingClientRect(), sb = $('hud-storm').getBoundingClientRect(); this.topY = 1 - 2 * (Math.max(cb.bottom, sb.bottom) + 40) / H; }
+    const top = this.topY, placed = this.placed || (this.placed = []); placed.length = 0;
+    for (const z of m.hz) if (z && z.state === 'fly') { z.hot = m.willHit(z); fly.push(z); }
+    fly.sort((p, q) => (q.hot - p.hot) || (p.h.dur - p.h.t) - (q.h.dur - q.h.t));
+    for (const z of fly) {
+      if (n >= this.marks.length) break; const h = z.h, k = this.marks[n++], left = h.dur - h.t;
+      _v.set(h.x, h.y, h.z).project(camera); let x = _v.x, y = _v.y; const behind = _v.z > 1, off = behind || Math.abs(x) > 0.94 || y > top || y < -0.8; // off the picture, or under the plates along the top
+      if (!off && !z.hot && Math.abs(x) * W < 84 && Math.abs(y) * H < 84) { n--; continue; } // the reticle is already on it
+      if (off) { if (behind) { x = -x; y = -y; } const s = 1 / Math.max(Math.abs(x) / 0.9, y > 0 ? y / top : -y / 0.72, 0.001); x *= s; y *= s; }
+      const px = Math.round((x * 0.5 + 0.5) * W), py = Math.round((-y * 0.5 + 0.5) * H);
+      if (!z.hot && placed.some((q) => Math.abs(q[0] - px) < 48 && Math.abs(q[1] - py) < 48)) { n--; continue; } // it would sit on top of a mark already placed (pieces from one direction share an edge arrow): the hit keeps the spot
+      placed.push([px, py]);
+      const cls = (z.big ? 'big ' : '') + (left < 0.8 ? 'urgent ' : '') + (z.hot ? 'hit ' : '') + (off ? 'off' : '');
       if (!k.on) { k.on = true; k.e.hidden = false; } if (k.cls !== cls) { k.cls = cls; k.e.className = cls; }
-      k.e.style.transform = `translate(${Math.round((x * 0.5 + 0.5) * W)}px, ${Math.round((-y * 0.5 + 0.5) * H)}px)` + (off ? ` rotate(${Math.atan2(x, y).toFixed(2)}rad)` : '');
+      const ring = z.hot ? Math.round(Math.min(1, left / 1.4) * 14) : -1; if (k.ring !== ring) { k.ring = ring; k.e.style.setProperty('--k', ring < 0 ? 0 : ring / 14); }
+      k.e.style.transform = `translate(${px}px, ${py}px)` + (off ? ` rotate(${Math.atan2(x, y).toFixed(2)}rad)` : '');
     }
+    this.hotOn = fly.some((z) => z.hot); // a hit is coming: the storm's own arrow steps aside for it
     for (; n < this.marks.length; n++) { const k = this.marks[n]; if (k.on) { k.on = false; k.e.hidden = true; } }
   }
 }

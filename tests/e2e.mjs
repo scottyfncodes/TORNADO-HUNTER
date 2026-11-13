@@ -317,6 +317,59 @@ try {
   console.log('set piece rules:', JSON.stringify(rules));
   for (const [kind, r] of Object.entries(rules)) ok(r.chase && !r.hail && !r.hailSoon && !r.wall && !r.gun && ['stagger', 'rip', 'dorothy', 'kill', 'surge'].every((k) => !r[k]) && !r.hailStarted, `${kind === 'force' ? 'elevator' : kind}: it could come at the wrong time ${JSON.stringify(r)}`);
 
+  // ---- turret fairness (2.11): a lock that means it, a warning where the gunner is looking, no chains of hits ----
+  const harpoon = await page.evaluate(async () => {
+    const { STORMS, FEEL } = await import('/src/config.js'); const G = window.__G, frame = () => new Promise((r) => requestAnimationFrame(r)), out = [];
+    for (const id of ['pete', 'sisters']) {
+      G.setpiece = 'never'; G.startMission(STORMS.find((s) => s.id === id)); G.fast = 2; const m = G.mission, s = m.storm, u = m.convoy.unit('harpoon');
+      while (s.bandsLeft > 1) { while (m.phase !== 'chase') await frame(); m.damageStorm(m.hp + 1, { x: s.x, y: 40, z: s.z }); }
+      while (m.phase !== 'chase') await frame();
+      u.x = s.x + 480; u.z = s.z; // Winch a long way out, as the evaluation found him (260 to 496 m)
+      m.damageStorm(m.hp + 1, { x: s.x, y: 40, z: s.z }); const L = { id, window: m.p.stagger, lockedFar: 0, farFrames: 0, held: null, notes: new Set(), coachFar: '', refused: 0, lockAfter: null, hooked: false };
+      G.bot = true; const t0 = m.time; let inAt = null, tAtIn = null;
+      while (m.phase === 'stagger' && m.time - t0 < 20) {
+        const far = !m.canFire;
+        if (far) { L.farFrames++; if (m.gn.locked) L.lockedFar++; L.coachFar = m.coachLine(); const before = m.harpoonBusy; G.bot = false; m.gn.botFire = false; if (L.farFrames % 20 === 5) { window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', bubbles: true })); await frame(); await frame(); window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space', bubbles: true })); if (m.gn.noteT > 0) L.notes.add(m.gn.note); if (!before && !m.harpoonBusy && m.phase === 'stagger') L.refused++; } G.bot = true; L.retFar = document.getElementById('reticle').classList.contains('far'); L.hintFar = document.getElementById('fire-hint').textContent; }
+        else if (inAt === null) { inAt = m.time - t0; tAtIn = m.staggerT; }
+        if (!far && m.gn.locked && L.lockAfter === null) L.lockAfter = +(m.time - t0 - inAt).toFixed(2);
+        await frame();
+      }
+      L.held = tAtIn === null ? null : +(m.p.stagger - tAtIn).toFixed(2); L.closedIn = inAt === null ? null : +inAt.toFixed(2); L.hooked = m.phase === 'rip'; L.notes = [...L.notes]; G.bot = false; G.fast = 1; out.push(L);
+    }
+    G.setpiece = undefined; return out;
+  });
+  for (const L of harpoon) {
+    console.log('harpoon from 480 m:', JSON.stringify(L));
+    ok(L.farFrames > 20 && L.lockedFar === 0, `${L.id}: LOCKED was shown while the harpoon could not fire (${L.lockedFar} of ${L.farFrames} frames)`);
+    ok(/^WINCH IS CLOSING IN: \d+ M$/.test(L.coachFar) || /WINCH'S HARPOON IS UP/.test(L.coachFar), `${L.id}: the coach line did not say he was closing in (${L.coachFar})`);
+    ok(L.retFar && L.hintFar === 'CLOSING IN' && L.notes.includes('CLOSING IN') && L.refused >= 1, `${L.id}: a press out of range was not answered with CLOSING IN (${JSON.stringify(L.notes)}, reticle far ${L.retFar}, hint ${L.hintFar})`);
+    ok(L.held !== null && L.held < 0.2, `${L.id}: the window ran down ${L.held} s while Winch was closing in`);
+    ok(L.hooked && L.lockAfter !== null && L.lockAfter <= 1.2, `${L.id}: in range, the lock and the hook did not follow (${L.lockAfter}, ${L.hooked})`);
+  }
+  const fair = await page.evaluate(async () => {
+    const { STORMS, FEEL } = await import('/src/config.js'); const G = window.__G, frame = () => new Promise((r) => requestAnimationFrame(r));
+    G.setpiece = 'never'; G.startMission(STORMS[1]); const m = G.mission, s = m.storm, out = {}; m.attackT = 99;
+    m.rig.place(s.x + 170, s.z, -Math.PI / 2, G.world); m.rig.vx = -40; m.rig.speed = 40; for (let i = 0; i < 20; i++) await frame(); if (m.view !== 'gun') m.enterGun('auto'); for (let i = 0; i < 25; i++) await frame(); m.attackT = 99;
+    m.throwAt('tractor', 1.0, 0); m.throwAt('cow', 1.0, 18, 0.1); const hit = m.hz[0], miss = m.hz[1]; out.air = +(hit.h.dur - 1.9).toFixed(2); // on the gun it hangs longer
+    while (hit.h.t < hit.h.dur - 0.9) await frame();
+    const marks = [...document.querySelectorAll('#marks i')].filter((e) => !e.hidden);
+    out.willHit = [m.willHit(hit), m.willHit(miss)]; out.hitMarks = marks.filter((e) => e.classList.contains('hit')).length; out.ring = marks.filter((e) => e.classList.contains('hit')).map((e) => +e.style.getPropertyValue('--k')); out.coach = m.coachLine(); out.tone = document.getElementById('hud-coach').className;
+    const top = Math.max(document.getElementById('hud-coach').getBoundingClientRect().bottom, document.getElementById('hud-storm').getBoundingClientRect().bottom); out.clear = marks.every((e) => e.getBoundingClientRect().top + 15 > top + 10);
+    // it lands: a hit on the gun buys a breather
+    m.clearHazards(true); m.rig.immune = 0; m.attackT = 0.4; const h0 = m.rig.hull; m.hurt(16); out.dmg = h0 - m.rig.hull; out.attackT = +m.attackT.toFixed(2); out.mercy = FEEL.gunnerMercy;
+    // the autodrive's own crash costs nothing; yours does
+    m.rig.immune = 0; const h1 = m.rig.hull, crash = () => { const w = G.world.collideRig; G.world.collideRig = () => { G.world.collideRig = w; return [{ kind: 'crash', dmg: 8, x: m.rig.x, y: m.rig.y, z: m.rig.z }]; }; };
+    crash(); await frame(); await frame(); out.autoCrash = h1 - m.rig.hull; m.leaveGun(true); m.rig.immune = 0; const h2 = m.rig.hull; crash(); await frame(); await frame(); out.wheelCrash = h2 - m.rig.hull;
+    m.rig.immune = 0; m.attackT = 0.4; m.hurt(4); out.wheelAttackT = +m.attackT.toFixed(2); // at the wheel you can dodge: no breather
+    G.setpiece = undefined; return out;
+  });
+  console.log('turret fairness:', JSON.stringify(fair));
+  ok(fair.willHit[0] === true && fair.willHit[1] === false && fair.hitMarks === 1 && fair.ring[0] > 0 && fair.ring[0] < 1, `the piece that will hit is not the one marked (${JSON.stringify(fair.willHit)}, ${fair.hitMarks} marks, ring ${fair.ring})`);
+  ok(/INCOMING/.test(fair.coach) && /bad/.test(fair.tone) && fair.clear, `a hit coming is not named on the coach line, or its mark is under the plates (${fair.coach}, ${fair.tone}, clear ${fair.clear})`);
+  ok(Math.abs(fair.air - 0.3) < 0.01, `on the gun a thrown piece is not in the air ${0.3} s longer (${fair.air})`);
+  ok(fair.dmg === 16 && fair.attackT >= fair.mercy - 0.1 && fair.wheelAttackT <= 0.4, `a hit on the gun did not buy a breather, or one at the wheel did (gun ${fair.attackT} s, wheel ${fair.wheelAttackT} s, mercy ${fair.mercy})`);
+  ok(fair.autoCrash === 0 && fair.wheelCrash === 8, `crash damage: on autodrive ${fair.autoCrash} (want 0), at the wheel ${fair.wheelCrash} (want 8)`);
+
   // losing still ends the fight
   const lost = await page.evaluate(async () => { const { STORMS } = await import('/src/config.js'); const G = window.__G; G.startMission(STORMS[0]); const m = G.mission; m.rig.hull = 5; m.rig.immune = 0; m.hurt(20); return m.result && { won: m.result.won, reason: m.result.reason }; });
   ok(lost && !lost.won && lost.reason === 'wrecked', 'a wreck did not end the fight'); console.log('wreck:', JSON.stringify(lost));

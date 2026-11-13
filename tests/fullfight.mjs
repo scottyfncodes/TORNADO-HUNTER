@@ -1,6 +1,8 @@
 // Whole fights, start to finish, in a browser: node tests/fullfight.mjs   (Playwright + Chromium; serves the repo itself)
 // A scripted player drives the chase (steers at the storm, boosts when told), the test aimer (gunner.js bot) works the
 // turret at two skills, the bus is driven to the ring and DOROTHY deployed, the harpoon and the kill shot fired on a lock.
+// Three gunners: sharp (never off the seam), sloppy (the sights wander, the trigger is let go a third of the time) and novice
+// (sloppy, and never touches the rockets). SKILLS=sharp,novice picks them; ONLY=pete picks storms.
 // It prints what the results screen would: time, hull, accuracy, crits, near misses, the grade and its hint, and the share
 // rows. GRADE in config.js is calibrated from this; the checks keep the grades in order (sharp above sloppy).
 // RUNS=n seeds per storm and skill (default 2). DAILY=YYYY-MM-DD plays that day's Daily Storm twice and compares.
@@ -13,7 +15,7 @@ const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8000 + Math.floor(Math.random() * 900), URL = `http://127.0.0.1:${PORT}/`;
-const RUNS = +(process.env.RUNS || 2);
+const RUNS = +(process.env.RUNS || 2), SKILLS = (process.env.SKILLS || 'sharp,sloppy,novice').split(',');
 const server = spawn('python3', ['-m', 'http.server', String(PORT), '--bind', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
 const fails = []; let checks = 0;
 const ok = (cond, msg) => { checks++; if (!cond) { fails.push(msg); console.log('  FAIL', msg); } };
@@ -23,7 +25,7 @@ export async function fight(page, { id, skill, seed, daily }) {
     const { STORMS } = await import('/src/config.js'); const { grade } = await import('/src/grade.js');
     let x = seed >>> 0; const R = Math.random; Math.random = () => { x = (x + 0x6d2b79f5) >>> 0; let t = x; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
     const G = window.__G, frame = () => new Promise((r) => requestAnimationFrame(() => r()));
-    G.bot = true; G.botLag = skill === 'sloppy' ? 0.55 : 0; G.tetherSeed = undefined;
+    G.bot = true; G.botLag = skill === 'sharp' ? 0 : 0.55; G.botGunOnly = skill === 'novice'; G.tetherSeed = undefined;
     if (daily) G.startDaily('practice', daily); else G.startMission(STORMS.find((s) => s.id === id));
     G.fast = 6; const m = G.mission, s = m.storm, trail = { jukes: [], attacks: [] };
     const jr = m.rj, ra = m.ra; m.rj = () => { const v = jr(); trail.jukes.push(+v.toFixed(6)); return v; }; m.ra = () => { const v = ra(); trail.attacks.push(+v.toFixed(6)); return v; };
@@ -40,10 +42,10 @@ export async function fight(page, { id, skill, seed, daily }) {
         await frame();
       }
       for (let i = 0; i < 4; i++) await frame();
-    } finally { G.input.axes = axes0; G.bot = false; G.botLag = 0; G.fast = 1; Math.random = R; }
+    } finally { G.input.axes = axes0; G.bot = false; G.botLag = 0; G.botGunOnly = false; G.fast = 1; Math.random = R; }
     const res = m.result; if (!res) return { timeout: true, phase: m.phase, time: m.time };
     const g = grade(res), st = res.stats;
-    return { won: res.won, time: +res.time.toFixed(1), hull: Math.round(res.hull), hullMax: res.hullMax, acc: st.rounds ? +(st.fired / st.rounds).toFixed(2) : 0, rounds: st.rounds, crits: st.crits, close: st.close, letter: g.letter, score: g.score, hint: g.hint, rows: res.rows, storm: res.storm.id, trail: { jukes: trail.jukes.slice(0, 12), attacks: trail.attacks.slice(0, 24) } };
+    return { won: res.won, hits: st.hits, shot: st.shot, time: +res.time.toFixed(1), hull: Math.round(res.hull), hullMax: res.hullMax, acc: st.rounds ? +(st.fired / st.rounds).toFixed(2) : 0, rounds: st.rounds, crits: st.crits, close: st.close, letter: g.letter, score: g.score, hint: g.hint, rows: res.rows, storm: res.storm.id, trail: { jukes: trail.jukes.slice(0, 12), attacks: trail.attacks.slice(0, 24) } };
   }, { id, skill, seed, daily });
 }
 
@@ -54,12 +56,15 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
     await page.goto(URL); await page.waitForFunction(() => window.__G && window.__G.ui && document.getElementById('loading').hidden, null, { timeout: 60000 });
     const rows = [];
-    for (const id of (process.env.ONLY || 'pete,agnes,sisters').split(',')) for (const skill of ['sharp', 'sloppy']) for (let seed = 1; seed <= RUNS; seed++) {
+    for (const id of (process.env.ONLY || 'pete,agnes,sisters').split(',')) for (const skill of SKILLS) for (let seed = 1; seed <= RUNS; seed++) {
       const F = await fight(page, { id, skill, seed }); rows.push({ id, skill, ...F });
       const r = F.rows ? Object.entries(F.rows).map(([k, v]) => `${k} ${v.join('')}`).join(' ') : '';
-      console.log(`${id.padEnd(8)} ${skill.padEnd(6)} ${seed}: ${F.won ? 'won ' : 'LOST'} ${String(F.time).padStart(6)} s  hull ${String(F.hull).padStart(3)}/${F.hullMax}  acc ${F.acc}  crits ${String(F.crits).padStart(4)}  close ${F.close}  -> ${F.letter || '-'} (${F.score})  "${F.hint}"  ${r}`);
+      console.log(`${id.padEnd(8)} ${skill.padEnd(6)} ${seed}: ${F.won ? 'won ' : 'LOST'} ${String(F.time).padStart(6)} s  hull ${String(F.hull).padStart(3)}/${F.hullMax}  acc ${F.acc}  crits ${String(F.crits).padStart(4)}  close ${F.close}  hits ${F.hits} shot ${F.shot}  -> ${F.letter || '-'} (${F.score})  "${F.hint}"  ${r}`);
       ok(!F.timeout, `${id}/${skill}/${seed}: the fight did not finish (${F.phase} at ${F.time})`);
     }
+    // the table the tuning is read from: wins, and the median hull left in a win, per storm and gunner
+    console.log('');
+    for (const id of ['pete', 'agnes', 'sisters']) for (const k of SKILLS) { const R = rows.filter((r) => r.id === id && r.skill === k); if (!R.length) continue; const W = R.filter((r) => r.won), h = W.map((r) => r.hull).sort((a, b) => a - b), t = W.map((r) => r.time).sort((a, b) => a - b); console.log(`  ${id.padEnd(8)} ${k.padEnd(6)} won ${W.length}/${R.length}  median hull ${h.length ? h[h.length >> 1] : '-'}  median time ${t.length ? t[t.length >> 1] : '-'}  grades ${R.map((r) => r.letter || 'x').join('')}  hits ${R.map((r) => r.hits).join(',')}`); }
     for (const id of ['pete', 'agnes', 'sisters']) {
       const sc = (k) => rows.filter((r) => r.id === id && r.skill === k && r.won).map((r) => r.score), mean = (a) => a.reduce((p, q) => p + q, 0) / (a.length || 1);
       if (sc('sharp').length && sc('sloppy').length) ok(mean(sc('sharp')) > mean(sc('sloppy')), `${id}: a sharp gunner does not grade above a sloppy one`);

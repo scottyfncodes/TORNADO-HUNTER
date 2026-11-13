@@ -63,6 +63,7 @@ export const FEEL = {
   dorothyBoost: 2,            // shield damage multiplier while DOROTHY is in the funnel
   staggerRecover: 0.4,        // share of shield it rebuilds if you miss the harpoon window
   harpoonRange: 230,          // m
+  harpoonCloseMax: 6,         // s at most the harpoon window waits for Winch's truck to close to range before it starts to run down
   ripSeconds: 1.5,            // s of full-throttle pull to tear a band off
   ripIdle: 0.25,              // rip rate with no pull at all (never a softlock)
   surgeSpeed: 52,             // m/s the debris wall expands
@@ -96,8 +97,11 @@ export const FEEL = {
   gunCrit: 2.2,               // a hit on the seam (storm) or dead centre (wreckage)
   gunWreckRange: 250,         // m: wreckage can be engaged as soon as it leaves the funnel
   gunSatMul: 0.1,             // bullets barely mark a satellite twister: that is a rocket's job
-  wreckHp: 45, wreckHpBig: 170, // what it takes to shoot a bale, or a tractor, out of the air
+  wreckHp: 45, wreckHpBig: 110, // what it takes to shoot a bale, or a tractor, out of the air (a tractor was 170 until 2.11: 2.8 s of perfect fire against 1.9 s in the air, so with the rack empty armour was a hit you could do nothing about)
   crewGunShare: 0.75,         // the crew covering you at the wheel shoot at three quarters of the rate you do
+  gunnerAir: 0.3,             // s longer a thrown piece is in the air while you are on the gun: shooting it down is the only answer there
+  gunnerMercy: 3.2,           // s after a hit on the gun before the storm throws again: no chains of hits you could not dodge
+  threatMargin: 1.3,          // a piece that will land within this many of its own radii of where the truck will be is marked as a hit coming
   gunnerBreather: 1.4,        // the storm throws this much less often at a truck that cannot weave
   gunnerShotgun: 1.6,         // and the crew's last-second shotgun is this much slower: on the gun, the sky is your job
   aimAssist: 1.5,             // touch only: how much wider a target is than it looks
@@ -117,18 +121,18 @@ export const FEEL = {
 };
 
 // ---- the results screen: a letter per fight (src/grade.js). Destroying the storm earns one; each part is 0..1, weighted ----
-// Calibrated by tests/fullfight.mjs: a gunner who never misses the seam takes Pete in 36 to 38 s with 160 to 175 crits, Agnes
-// in 66 to 68 s (350 to 370), the Sisters in 65 to 78 s (270 to 280), and grades A, or S with a few near misses and little damage.
-// One who lags the target and lets go of the trigger takes Pete in about 85 s, the big two in 110 to 130 s, and grades B to D when
-// it survives (with a driver who never dodges it is wrecked in most fights against the big two).
+// Calibrated by tests/fullfight.mjs and by the fights played through real input on the live build (2.11): full marks sit where
+// a gunner who never misses lands, but the scale no longer starts there. A first win by a person (Pete in 70 s with a third
+// to a half of the hull, two shots in three on target) is a B; a win scraped with the hull nearly gone is a C; D is for
+// a win that was slow, battered and wild all at once. Before 2.11 those same fights graded C, D and D.
 export const GRADE = {
   weights: { time: 0.35, hull: 0.25, acc: 0.15, crits: 0.15, close: 0.1 },
-  par: { pete: 40, agnes: 72, sisters: 75 }, // s: full marks for time at par (about 10% over a gunner who never misses), none at timeZero times par
-  timeZero: 2.2,
-  accZero: 0.3, accFull: 0.85,              // share of turret rounds that hit something you can hurt
-  crits: { pete: 170, agnes: 360, sisters: 275 }, // critical hits for full marks
-  close: 8,                                 // near misses for full marks
-  letters: [['S', 90], ['A', 75], ['B', 60], ['C', 45], ['D', 0]],
+  par: { pete: 45, agnes: 75, sisters: 78 }, // s: full marks for time at par (about 10% over a gunner who never misses), none at timeZero times par
+  timeZero: 3,                              // (2.2 until 2.11: a 90-second win of Skinny Pete scored nothing for time)
+  accZero: 0.2, accFull: 0.75,              // share of turret rounds that hit something you can hurt (0.3 and 0.85 until 2.11)
+  crits: { pete: 140, agnes: 300, sisters: 230 }, // critical hits for full marks (170, 360, 275 until 2.11)
+  close: 6,                                 // near misses for full marks (8 until 2.11)
+  letters: [['S', 90], ['A', 75], ['B', 55], ['C', 25], ['D', 0]], // (B from 60 and C from 45 until 2.11)
   share: { accGood: 0.75, accOk: 0.45, hullOk: 25 }, // the share text's squares: the turret's accuracy on a band, hull lost at the wheel
 };
 
