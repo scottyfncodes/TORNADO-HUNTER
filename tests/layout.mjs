@@ -63,6 +63,21 @@ Object.assign(STATES, {
     const axes0 = G.input.axes; G.input.axes = () => { const r = m.rig; if (!sp.O) return { steer: 0, throttle: 1 }; const P = sp.frame(r), want = (sp.tip + sp.half) / 2, tx = r.x + sp.F.x * 40 + sp.N.x * (want - P.u), tz = r.z + sp.F.z * 40 + sp.N.z * (want - P.u), dx = tx - r.x, dz = tz - r.z, l = Math.hypot(dx, dz), hx = Math.sin(r.heading), hz = Math.cos(r.heading); return { steer: Math.max(-1, Math.min(1, (hx * dz / l - hz * dx / l) * 3)), throttle: 1 }; };
     while (!(sp.state === 'fall' && sp.fallT >= 1.1)) await frame(); G.input.axes = axes0; G.setpiece = undefined; G.fx.stopT = 1e9;
   },
+  // on the gun, looking up, with a piece that will land on the truck: its ring in the sky, the coach line naming it
+  threat: async () => {
+    const G = window.__G, { STORMS } = await import('/src/config.js'), frame = () => new Promise((r) => requestAnimationFrame(r)); G.setpiece = 'never'; G.startMission(STORMS[1]); const m = G.mission, s = m.storm; m.attackT = 99;
+    m.rig.place(s.x + 190, s.z + 60, -Math.PI / 2, G.world); m.rig.vx = -40; m.rig.speed = 40; for (let i = 0; i < 25; i++) await frame(); if (m.view !== 'gun') m.enterGun('auto'); for (let i = 0; i < 30; i++) await frame(); m.attackT = 99;
+    m.throwAt('tractor', 1.0, 0); m.throwAt('cow', 1.0, 18, 0.1); const z = m.hz[0]; while (z.h.t < z.h.dur - 1.0) await frame();
+    const g = m.gn, e = G.camera.position, dx = z.h.x - e.x, dy = z.h.y - e.y, dz = z.h.z - e.z; g.yaw = Math.atan2(dx, dz) + 0.28; g.pitch = Math.atan2(dy, Math.hypot(dx, dz)) - 0.12; // the sights beside it, as a thumb chasing it would have them
+    for (let i = 0; i < 3; i++) await frame(); G.setpiece = undefined; G.fx.stopT = 1e9;
+  },
+  // the harpoon seat while Winch's truck is still closing to range: no lock, the reason on the coach line and the button
+  closing: async () => {
+    const G = window.__G, { STORMS } = await import('/src/config.js'), frame = () => new Promise((r) => requestAnimationFrame(r)); G.setpiece = 'never'; G.startMission(STORMS[0]); G.fast = 4; const m = G.mission, s = m.storm, u = m.convoy.unit('harpoon');
+    while (s.bandsLeft > 1) { while (m.phase !== 'chase') await frame(); m.damageStorm(m.hp + 1, { x: s.x, y: 40, z: s.z }); }
+    while (m.phase !== 'chase') await frame(); u.x = s.x + 430; u.z = s.z; m.damageStorm(m.hp + 1, { x: s.x, y: 40, z: s.z }); G.fast = 1;
+    G.bot = true; const t0 = m.time; while (m.time - t0 < 2.4 && m.phase === 'stagger') await frame(); G.bot = false; G.setpiece = undefined; G.fx.stopT = 1e9;
+  },
   'results-lost': async () => { const G = window.__G, { STORMS } = await import('/src/config.js'); G.startMission(STORMS[2]); const m = G.mission; for (let i = 0; i < 20; i++) await new Promise((r) => requestAnimationFrame(r)); m.rig.hull = 5; m.rig.immune = 0; m.hurt(20); while (!G.resultShown) await new Promise((r) => requestAnimationFrame(r)); },
 });
 
@@ -87,6 +102,8 @@ function audit() {
   }
   // the HUD: none of these may overlap each other
   const ids = ['hud-hull', 'hud-speed', 'hud-storm', 'btn-pause', 'hud-coach', 'hud-callout', 'hud-bark', 'btn-boost', 'btn-action', 'btn-fire', 'btn-swap', 'btn-drive'];
+  // a mark for a piece that will hit must be clear of the plates along the top and of the coach line
+  for (const e of document.querySelectorAll('#marks i.hit')) { if (e.hidden) continue; const r = e.getBoundingClientRect(); for (const id of ['hud-storm', 'hud-coach', 'hud-hull', 'hud-speed']) { const B = document.getElementById(id).getBoundingClientRect(); if (shown(document.getElementById(id)) && r.left < B.right && B.left < r.right && r.top < B.bottom && B.top < r.bottom) out.overlap.push(`hit mark / ${id}`); } }
   const boxes = ids.map((id) => { const e = document.getElementById(id); return e && shown(e) && !document.getElementById('hud').hidden ? [id, e.getBoundingClientRect()] : null; }).filter(Boolean);
   for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
     const [a, A] = boxes[i], [b, B] = boxes[j], x = Math.min(A.right, B.right) - Math.max(A.left, B.left), y = Math.min(A.bottom, B.bottom) - Math.max(A.top, B.top);
@@ -106,7 +123,7 @@ export async function run(states = Object.keys(STATES), shots = SHOTS) {
     await page.goto(URL); await page.waitForFunction(() => window.__G && window.__G.ui && document.getElementById('loading').hidden, null, { timeout: 60000 });
     for (const name of states) {
       await page.evaluate(`(${STATES[name].toString().replace('FINISH_FN', FINISH)})()`);
-      if (['drive', 'gun', 'elevator', 'lines'].includes(name)) await page.touchscreen.tap(Math.round(w * 0.2), Math.round(h * 0.62)); // a thumb on the glass: the game knows it is on a phone
+      if (['drive', 'gun', 'elevator', 'lines', 'threat', 'closing'].includes(name)) await page.touchscreen.tap(Math.round(w * 0.2), Math.round(h * 0.62)); // a thumb on the glass: the game knows it is on a phone
       await page.waitForTimeout(350);
       const A = await page.evaluate(audit), tag = `${name} ${w}x${h}`;
       ok(!A.small.length, `${tag}: touch targets under 44 px: ${A.small.join(', ')}`);

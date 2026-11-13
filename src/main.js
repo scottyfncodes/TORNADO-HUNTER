@@ -188,11 +188,12 @@ function frame(now) {
   if (input.take('pause', 0.3)) { if (G.state === 'playing') G.setPaused(!G.paused); else if (G.paused) G.setPaused(false); }
   let dt = dtBase;
   if (G.paused) dt = 0; else if (fx.stopT > 0) { fx.stopT -= raw; dt = 0; } else if (fx.slowT > 0) { fx.slowT -= raw; dt *= 0.3; }
+  if (G.fast && m && dt > 0) dt = 1 / 60; // (tests only) every clock takes the same fixed step: until 2.11 the effects ran on the real frame time, so thrown wreckage outran the truck and landed ahead of it
   simT += dt; G.time = simT;
   let storm = null, stormLevel = 1, prox = 0;
   if (m) {
     // G.fast (tests only) runs extra fixed steps a frame so whole encounters can be simulated quickly
-    const steps = dt > 0 ? (G.fast || 1) : 0, sdt = G.fast ? 1 / 60 : dt;
+    const steps = dt > 0 ? (G.fast || 1) : 0, sdt = dt;
     for (let i = 0; i < steps; i++) { if (i) { simT += sdt; fx.update(sdt, simT); if (fx.stopT > 0) fx.stopT = 0; } m.update(sdt, simT, input.axes(), input); }
     storm = m.storm; prox = THREE.MathUtils.clamp(1 - (m.dist - 40) / 500, 0, 1); stormLevel = m.phase === 'won' ? 0 : 1;
     viewCamera(dtBase, m);

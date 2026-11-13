@@ -55,7 +55,7 @@ export class Mission {
     this.view = 'drive'; this.zoneLatch = false; this.autoHold = 0; this.inZone = false; this.killT = 0; this.cine = null; this.podBusy = false; this.harpoonBusy = false; this.reload = 0; this.shotgunCd = 0; this.mgT = 0; this.firing = 0;
     this.staggerT = 0; this.hookT = 0; this.tether = null; this.tetherSeed = 0; this.mercyT = 0; this.taughtLunge = false; this.home = null; this.busUnit = null; this.dropped = false; this.line = null; this.surge = null; this.wind = null; this.windWait = 0; this.hz = []; this.sats = []; this.attackT = 3.2;
     this.dist = lead; this.tension = null; this.bark = null; this.barkT = 0; this.callout = null; this.calloutT = 0; this.calloutUp = 0; this.callQ = []; this.far = 0;
-    this.seatT = -9; this.attacks = 0; this.lastAttack = ''; this.seatWhy = ''; this.seatNote = null; this.skipped = false;
+    this.seatT = -9; this.attacks = 0; this.lastAttack = ''; this.lastAimed = false; this.seatWhy = ''; this.seatNote = null; this.skipped = false;
     this.stats = { snaps: 0, shot: 0, rockets: 0, direct: 0, hits: 0, close: 0, dorothys: 0, fired: 0, rounds: 0, crits: 0, sats: 0 }; // fired: turret rounds that hit something, rounds: all of them
     // how each phase went, for the share text: hull lost at the wheel and the turret's rounds per band, each window of the finale
     this.rec = { wheel: [], rounds: [], hits: [], harpoon: [], dorothy: [], kill: [], busHits: 0 };
@@ -140,6 +140,13 @@ export class Mission {
     if (this.phase === 'kill') { this.enterGun('kill'); return true; } // phase 5 is fired from the turret
     return false;
   }
+  // a lock means the shot will go. The harpoon needs Winch's truck inside its range; the kill shot needs yours inside the rocket's
+  get canFire() {
+    if (this.phase === 'stagger') { const u = this.seatAt, s = this.storm; return Math.hypot(u.x - s.x, u.z - s.z) <= FEEL.harpoonRange; }
+    if (this.phase === 'kill') return this.dist <= FEEL.rocketRange;
+    return true;
+  }
+  get closing() { const u = this.seatAt, s = this.storm; return Math.max(0, Math.hypot(u.x - s.x, u.z - s.z) - FEEL.harpoonRange); } // m Winch's truck still has to make up
   // phase 3, from Winch's truck: the harpoon bites the band and the storm is dragged to a crawl. Then the seat is Doc's.
   fireHarpoon() {
     const G = this.G, s = this.storm, b = s.band, u = this.seatAt; if (this.phase !== 'stagger' || this.harpoonBusy || !b) return false;
@@ -259,25 +266,30 @@ export class Mission {
       this.hp = 0; const G = this.G, s = this.storm;
       for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283, rr = s.radiusAt(0.1) * 1.4; G.fx.explode(s.x + Math.cos(a) * rr, s.groundY + 18 + Math.random() * 30, s.z + Math.sin(a) * rr, 14); }
       if (s.bandsLeft > 1) { this.clearCalls(); this.call('BAND SHOT OFF', 'good', 0.75, 4); this.ripBand(); return; }   // an outer band: it sheds it, surges and runs
-      this.phase = 'stagger'; this.phaseT = 0; this.staggerT = this.p.stagger; this.attackT = 2.5; this.wind = null; this.enterGun('harpoon'); this.note("WEAKENED: WINCH'S HARPOON IS UP");
+      this.phase = 'stagger'; this.phaseT = 0; this.staggerT = this.p.stagger; this.closeT = 0; this.attackT = 2.5; this.wind = null; this.enterGun('harpoon'); this.note("WEAKENED: WINCH'S HARPOON IS UP");
       G.audio.stagger(); G.audio.boom(0.9); G.fx.hitStop(0.08); G.fx.shake(11); G.fx.flash(0.6); G.sky.strike(0.8); this.clearCalls(); this.call('WEAKENED', 'good', 1.0, 4); this.clearHazards(true);
     }
   }
   hurt(n, key = 'hurt') {
     if (!this.rig.damage(n)) return false; this.stats.hits++; this.mercyT = TETHER.mercy;
+    if (this.view === 'gun' && this.phase === 'chase') this.attackT = Math.max(this.attackT, FEEL.gunnerMercy); // hit on the gun, where you cannot dodge: it does not throw again at once
     if (this.home) this.rec.busHits++; else if ((this.phase === 'chase' || this.phase === 'surge') && this.view === 'drive') this.rec.wheel[this.stage] = (this.rec.wheel[this.stage] || 0) + n;
     const fx = this.G.fx; fx.hitStop(FEEL.hitStopHull); fx.shake(FEEL.shakeHull); fx.flash(0.5, PALETTE.accent); this.G.audio.hurt(); if (Math.random() < 0.6) this.say(key);
     fx.puff(this.rig.x, this.rig.y + 2, this.rig.z, 9, '#2a2f30', 0.8);
     if (this.rig.hull <= 0) this.end(false, 'wrecked'); return true;
   }
 
+  // will this piece land on the truck, where the truck will be when it lands? (On the gun you cannot see the circle on the
+  // ground: the HUD marks these pieces in the air, and the coach line names them.)
+  willHit(z) { if (!z || z.state !== 'fly' || z.ranging) return false; const r = this.rig, h = z.h, left = Math.max(0, h.dur - h.t); return Math.hypot(h.tx - r.x - r.vx * left, h.tz - r.z - r.vz * left) < z.rad * FEEL.threatMargin; }
   // something is coming down on you and you are steering out from under it: the game does not take the wheel off you now
   // (it waits for it to land, never more than FEEL.seatWait)
   dodging() { const r = this.rig; if (this.inZone && this.zoneT > FEEL.seatWait) return false; return this.hz.some((z) => { if (z.state !== 'fly') return false; const left = Math.max(0, z.h.dur - z.h.t); return Math.hypot(z.h.tx - r.x - r.vx * left, z.h.tz - r.z - r.vz * left) < z.rad * 2.4 + 8; }); } // where it lands, against where you will be
 
   // ---- wreckage: thrown at where you are going, marked on the ground, shootable in the air ----
-  throwAt(kind, lead, lateral, extra = 0, ranging = false) {
-    const G = this.G, r = this.rig, s = this.storm, big = BIG.includes(kind), dur = Math.max(FEEL.telegraphMin, (big ? 1.9 : 1.55) * this.p.tele) + extra;
+  throwAt(kind, lead, lateral, extra = 0, ranging = false, beside = false) {
+    // on the gun the only answer is to shoot it down, so it hangs in the air a little longer for you (FEEL.gunnerAir)
+    const G = this.G, r = this.rig, s = this.storm, big = BIG.includes(kind), dur = Math.max(FEEL.telegraphMin, (big ? 1.9 : 1.55) * this.p.tele) + extra + (this.view === 'gun' ? FEEL.gunnerAir : 0);
     const sp = Math.hypot(r.vx, r.vz), ux = sp > 4 ? r.vx / sp : Math.sin(r.heading), uz = sp > 4 ? r.vz / sp : Math.cos(r.heading);
     const tx = clamp(r.x + ux * Math.max(18, sp * dur * lead) - uz * lateral, -1480, 1480), tz = clamp(r.z + uz * Math.max(18, sp * dur * lead) + ux * lateral, -1480, 1480);
     s.spineAt(0.2, _a); const h = G.fx.hazard(kind, { x: s.x + _a.x, y: s.groundY + s.height * 0.2, z: s.z + _a.z }, { x: tx, y: G.fx.ground(tx, tz) + 1, z: tz }, dur); if (!h) return;
@@ -288,7 +300,7 @@ export class Mission {
     const track = ranging ? (e) => { const left = Math.max(0, h.dur - h.t), q = this.rig, sp = Math.hypot(q.vx, q.vz) || 1; e.x = clamp(q.x + q.vx * left - q.vz / sp * lateral, -1480, 1480); e.z = clamp(q.z + q.vz * left + q.vx / sp * lateral, -1480, 1480); h.tx = e.x; h.tz = e.z; h.ty = G.fx.ground(e.x, e.z) + 1; }
       : (e, dt) => { const left = Math.max(0.2, h.dur - h.t), k = Math.min(1, dt * 4); e.x += (clamp(r.x + r.vx * left * lead + off.x, -1480, 1480) - e.x) * k; e.z += (clamp(r.z + r.vz * left * lead + off.z, -1480, 1480) - e.z) * k; h.tx = e.x; h.tz = e.z; h.ty = G.fx.ground(e.x, e.z) + 1; };
     const tele = G.fx.telegraph(tx, tz, rad, dur + 0.05, null, { lock: ranging ? dur + 1 : lock, track });
-    const hp = big ? FEEL.wreckHpBig : FEEL.wreckHp; this.hz.push({ h, big, hp, max: hp, rad, state: 'fly', tele, ranging });
+    const hp = big ? FEEL.wreckHpBig : FEEL.wreckHp; this.hz.push({ h, big, hp, max: hp, rad, state: 'fly', tele, ranging, beside });
   }
   dropHazard(z, how) { // shot down, landed small, or blasted
     const G = this.G, h = z.h; if (z.tele) { z.tele.on = false; z.tele.g.visible = false; }
@@ -304,13 +316,18 @@ export class Mission {
     const G = this.G, fx = G.fx, r = this.rig, pick = (a) => a[(this.ra() * a.length) | 0], rand = (a, b) => this.ar(a, b);
     // its first throw of the fight is a ranging shot: one piece, a truck's width wide. Then never two attacks in a row
     // that throw nothing (lightning, crosswind), so the wreckage keeps coming.
+    // On the gun the truck holds a steady line and cannot dodge: a throw aimed at it always arrives. So there the storm
+    // throws at most one piece per attack that will hit, and never in two attacks running; the rest land beside the truck,
+    // and the ring (hud.js) says which is which. The side and the distance are drawn for every attack, whatever the seat,
+    // so the day's storm makes the same draws for everyone.
+    const gun = this.view === 'gun', ws = this.ra() < 0.5 ? 1 : -1, wb = this.ra(), aimed = !gun || !this.lastAimed, beside = (rad, side = ws) => side * rad * (1.6 + 0.5 * wb);
     let kind = this.attacks === 0 ? 'ranging' : pick(list);
     if (kind !== 'ranging' && !THROWS.includes(kind) && !THROWS.includes(this.lastAttack) && this.lastAttack) kind = pick(list.filter((k) => THROWS.includes(k)));
-    this.attacks++; this.lastAttack = kind === 'ranging' ? 'debris' : kind;
+    this.attacks++; this.lastAttack = kind === 'ranging' ? 'debris' : kind; if (THROWS.includes(kind)) this.lastAimed = aimed; else if (kind === 'ranging') this.lastAimed = false;
     if (kind === 'ranging') { const side = this.ra() < 0.5 ? 1 : -1; this.throwAt(pick(SMALL), 1.0, side * FEEL.rangingWide, 0, true); G.audio.whistle(1.3); }
-    else if (kind === 'debris') { const n = this.def.volley[stage] + (this.rematch ? 1 : 0); for (let i = 0; i < n; i++) this.throwAt(pick(SMALL), 1.0 + i * 0.14, i ? rand(-13, 13) : rand(-1.5, 1.5), i * 0.16); G.audio.whistle(1.3); }
-    else if (kind === 'big') { this.throwAt(pick(BIG), 1.0, rand(-3, 3)); G.audio.whistle(1.7); this.call('INCOMING', 'bad', 0.9); }
-    else if (kind === 'field') { const gun = this.view === 'gun', gap = gun ? -1 : (this.ra() * 4) | 0; [-21, -7, 7, 21].forEach((o, i) => { if (i !== gap && !(gun && (i === 0 || i === 3))) this.throwAt(i % 2 ? pick(BIG) : pick(SMALL), 1.0, o + rand(-2, 2), i * 0.1); }); G.audio.whistle(1.8); this.call('DEBRIS FIELD', 'bad', 1.1); }
+    else if (kind === 'debris') { const n = this.def.volley[stage] + (this.rematch ? 1 : 0); for (let i = 0; i < n; i++) { const lat = i ? rand(-13, 13) : rand(-1.5, 1.5), far = gun && (i > 0 || !aimed); this.throwAt(pick(SMALL), 1.0 + i * 0.14, far ? beside(7.5, i % 2 ? -ws : ws) + lat * 0.1 : lat, i * 0.16, false, far); } G.audio.whistle(1.3); }
+    else if (kind === 'big') { const lat = rand(-3, 3); this.throwAt(pick(BIG), 1.0, aimed ? lat : beside(10), 0, false, !aimed); G.audio.whistle(1.7); this.call('INCOMING', 'bad', 0.9); }
+    else if (kind === 'field') { const gap = gun ? -1 : (this.ra() * 4) | 0; [-21, -7, 7, 21].forEach((o, i) => { if (i !== gap && !(gun && (i === 0 || i === 3))) this.throwAt(i % 2 ? pick(BIG) : pick(SMALL), 1.0, (gun ? (i === 1 ? beside(10) : aimed ? 0 : beside(7.5, -ws)) : o) + rand(-2, 2), i * 0.1, false, gun && !(i === 2 && aimed)); }); G.audio.whistle(1.8); this.call('DEBRIS FIELD', 'bad', 1.1); } // on the gun: the armour comes down beside you, and the small piece is the one at you (or beside you too, on the other side)
     else if (kind === 'lightning') {
       const dur = Math.max(FEEL.telegraphMin, 1.3 * this.p.tele), lock = dur - 0.5;
       fx.telegraph(r.x, r.z, 11, dur, (e) => {
@@ -400,7 +417,8 @@ export class Mission {
 
     // ---- the storm moves ----
     this.drive(dt, t, over);
-    if (this.phase === 'stagger') { this.staggerT -= dt; if (this.staggerT <= 0 && !this.harpoonBusy) { this.rec.harpoon.push('r'); this.leaveGun(); this.phase = 'chase'; this.phaseT = 0; this.hp = this.stageMax * FEEL.staggerRecover; this.zoneLatch = false; this.call('SHIELD REFORMING', 'bad', 1.4); this.note('MISSED IT: YOUR WHEEL, CLOSE IN'); G.audio.warn(); } }
+    // the harpoon window is yours to aim in: it does not run down while Winch's truck is still closing to range (FEEL.harpoonCloseMax at most)
+    if (this.phase === 'stagger') { if (!this.canFire && this.view === 'gun' && this.closeT < FEEL.harpoonCloseMax) this.closeT += dt; else this.staggerT -= dt; if (this.staggerT <= 0 && !this.harpoonBusy) { this.rec.harpoon.push('r'); this.leaveGun(); this.phase = 'chase'; this.phaseT = 0; this.hp = this.stageMax * FEEL.staggerRecover; this.zoneLatch = false; this.call('SHIELD REFORMING', 'bad', 1.4); this.note('MISSED IT: YOUR WHEEL, CLOSE IN'); G.audio.warn(); } }
 
     // ---- forces on the rig: suction, crosswind, the cable ----
     let ax = 0, az = 0; this.tension = null;
@@ -431,7 +449,7 @@ export class Mission {
     if (!over) this.sp.update(dt); // the grain elevator
     if (r.landed) { r.landed = false; fx.puff(r.x, r.y + 1, r.z, 10); G.audio.impact(); }
     if (r.launch) for (let i = 0; i < 4; i++) fx.puff(r.x - Math.sin(r.heading) * (2.5 + i) + rand(-1, 1), r.y + 0.6, r.z - Math.cos(r.heading) * (2.5 + i) + rand(-1, 1), 4 + i, r.surface === 2 ? '#8d9392' : '#cdb27a', 0.6, 2);
-    for (const e of w.collideRig(r)) { if (e.kind === 'smash') { G.audio.smash(); fx.shake(e.tree ? 4 : 2); fx.puff(e.x, e.y + 1.5, e.z, e.tree ? 9 : 6, e.type === 'bale' ? '#d9b45a' : '#cdb27a', 0.6); } else { G.audio.impact(); fx.shake(6); if (e.dmg && !over) this.hurt(e.dmg); } }
+    for (const e of w.collideRig(r)) { if (e.kind === 'smash') { G.audio.smash(); fx.shake(e.tree ? 4 : 2); fx.puff(e.x, e.y + 1.5, e.z, e.tree ? 9 : 6, e.type === 'bale' ? '#d9b45a' : '#cdb27a', 0.6); } else { G.audio.impact(); fx.shake(6); if (e.dmg && !over && this.view === 'drive' && !this.cine) this.hurt(e.dmg); } } // a building costs hull only with your hands on the wheel: the autodrive's crashes are not yours to pay for
     if (!over && this.p.regen && r.hull > 0 && r.hull < r.hullMax) r.hull = Math.min(r.hullMax, r.hull + this.p.regen * dt);
     const spd = Math.hypot(r.vx, r.vz);
     if (r.air <= 0 && spd > 9 && Math.random() < dt * (r.drifting ? 60 : r.surface ? 10 : 20) * Math.min(1.5, spd / 40)) fx.puff(r.x - Math.sin(r.heading) * 2.6 + rand(-1.2, 1.2), r.y + 0.5, r.z - Math.cos(r.heading) * 2.6 + rand(-1.2, 1.2), (r.drifting ? 5 : 2.6) + spd * 0.05, r.surface === 2 ? '#8d9392' : '#cdb27a', 0.7, 2);
@@ -446,18 +464,18 @@ export class Mission {
       if (z.state === 'fly') {
         if (h.t >= h.dur) { // it lands
           fx.puff(h.tx, h.ty + 1, h.tz, z.big ? 20 : 12, '#b89a58', 1.1); G.audio.impact(); if (hd < 60) fx.shake(z.big ? 7 : 4);
-          if (!over) { if (hd < z.rad) this.hurt(z.big ? FEEL.dmgBigDebris : FEEL.dmgDebris); else if (hd < z.rad * 2.4) this.closeCall(); }
+          if (!over) { if (hd < z.rad) this.hurt(z.big ? FEEL.dmgBigDebris : FEEL.dmgDebris); else if (hd < z.rad * 2.4 && !z.beside) this.closeCall(); } // (a piece thrown beside a truck on the gun is not a dodge)
           if (z.big) { z.state = 'wreck'; z.life = 9; h.landed = true; h.x = h.tx; h.y = h.ty + 0.6; h.z = h.tz; h.m.rotation.set(rand(-0.4, 0.4), rand(0, 6), rand(-0.5, 0.5)); if (z.tele) { z.tele.on = false; z.tele.g.visible = false; } } else this.dropHazard(z, 'land');
           continue;
         }
         const left = h.dur - h.t, d3 = Math.hypot(hd, h.y - r.y);
         if (h.t > 0.2 && d3 < this.p.mgRange && left < soonest && !z.ranging) { soonest = left; target = z; }
-        if (!over && this.shotgunCd <= 0 && d3 < FEEL.shotgunRange && left < 0.5 && !(z.ranging && Math.hypot(h.tx - r.x, h.tz - r.z) > z.rad)) this.shotgun(z);
+        if (!over && this.shotgunCd <= 0 && d3 < FEEL.shotgunRange && left < 0.5 && !(z.ranging && Math.hypot(h.tx - r.x, h.tz - r.z) > z.rad) && (this.view !== 'gun' || this.willHit(z))) this.shotgun(z); // on the gun the shell is slow to come round again: it is kept for a piece that will hit
       } else { // a wreck on the ground: go round it, or let the shotgun clear it
         z.life -= dt; if (Math.random() < dt * 5) fx.puff(h.x, h.y + 2, h.z, 5, '#2a2420', 1.0, 5);
         const ahead = (h.x - r.x) * r.vx + (h.z - r.z) * r.vz > 0;
-        if (!over && this.shotgunCd <= 0 && hd < FEEL.shotgunRange + spd * 0.12 && ahead) this.shotgun(z);
-        else if (!over && hd < 4.4) { this.hurt(FEEL.dmgWreck); r.vx *= 0.5; r.vz *= 0.5; r.speed *= 0.5; this.dropHazard(z, 'ram'); }
+        if (!over && this.view !== 'gun' && this.shotgunCd <= 0 && hd < FEEL.shotgunRange + spd * 0.12 && ahead) this.shotgun(z);
+        else if (!over && hd < 4.4) { if (this.view !== 'gun') this.hurt(FEEL.dmgWreck); r.vx *= 0.5; r.vz *= 0.5; r.speed *= 0.5; this.dropHazard(z, 'ram'); }
         else if (z.life <= 0 || hd > 700) this.dropHazard(z, 'land');
       }
     }
@@ -537,22 +555,21 @@ export class Mission {
   coachLine() {
     const ph = this.phase, d = this.dist;
     if (this.cine) return this.canSkip() ? (this.G.input.usingTouch ? 'TAP TO SKIP' : 'SPACE TO SKIP') : ph === 'dorothy' ? 'DOROTHY IS READING THE CORE' : '';
+    if (ph === 'chase' && this.view === 'gun' && this.gn.weapon !== 'rocket' && this.hz.some((z) => this.willHit(z))) return this.hz.some((z) => z.big && this.willHit(z)) && this.gn.rockets > 0 ? 'ARMOUR INCOMING: SWAP TO ROCKETS' : 'INCOMING: SHOOT IT DOWN'; // a hit coming outranks everything on this line (armour thrown beside the truck is not named)
     const why = this.result ? '' : this.noteLine(); if (why) return why;
     const out = this.sp.coach(); if (out) return out;
     if (ph === 'chase') {
       if (this.view === 'gun') {
-        const g = this.gn, big = this.hz.some((z) => z.state === 'fly' && z.big);
+        if (this.gn.weapon === 'rocket') return 'ROCKETS: HOLD ON TARGET TO LOCK';
         if (d > this.zone) return `AUTODRIVE IS CLOSING IN: ${Math.round((d - this.zone) / 5) * 5} M`;
-        if (g.weapon === 'rocket') return 'ROCKETS: HOLD ON TARGET TO LOCK';
-        if (big && g.rockets > 0) return 'ARMOUR INCOMING: SWAP TO ROCKETS';
-        return big ? 'SHOOT IT DOWN BEFORE IT LANDS' : 'SHOOT THE BRIGHT SEAM';
+        return 'SHOOT THE BRIGHT SEAM';
       }
       if (this.far > 2.5) return 'CATCH IT: ROADS ARE FASTER';
       if (d > 250 && this.rig.boostCharge >= 1) return 'BOOST TO CLOSE IN';
       if (d > this.zone) return `GET INSIDE THE DANGER ZONE: ${Math.round((d - this.zone) / 5) * 5} M`;
       return 'IN RANGE: TAP GUNS TO TAKE THE TURRET';
     }
-    if (ph === 'stagger') return this.gn.locked ? 'LOCKED: FIRE THE HARPOON' : "WINCH'S TRUCK: AIM AT THE GLOW";
+    if (ph === 'stagger') return this.view === 'gun' && !this.canFire ? `WINCH IS CLOSING IN: ${Math.max(5, Math.round(this.closing / 5) * 5)} M` : this.gn.locked ? 'LOCKED: FIRE THE HARPOON' : "WINCH'S TRUCK: AIM AT THE GLOW";
     if (ph === 'rip') return this.dropped ? 'DOROTHY IS DOWN: DEPLOY' : `DOC'S BUS: DRIVE TO ITS FOOT: ${Math.max(0, Math.round((this.ringDist - this.dropR) / 5) * 5)} M`;
     if (ph === 'dorothy') return 'DOROTHY IS READING THE CORE';
     if (ph === 'kill') return this.gn.locked ? 'LOCKED: FIRE THE KILL SHOT' : "SPARKS' TRUCK: AIM AT THE GLOW";
