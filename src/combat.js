@@ -555,15 +555,12 @@ export class Mission {
   coachLine() {
     const ph = this.phase, d = this.dist;
     if (this.cine) return this.canSkip() ? (this.G.input.usingTouch ? 'TAP TO SKIP' : 'SPACE TO SKIP') : ph === 'dorothy' ? 'DOROTHY IS READING THE CORE' : '';
-    if (ph === 'chase' && this.view === 'gun' && this.gn.weapon !== 'rocket' && this.hz.some((z) => this.willHit(z))) return this.hz.some((z) => z.state === 'fly' && z.big) && this.gn.rockets > 0 ? 'ARMOUR INCOMING: SWAP TO ROCKETS' : 'INCOMING: SHOOT IT DOWN'; // a hit coming outranks everything on this line
+    if (ph === 'chase' && this.view === 'gun' && this.gn.weapon !== 'rocket' && this.hz.some((z) => this.willHit(z))) return this.hz.some((z) => z.big && this.willHit(z)) && this.gn.rockets > 0 ? 'ARMOUR INCOMING: SWAP TO ROCKETS' : 'INCOMING: SHOOT IT DOWN'; // a hit coming outranks everything on this line (armour thrown beside the truck is not named)
     const why = this.result ? '' : this.noteLine(); if (why) return why;
     const out = this.sp.coach(); if (out) return out;
     if (ph === 'chase') {
       if (this.view === 'gun') {
-        const g = this.gn, big = this.hz.some((z) => z.state === 'fly' && z.big), threat = this.hz.some((z) => this.willHit(z));
-        if (g.weapon === 'rocket') return 'ROCKETS: HOLD ON TARGET TO LOCK';
-        if (big && g.rockets > 0) return 'ARMOUR INCOMING: SWAP TO ROCKETS';
-        if (threat || big) return 'INCOMING: SHOOT IT DOWN'; // the sky comes first: what lands on the truck costs hull, the band can wait a second
+        if (this.gn.weapon === 'rocket') return 'ROCKETS: HOLD ON TARGET TO LOCK';
         if (d > this.zone) return `AUTODRIVE IS CLOSING IN: ${Math.round((d - this.zone) / 5) * 5} M`;
         return 'SHOOT THE BRIGHT SEAM';
       }
