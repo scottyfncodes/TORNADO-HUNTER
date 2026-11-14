@@ -262,14 +262,14 @@ export class Mission {
     const was = this.hp / this.stageMax; this.hp -= n; const is = this.hp / this.stageMax; this.storm.hit = Math.max(this.storm.hit || 0, crit ? 1 : 0.6);
     // a band fails in stages you can see and hear: it cracks at two thirds, it is coming apart at one third
     for (const th of [0.66, 0.33]) if (was > th && is <= th && is > 0 && pt) {
-      const G = this.G; G.fx.energy.play(pt.x, pt.y, pt.z, 44, 44, { fps: 44 }); G.fx.ringAt(pt.x, pt.y, pt.z, 40, th > 0.5 ? PALETTE.primary : PALETTE.accent, 0.4); G.audio.crack(); G.audio.stormCrack(th < 0.5); G.fx.shake(4); this.call(th > 0.5 ? 'BAND CRACKING' : 'BAND FAILING', 'good', 0.8, 1);
+      const G = this.G; G.fx.energy.play(pt.x, pt.y, pt.z, 44, 44, { fps: 44 }); G.fx.ringAt(pt.x, pt.y, pt.z, 40, th > 0.5 ? PALETTE.primary : PALETTE.accent, 0.4); G.audio.crack(); G.audio.stormCrack(th < 0.5); G.fx.shake(4); this.call(th > 0.5 ? 'IT IS CRACKING' : 'IT IS COMING APART', 'good', 0.8, 1);
     }
     if (this.hp <= 0) {
       this.hp = 0; const G = this.G, s = this.storm;
       for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283, rr = s.radiusAt(0.1) * 1.4; G.fx.explode(s.x + Math.cos(a) * rr, s.groundY + 18 + Math.random() * 30, s.z + Math.sin(a) * rr, 14); }
-      if (s.bandsLeft > 1) { this.clearCalls(); this.call('BAND SHOT OFF', 'good', 0.75, 4); this.ripBand(); return; }   // an outer band: it sheds it, surges and runs
+      if (s.bandsLeft > 1) { this.clearCalls(); this.call('TORN OPEN', 'good', 0.75, 4); this.ripBand(); return; }   // a phase lost: it tears, roars, surges and runs, and comes back angrier
       this.phase = 'stagger'; this.phaseT = 0; this.staggerT = this.p.stagger; this.closeT = 0; this.attackT = 2.5; this.wind = null; this.enterGun('harpoon'); this.note("WEAKENED: WINCH'S HARPOON IS UP");
-      G.audio.stagger(); G.audio.boom(0.9); G.fx.hitStop(0.08); G.fx.shake(11); G.fx.flash(0.6); G.sky.strike(0.8); this.clearCalls(); this.call('WEAKENED', 'good', 1.0, 4); this.clearHazards(true);
+      G.audio.stagger(); G.audio.roar(0.8); G.audio.boom(0.9); G.fx.hitStop(0.08); G.fx.shake(11); G.fx.flash(0.6); G.sky.strike(0.8); this.clearCalls(); this.call('WEAKENED', 'good', 1.0, 4); this.clearHazards(true);
     }
   }
   hurt(n, key = 'hurt') {
@@ -344,9 +344,9 @@ export class Mission {
   ripBand() {
     const s = this.storm, b = s.band, G = this.G, fx = G.fx, r = this.rig; if (!b || this.result) return; // a band breaks once, and never after the fight is over
     s.seam(b, r.x, r.z, _a); const bx = _a.x, by = _a.y, bz = _a.z;
-    s.snapBand(b); this.stats.snaps++; this.stage++; this.line = null; this.cine = null; fx.hideCable(0); this.clearHazards(true); const wasGun = this.view === 'gun'; this.leaveGun(); this.zoneLatch = false; if (wasGun && s.bandsLeft > 0) this.note('BAND OFF: YOUR WHEEL, OUTRUN IT');
+    s.snapBand(b); this.stats.snaps++; this.stage++; this.line = null; this.cine = null; fx.hideCable(0); this.clearHazards(true); const wasGun = this.view === 'gun'; this.leaveGun(); this.zoneLatch = false; if (wasGun && s.bandsLeft > 0) this.note('TORN OPEN: YOUR WHEEL, OUTRUN IT');
     fx.debris(bx, by, bz, 10, ['#5d6b62', '#b89a58', '#1d2a2b'], 2.2, 30);
-    fx.hitStop(FEEL.hitStopBandSnap); fx.shake(FEEL.shakeBandSnap); fx.flash(1); G.audio.bandSnap(); G.audio.boom(1); G.sky.strike(1.2);
+    fx.hitStop(FEEL.hitStopBandSnap); fx.shake(FEEL.shakeBandSnap); fx.flash(1); G.audio.bandSnap(); G.audio.roar(1); G.audio.boom(1); G.sky.strike(1.2);
     fx.energy.play(bx, by, bz, 80, 80, { fps: 40 }); fx.explode(bx, by, bz, 26);
     const each = this.pay / 12; this.owed += this.pay; fx.shardBurst(s.x, s.groundY + 12, s.z, 12, r, (i) => { if (!this.result) { this.owed -= each; this.earn(each); } G.audio.pickup(i); }); // the last band's shards land after the result: end() has banked them
     this.say('snap'); for (const st of this.sats) { st.storm.die(); st.dead = true; }
@@ -516,11 +516,14 @@ export class Mission {
       this.attackT -= dt * (this.inZone ? 1.1 : 1); if (this.attackT <= 0 && this.time - this.seatT >= FEEL.seatQuiet && !this.sp.busy) { const ev = this.def.attackEvery[Math.min(this.stage, this.def.attackEvery.length - 1)]; this.attackT = ev * this.ar(0.8, 1.2) * this.p.tele * (this.view === 'gun' ? FEEL.gunnerBreather : 1); this.attack(); }
     }
 
-    // ---- cable, rings, what the storm ate ----
-    // the band's ring is the shield: wheat segments that go out as it breaks, green when the core is bare, magenta when hooked
-    // and it changes colour as it fails: wheat, amber under two thirds, flickering magenta under one third. The funnel thins with it.
+    // ---- cable, the monster, what the storm ate ----
+    // no ring since 2.14: the storm itself shows it. Its heart glows on the funnel where it can be hurt (on the side you are shooting
+    // from), cracks spread from it as this phase's strength goes, and it is brightest when it is yours to hit. The funnel thins too.
     const frac = this.hp / this.stageMax;
-    if (b) { b.exposed = true; b.strain = this.phase === 'chase' || this.phase === 'surge' ? frac : this.phase === 'dorothy' || this.phase === 'kill' ? 0.3 : 1; b.tone = this.phase === 'kill' || this.phase === 'dorothy' ? PALETTE.accent : this.phase === 'rip' ? (this.tether && this.tether.dangerous && Math.sin(t * 24) > 0 ? PALETTE.accent : PALETTE.primary) : this.phase === 'stagger' ? PALETTE.signal : s.hit > 0.75 ? '#fff1c2' : frac > 0.66 ? PALETTE.wheat : frac > 0.33 ? PALETTE.primary : Math.sin(t * 22) > -0.3 ? PALETTE.accent : PALETTE.primary; }
+    if (b && s.alive) {
+      const fin = this.phase !== 'chase' && this.phase !== 'surge', P = this.view === 'gun' ? this.gn.weak : r, R = (s.radiusAt(b.v) * 1.16 + 2.5) * (fin ? 0.6 : 0.33);
+      s.setHeart(P.x, P.z, b.v, fin ? 1 : this.phase === 'surge' ? 0.3 : this.inZone ? 1 : 0.6, Math.max(fin ? 9 : 6, R)); s.wound = fin ? 1 : 1 - frac;
+    }
     if (this.phase === 'chase' && s.alive) s.thinTarget = 0.42 + 0.58 * (s.bandsLeft - 0.45 * (1 - frac)) / s.bands.length;
     if (this.line && b && (this.phase === 'rip' || this.phase === 'dorothy' || this.phase === 'kill')) { const hk = this.line.u; if (hk) this.convoy.muzzle(hk, _a); else r.muzzle(_a); s.seam(b, (hk || r).x, (hk || r).z, _b); const p = this.tether ? this.tether.out.tension : 0.7; fx.setCable(0, _a, _b, (this.phase === 'rip' ? this.hookT : this.killT) < 2.5 && this.phase !== 'dorothy' && p >= 0 ? Math.max(1.2, p) : p, t); } // taut as it winds up, slack as it is hauled back
     else if (!this.harpoonBusy) fx.hideCable(0);
@@ -567,7 +570,7 @@ export class Mission {
       if (this.view === 'gun') {
         if (this.gn.weapon === 'rocket') return 'ROCKETS: HOLD ON TARGET TO LOCK';
         if (d > this.zone) return `AUTODRIVE IS CLOSING IN: ${Math.round((d - this.zone) / 5) * 5} M`;
-        return 'SHOOT THE BRIGHT SEAM';
+        return 'SHOOT ITS GLOWING HEART';
       }
       if (this.far > 2.5) return 'CATCH IT: ROADS ARE FASTER';
       if (d > 250 && this.rig.boostCharge >= 1) return 'BOOST TO CLOSE IN';

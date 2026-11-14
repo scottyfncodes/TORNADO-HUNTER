@@ -1,4 +1,5 @@
-// The storm: a funnel bent along a wobbling spine in the vertex shader, radar-coloured bands, GPU debris.
+// The storm: a funnel bent along a wobbling spine in the vertex shader, GPU debris. Since 2.14 a living thing: a molten heart
+// where it can be hurt, cracks that spread from it as it is, lightning crawling inside it, a tear when it loses a phase, rage.
 import * as THREE from '../vendor/three.module.min.js';
 import { PALETTE } from './config.js';
 import { cowGeo } from './geo.js';
@@ -10,7 +11,6 @@ vec2 spine(float v){ return uLean*v*v*uH*0.45 + vec2(sin(v*4.0+uTime*1.1),cos(v*
 float radius(float v){ return mix(uR0*uThin,uR1*(0.45+0.55*uThin),pow(v,uPow)) + uR0*uThin*1.3*exp(-v*14.0); }`;
 
 const funnelGeo = (() => { const g = new THREE.CylinderGeometry(1, 1, 1, 28, 24, true); g.translate(0, 0.5, 0); return g; })();
-const ringGeo = (() => { const g = new THREE.CylinderGeometry(1, 1, 1, 48, 1, true); return g; })();
 const debrisGeo = new THREE.BoxGeometry(1, 1, 1);
 
 function funnelMaterial(shared, params) {
@@ -20,7 +20,9 @@ function funnelMaterial(shared, params) {
       uNoise: shared.uNoise, uTime: shared.uTime, uFlash: shared.uFlash, uFog: shared.uFog, uFogNear: shared.uFogNear, uFogFar: shared.uFogFar, uCloud: shared.uCloud,
       uH: { value: params.height }, uR0: { value: params.r0 }, uR1: { value: params.r1 }, uPow: { value: params.pow }, uWob: { value: params.wob }, uSpin: { value: 1 }, uThin: { value: 1 },
       uLean: { value: new THREE.Vector2() }, uFade: { value: 1 }, uCut: { value: 0 }, uCore: { value: 0 },
-      uColA: { value: new THREE.Color('#1d2a2b') }, uColB: { value: new THREE.Color('#5d6b62') }, uDust: { value: new THREE.Color('#b89a58') }, uHot: { value: new THREE.Color(PALETTE.accent) },
+      // the monster (2.14): its heart (world position, radius, how bright), how hurt this phase is, how angry it is, lightning inside, the tear
+      uHeart: { value: new THREE.Vector3() }, uHeartR: { value: 10 }, uHeartK: { value: 0 }, uWound: { value: 0 }, uRage: { value: 0 }, uVein: { value: 0 }, uTear: { value: new THREE.Vector4(0, 0, 0, 0) },
+      uColA: { value: new THREE.Color('#151e1f') }, uColB: { value: new THREE.Color('#4d5a53') }, uDust: { value: new THREE.Color('#b89a58') }, uHot: { value: new THREE.Color(PALETTE.accent) },
     },
     vertexShader: `${SPINE_GLSL}
       varying vec2 vUv; varying float vV; varying vec3 vN; varying vec3 vW;
@@ -29,7 +31,7 @@ function funnelMaterial(shared, params) {
         vec2 sp=spine(v); vec3 p=vec3(cos(a)*r+sp.x, v*uH, sin(a)*r+sp.y);
         vUv=vec2(a/6.2831853+0.5,v); vN=normalize(mat3(modelMatrix)*vec3(cos(a),0.3,sin(a)));
         vec4 w=modelMatrix*vec4(p,1.0); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
-    fragmentShader: `uniform sampler2D uNoise; uniform float uTime,uSpin,uFade,uCut,uCore,uFlash,uFogNear,uFogFar; uniform vec3 uColA,uColB,uDust,uHot,uCloud,uFog;
+    fragmentShader: `uniform sampler2D uNoise; uniform float uTime,uSpin,uFade,uCut,uCore,uFlash,uFogNear,uFogFar,uHeartR,uHeartK,uWound,uRage,uVein; uniform vec3 uColA,uColB,uDust,uHot,uCloud,uFog,uHeart; uniform vec4 uTear;
       varying vec2 vUv; varying float vV; varying vec3 vN; varying vec3 vW;
       void main(){
         float tw=uTime*uSpin;
@@ -41,28 +43,27 @@ function funnelMaterial(shared, params) {
         c=mix(c,uCloud*0.75,smoothstep(0.62,1.0,vV));
         vec3 view=normalize(cameraPosition-vW); float rim=1.0-abs(dot(normalize(vN),view));
         c+=vec3(0.16,0.2,0.18)*rim*rim; c+=uHot*uCore*(0.25+0.75*pow(1.0-rim,2.0))*(0.6+0.4*s2)*(1.0-smoothstep(0.0,0.5,vV));
+        // rage: darker, with the heat showing at the edges
+        c*=1.0-0.18*uRage; c+=uHot*0.1*uRage*rim*(0.5+n);
+        // lightning crawling inside it: thin bright veins along the noise, anywhere on the body, while uVein flickers
+        float dc=distance(vW,cameraPosition), aw=dc*0.00012; // lines widen and fade with distance, so they never sparkle
+        float vein=(1.0-smoothstep(0.0,0.035+aw,abs(s1-0.55)))*(1.0-smoothstep(500.0,1400.0,dc)); c+=vec3(0.84,0.86,1.0)*vein*uVein*(0.6+0.8*n)*smoothstep(0.03,0.25,vV)*(1.0-smoothstep(0.75,1.0,vV));
+        // the heart: molten where it is turned toward you, cracks running out from it, further the more it is hurt
+        float beat=0.85+0.15*sin(uTime*(5.0+4.0*uRage)), dh=distance(vW,uHeart)+(n-0.5)*uHeartR*0.8; // a pulse, and a ragged edge
+        float heart=uHeartK*exp(-dh*dh/(uHeartR*uHeartR*2.2))*beat;
+        float reach=uHeartR*(3.0+6.0*uWound+3.0*uRage), near=uHeartK*(1.0-smoothstep(0.0,reach,dh));
+        c=mix(c,c*0.55+uHot*0.32,near*0.75); // it bleeds light into the cloud around it
+        float s3=texture2D(uNoise,vec2(vUv.x*9.0-tw*0.6, vV*11.0-uTime*0.3)).r; // finer, for the cracks
+        float crack=(1.0-smoothstep(0.0,0.035+0.05*uWound+aw*2.0,abs(s3-0.5)))*(1.0-smoothstep(600.0,1500.0,dc)); c+=mix(uHot,vec3(1.0,0.75,0.55),0.25)*crack*near*(0.9+1.8*uWound)*beat;
+        c=mix(c,mix(uHot*1.3,vec3(1.0,0.94,0.84),smoothstep(0.5,0.95,heart)),clamp(heart*1.5,0.0,1.0));
+        // the tear: where it lost a phase, a gash opens, edged white-hot, the sky showing through, then it heals over
+        float gd=distance(vW,uTear.xyz), gr=uHeartR*(2.5+3.0*(1.0-uTear.w)), gash=uTear.w*(1.0-smoothstep(gr*0.4,gr,gd+(s2-0.5)*gr*0.9));
+        float edge=1.0-smoothstep(0.0,0.12,abs(s1-0.5)); c+=vec3(1.0,0.82,0.7)*gash*(0.6+2.4*edge);
         c*=1.0+uFlash*1.6;
-        float al=mix(0.97,0.5,pow(rim,2.2))*(0.82+0.3*n);
+        float al=mix(0.97,0.5,pow(rim,2.2))*(0.82+0.3*n); al=max(al,clamp(heart*1.3+crack*near*0.6+near*0.25,0.0,1.0)*uFade); al*=1.0-0.75*gash*(1.0-edge);
         al*=uFade*smoothstep(uCut-0.04,uCut+0.06,vV+(n-0.5)*0.08);
         float f=smoothstep(uFogNear,uFogFar*1.4,distance(vW,cameraPosition)); c=mix(c,uFog,f*0.75);
         gl_FragColor=vec4(c,clamp(al,0.0,1.0));
-        #include <colorspace_fragment>
-      }`,
-  });
-}
-
-function ringMaterial(shared) {
-  return new THREE.ShaderMaterial({
-    transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false,
-    uniforms: { uTime: shared.uTime, uColor: { value: new THREE.Color(PALETTE.signal) }, uProgress: { value: 0 }, uState: { value: 0 }, uAlpha: { value: 1 } },
-    vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
-    fragmentShader: `uniform float uTime,uProgress,uState,uAlpha; uniform vec3 uColor; varying vec2 vUv;
-      void main(){ float seg=fract(vUv.x*18.0+uTime*0.25); float edge=smoothstep(0.5,0.42,abs(vUv.y-0.5));
-        float shroud=step(0.5,seg)*0.13;
-        float lit=step(seg,0.12+0.88*uProgress); float live=mix(0.42,1.0,lit)*(0.85+0.15*sin(uTime*9.0));
-        float a=mix(shroud,live,step(0.5,uState))*edge*uAlpha;
-        vec3 c=mix(vec3(0.55,0.62,0.6),uColor*(1.0+0.6*lit),step(0.5,uState));
-        gl_FragColor=vec4(c,a);
         #include <colorspace_fragment>
       }`,
   });
@@ -118,13 +119,12 @@ export class Storm {
       const su = this.skirtMat.uniforms; su.uColA.value.set('#1c1712'); su.uColB.value.set('#5a4733'); su.uDust.value.set('#6e5637'); su.uCloud.value.set('#2a221a');
       this.skirt = new THREE.Mesh(funnelGeo, this.skirtMat); this.skirt.frustumCulled = false; this.skirt.renderOrder = 2; this.group.add(this.skirt);
     }
-    this.bands = [];
-    if (!this.mini) for (const v of BAND_V[def.bands]) {
-      const mesh = new THREE.Mesh(ringGeo, ringMaterial(shared)); mesh.frustumCulled = false; mesh.renderOrder = 3; this.group.add(mesh);
-      this.bands.push({ v, mesh, exposed: false, strain: 0, gone: false, burst: 0 });
-    }
+    // its phases (still `bands` in the code and the save): the health it fights in, each with the height its heart sits at. No ring
+    // since 2.14: the funnel is what you shoot, and what you see hurt
+    this.bands = []; if (!this.mini) for (const v of BAND_V[def.bands]) this.bands.push({ v, exposed: false, strain: 0, gone: false });
+    this.rage = 0; this.wound = 0; this.heartK = 0; this.heartR = 10; this.heart = new THREE.Vector3(); this.tear = 0; this.tearAt = new THREE.Vector3(); this.vein = 0; this.veinT = 2;
   }
-  dispose() { this.scene.remove(this.group); this.mat.dispose(); if (this.skirtMat) this.skirtMat.dispose(); for (const b of this.bands) b.mesh.material.dispose(); this.debris.material.dispose(); this.debris.geometry.dispose(); }
+  dispose() { this.scene.remove(this.group); this.mat.dispose(); if (this.skirtMat) this.skirtMat.dispose(); this.debris.material.dispose(); this.debris.geometry.dispose(); }
   get band() { return this.bands.find((b) => !b.gone) || null; }
   get bandsLeft() { let n = 0; for (const b of this.bands) if (!b.gone) n++; return n; }
   get eatRadius() { return this.def.r0 * this.thin * 1.5 + 6; }
@@ -136,7 +136,10 @@ export class Storm {
   // where a harpoon bites: on the band, on the side facing (px,pz)
   seam(band, px, pz, out) { this.spineAt(band.v, out); const cx = this.x + out.x, cz = this.z + out.z, d = Math.hypot(px - cx, pz - cz) || 1, r = this.radiusAt(band.v) * 1.1; return out.set(cx + (px - cx) / d * r, this.groundY + band.v * this.height, cz + (pz - cz) / d * r); }
   place(x, z) { this.x = this.ax = x; this.z = this.az = z; this.groundY = this.world.heightAt(x, z); }
-  snapBand(band) { band.gone = true; band.burst = 0.001; this.thinTarget = 0.42 + 0.58 * this.bandsLeft / this.bands.length; }
+  // a phase lost: it tears where its heart was, and comes back angrier
+  snapBand(band) { band.gone = true; this.thinTarget = 0.42 + 0.58 * this.bandsLeft / this.bands.length; this.tear = 1; this.tearAt.set(this.heart.x - this.x, this.heart.y - this.groundY, this.heart.z - this.z); this.rage = 1 - this.bandsLeft / this.bands.length; this.vein = 1; }
+  // where its heart shows: on the funnel's wall at the phase's height, on the side toward (px, py, pz)
+  setHeart(px, pz, v, k, r) { this.spineAt(v, _v); const cx = this.x + _v.x, cz = this.z + _v.z, d = Math.hypot(px - cx, pz - cz) || 1, rr = this.radiusAt(v) * 0.97; this.heart.set(cx + (px - cx) / d * rr, this.groundY + v * this.height, cz + (pz - cz) / d * rr); this.heartK = k; this.heartR = r; }
   die() { this.alive = false; this.eats = false; }
 
   update(dt, t) {
@@ -161,7 +164,7 @@ export class Storm {
     this.thin += (this.thinTarget - this.thin) * Math.min(1, dt * 2.5);
     if (!this.alive) { this.cut = Math.min(1.1, this.cut + dt * 0.5); this.fade = Math.max(0, 1 - Math.max(0, this.cut - 0.6) * 2.5); if (this.cut >= 1.1) this.visible = false; }
     this.group.visible = this.visible; this.group.position.set(this.x, this.groundY, this.z);
-    u.uSpin.value = this.spin; u.uWob.value = this.wob * (1 + this.writhe); u.uThin.value = this.thin; u.uLean.value.copy(this.lean); u.uFade.value = this.fade; u.uCut.value = this.cut;
+    u.uSpin.value = this.spin; u.uWob.value = this.wob * (1 + this.writhe + 0.3 * this.rage); u.uThin.value = this.thin; u.uLean.value.copy(this.lean); u.uFade.value = this.fade; u.uCut.value = this.cut;
     if (this.skirtMat) { const su = this.skirtMat.uniforms; su.uSpin.value = this.spin; su.uThin.value = 0.55 + 0.45 * this.thin; su.uLean.value.set(0, 0); su.uFade.value = this.fade * 0.82; su.uCut.value = Math.min(1, this.cut * 2.2); }
     if (this.cows) { // orbit, tumble, moo
       const k = this.fade * Math.max(0, 1 - this.cut * 2);
@@ -169,14 +172,13 @@ export class Storm {
       this.cows.instanceMatrix.needsUpdate = true;
     }
     this.spineAt(1, this.topOffset);
-    for (const b of this.bands) {
-      const m = b.mesh, mu = m.material.uniforms;
-      if (b.gone) { if (b.burst > 0) { b.burst += dt * 2.2; const s = 1 + b.burst * 1.6; m.scale.multiplyScalar(1 + dt * 3); mu.uAlpha.value = Math.max(0, 1 - b.burst); mu.uProgress.value = 1; if (b.burst >= 1) { b.burst = 0; m.visible = false; } } continue; }
-      this.spineAt(b.v, _v); const r = this.radiusAt(b.v) * 1.16 + 2.5;
-      m.position.set(_v.x, b.v * this.height, _v.z); m.scale.set(r, 7 + r * 0.05, r);
-      const current = b === this.band;
-      mu.uState.value = b.exposed ? 1 : 0; mu.uProgress.value = b.strain; mu.uAlpha.value = this.fade * (current ? 1 : 0.55);
-      mu.uColor.value.set(b.tone || (!b.exposed ? '#8a9a96' : PALETTE.signal));
+    // alive: lightning inside it now and then (more often the angrier it is), the tear healing, the heart where it was set
+    if (!this.mini) {
+      this.veinT -= dt; if (this.veinT <= 0 && this.alive) { this.vein = 1; this.veinT = (2.4 + Math.random() * 3.5) / (1 + 1.5 * this.rage); }
+      this.vein = Math.max(0, this.vein - dt * 4.5); this.tear = Math.max(0, this.tear - dt * 0.55);
+      const f = this.vein > 0 ? this.vein * (0.55 + 0.45 * Math.sin(t * 61)) : 0;
+      u.uVein.value = f * this.fade; u.uRage.value += (this.rage - u.uRage.value) * Math.min(1, dt * 2); u.uWound.value += (Math.min(1, this.wound + (this.hit || 0) * 0.25) - u.uWound.value) * Math.min(1, dt * 6);
+      u.uHeart.value.copy(this.heart); u.uHeartR.value = this.heartR; u.uHeartK.value += ((this.alive ? this.heartK : 0) * this.fade - u.uHeartK.value) * Math.min(1, dt * 5); u.uTear.value.set(this.x + this.tearAt.x, this.groundY + this.tearAt.y, this.z + this.tearAt.z, this.tear); // it moves with the storm
     }
   }
 }

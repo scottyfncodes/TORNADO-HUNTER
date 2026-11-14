@@ -184,7 +184,7 @@ try {
   ok(C1.skips.kill && !C1.skips.kill.result, 'the first kill-shot camera was skippable');
   ok(C1.seen.dorothy && C1.seen.kill && C1.result === 'destroyed', 'watching both cinematics to the end did not mark them seen');
   ok(/^IN RANGE: YOU SHOOT, IT DRIVES$/.test(C1.notes.auto) && /seat/.test(C1.tones.auto), `no reason for the automatic seat change to the gun (${C1.notes.auto}, ${C1.tones.auto})`);
-  ok(/^BAND OFF: YOUR WHEEL/.test(C1.notes.band), `no reason for being put back at the wheel (${C1.notes.band})`);
+  ok(/^TORN OPEN: YOUR WHEEL/.test(C1.notes.band), `no reason for being put back at the wheel (${C1.notes.band})`);
   ok(/WINCH/.test(C1.notes.harpoon) && /DOC'S BUS/.test(C1.notes.bus) && /SPARKS/.test(C1.notes.kill), `no reason for a crew seat change (${C1.notes.harpoon} / ${C1.notes.bus} / ${C1.notes.kill})`);
   for (const calm of [false, true]) {
     const C2 = await cineRun({ calm, skipAt: 0.5 });

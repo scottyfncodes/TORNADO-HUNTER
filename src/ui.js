@@ -100,7 +100,7 @@ export class UI {
     body.appendChild(g);
     body.appendChild(el('h3', 'section-h', 'Fitted to every rig'));
     const kit = el('div', 'grid-4');
-    for (const [n, t] of [['Turret gun', 'Each rig mounts its own. Inside the danger zone you take it yourself while the truck drives: hit the bright seam on the band for critical damage, and shoot down what the storm throws.'], ['Rockets', 'A few in the rack, two more after every band. Hold the reticle on a target to lock. One rocket ends a car, a tractor or a satellite twister, and bites a chunk off a band.'], ['Shotgun', 'The crew fire it for you: the last-second save on whatever is about to hit, and it clears wrecks off the road.'], ['The finale, a seat each', 'When the last band is gone you swap vehicles: Winch\'s truck to harpoon the storm, Doc\'s bus to release Dorothy, Sparks\' rocket truck to lock the kill shot on the critical core.']]) kit.appendChild(this.card(n, t, { static: true }));
+    for (const [n, t] of [['Turret gun', 'Each rig mounts its own. Inside the danger zone you take it yourself while the truck drives: hit its glowing heart for critical damage (anywhere else on it only glances), and shoot down what it throws.'], ['Rockets', 'A few in the rack, two more each time you tear the storm open. Hold the reticle on a target to lock. One rocket ends a car, a tractor or a satellite twister, and tears a chunk out of the storm.'], ['Shotgun', 'The crew fire it for you: the last-second save on whatever is about to hit, and it clears wrecks off the road.'], ['The finale, a seat each', 'When it is down to its last strength you swap vehicles: Winch\'s truck to harpoon the storm, Doc\'s bus to release Dorothy, Sparks\' rocket truck to lock the kill shot on the critical core.']]) kit.appendChild(this.card(n, t, { static: true }));
     body.appendChild(kit);
   }
   buyBtn(price, onBuy) {
@@ -160,7 +160,7 @@ export class UI {
     const date = D ? new Date(D + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : '';
     $('res-eyebrow').textContent = (daily ? `Daily Storm · ${date} · ` : '') + `${res.storm.name} · EF${res.storm.ef + res.rematch}` + (daily === 'practice' ? ' · Practice' : '');
     $('res-title').textContent = res.won ? 'Storm destroyed' : 'Rig wrecked';
-    $('res-sub').textContent = res.won ? '' : st.snaps ? 'So close. On the gun, shoot down what it throws before it lands; rockets for cars and tractors. Or hit DRIVE and steer off the magenta circles.' : 'Get inside the danger zone and the turret is yours: shoot the bright seam on the band. Then the crew take over, a seat each: harpoon, Dorothy, kill shot.';
+    $('res-sub').textContent = res.won ? '' : st.snaps ? 'So close. On the gun, shoot down what it throws before it lands; rockets for cars and tractors. Or hit DRIVE and steer off the magenta circles.' : 'Get inside the danger zone and the turret is yours: shoot its glowing heart. Then the crew take over, a seat each: harpoon, Dorothy, kill shot.';
     $('res-sub').hidden = res.won;
     // the letter, and the best for this storm: NEW BEST when this one beat it
     const gb = $('res-grade'), best = save.s.grades[res.storm.id], fresh = !!g.letter && (!res.bestBefore || g.letter !== res.bestBefore) && best === g.letter;
