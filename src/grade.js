@@ -13,7 +13,7 @@ export function line(res) {
   return {
     time: res.time, hull: res.hull, hullMax: res.hullMax,
     acc: st.rounds ? st.fired / st.rounds : 0, rounds: st.rounds, fired: st.fired,
-    crits: st.crits, close: st.close,
+    crits: st.crits, crit: st.rounds ? st.crits / st.rounds : 0, close: st.close, // crit: the share of turret rounds that were critical, whatever the gun's rate of fire
   };
 }
 
@@ -24,20 +24,20 @@ function parts(L, id) {
     time: clamp01((par * g.timeZero - L.time) / (par * (g.timeZero - 1))),
     hull: clamp01(L.hull / L.hullMax),
     acc: clamp01((L.acc - g.accZero) / (g.accFull - g.accZero)),
-    crits: clamp01(L.crits / g.crits[id]),
+    crits: clamp01(L.crit / g.crit[id]),
     close: clamp01(L.close / g.close),
   };
 }
 const total = (p) => Object.keys(GRADE.weights).reduce((s, k) => s + GRADE.weights[k] * p[k], 0) * 100;
 const letterFor = (score) => GRADE.letters.find(([, min]) => score >= min - 1e-9)[0];
 
-// the cheapest change that reaches the next letter, in the player's own units: "2 crits short of A". One thing if one thing
-// can do it (the one that was closest); otherwise the two biggest levers together: "6 s faster and 40 more crits for A".
+// the cheapest change that reaches the next letter, in the player's own units: "6% more crits for A". One thing if one thing
+// can do it (the one that was closest); otherwise the two biggest levers together: "6 s faster and 4% more crits for A".
 const UNIT = {
   time: (L, id, want) => { const par = GRADE.par[id], t = par * GRADE.timeZero - want * par * (GRADE.timeZero - 1); return [Math.max(1, Math.ceil(L.time - t)), (n) => `${n} s faster`]; },
   hull: (L, id, want) => [Math.max(1, Math.ceil(want * L.hullMax - L.hull)), (n) => `${n} more hull`],
   acc: (L, id, want) => { const a = GRADE.accZero + want * (GRADE.accFull - GRADE.accZero); return [Math.max(1, Math.ceil((a - L.acc) * 100)), (n) => `${n}% more accuracy`]; },
-  crits: (L, id, want) => [Math.max(1, Math.ceil(want * GRADE.crits[id] - L.crits)), (n) => `${n} more crit${n === 1 ? '' : 's'}`],
+  crits: (L, id, want) => [Math.max(1, Math.ceil((want * GRADE.crit[id] - L.crit) * 100)), (n) => `${n}% more crits`],
   close: (L, id, want) => [Math.max(1, Math.ceil(want * GRADE.close - L.close)), (n) => `${n} more near miss${n === 1 ? '' : 'es'}`],
 };
 function nudge(L, id, score, next) {
@@ -47,7 +47,6 @@ function nudge(L, id, score, next) {
   const effort = (k) => need / w[k] / Math.max(1e-6, 1 - p[k]), one = keys.filter((k) => p[k] + need / w[k] <= 1 + 1e-9).sort((a, b) => effort(a) - effort(b));
   if (one.length) {
     const k = one[0], [n, say] = UNIT[k](L, id, p[k] + need / w[k]);
-    if (k === 'crits') return `${n} crit${n === 1 ? '' : 's'} short of ${next}`;
     if (k === 'close') return `${n} near miss${n === 1 ? '' : 'es'} short of ${next}`;
     return `${say(n)} for ${next}`;
   }

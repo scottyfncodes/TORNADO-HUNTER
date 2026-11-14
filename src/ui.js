@@ -1,7 +1,7 @@
 // Title, headquarters, results and pause. Plain DOM, built from the tables in config.js.
 import { STORMS, RIGS, CREW, GADGETS, UPGRADES, PALETTE, rankFor } from './config.js';
 import { TOWNS } from './world.js';
-import { save } from './save.js';
+import { save, crewOf, tapCrew, CREW_LEADS } from './save.js';
 import { dayKey, dailyFor, liveStreak, shareText, clock } from './daily.js';
 
 const $ = (id) => document.getElementById(id);
@@ -38,7 +38,7 @@ export class UI {
     for (const k in this.screens) this.screens[k].hidden = k !== name;
     if (name === 'title') { const first = save.firstRun(); $('btn-start').textContent = first ? 'Start the chase' : 'Play'; $('btn-hq').hidden = true; $('title-hint').textContent = first ? 'Hold to drive. Slide to steer. In range you take the turret: drag to aim, hold to fire.' : `${rankFor(save.s.bands)} · ${Math.round(save.s.data)} Data banked`; }
     if (name === 'title') this.renderDaily();
-    if (name === 'hq') { if (!stormOpen(STORMS.find((s) => s.id === save.s.loadout.storm) || STORMS[0])) save.s.loadout.storm = 'pete'; this.renderHQ(); }
+    if (name === 'hq') { save.s.loadout.crew = crewOf(save.s.loadout.crew, CREW.map((c) => c.id)); if (!stormOpen(STORMS.find((s) => s.id === save.s.loadout.storm) || STORMS[0])) save.s.loadout.storm = 'pete'; this.renderHQ(); }
     this.G.onScreen(name);
     const focus = { title: 'btn-start', hq: 'btn-roll', results: 'res-primary', pause: 'p-resume' }[name]; if (focus && !this.G.input.usingTouch) $(focus).focus({ preventScroll: true });
   }
@@ -52,7 +52,7 @@ export class UI {
     this['tab_' + this.tab](body, s);
     const L = s.loadout, storm = STORMS.find((x) => x.id === L.storm), rig = RIGS.find((x) => x.id === L.rig), lo = $('hq-loadout'); lo.textContent = '';
     const add = (label, val) => { lo.append(label + ' '); lo.appendChild(el('b', '', val)); lo.append('  ·  '); };
-    add('Storm', storm.name + (L.rematch && s.kills[storm.id] ? ' +1' : '')); add('Rig', rig.name); add('Crew', L.crew.map((c) => CREW.find((x) => x.id === c).name.split(' ')[0]).join(' + '));
+    add('Storm', storm.name + (L.rematch && s.kills[storm.id] ? ' +1' : '')); add('Rig', rig.name); add('Crew', L.crew.length ? L.crew.map((c) => CREW.find((x) => x.id === c).name.split(' ')[0]).join(' + ') : 'none leading');
     lo.lastChild && lo.removeChild(lo.lastChild);
   }
   card(title, text, opts = {}) {
@@ -60,7 +60,7 @@ export class UI {
     const meta = el('div', 'meta'); (opts.tags || []).forEach(([cls, t]) => meta.appendChild(el('span', 'tag ' + cls, t))); if (meta.children.length) c.appendChild(meta);
     c.appendChild(el('h3', '', title)); if (text) c.appendChild(el('p', '', text));
     if (opts.sel) c.appendChild(el('span', 'pick', opts.pickLabel || 'Selected'));
-    if (opts.onClick && !opts.locked) c.addEventListener('click', () => { this.G.audio.ui(); opts.onClick(); save.write(); this.renderHQ(); });
+    if (opts.onClick && !opts.locked) c.addEventListener('click', () => { if (opts.onClick() === false) { this.G.audio.deny(); return; } this.G.audio.ui(); save.write(); this.renderHQ(); }); // onClick false: refused, nothing changed
     if (opts.locked && !opts.static) c.addEventListener('click', () => this.G.audio.deny());
     return c;
   }
@@ -109,11 +109,13 @@ export class UI {
     return b;
   }
   tab_crew(body, s) {
-    body.appendChild(el('h3', 'section-h', 'Everyone rolls out, a vehicle each. Pick two to lead: their perks apply'));
+    const L = s.loadout, n = L.crew.length, full = n >= CREW_LEADS;
+    body.appendChild(el('h3', 'section-h', `Everyone rolls out, a vehicle each. Two lead, and their perks apply · ${n} of ${CREW_LEADS} leading` + (full ? ': tap one to stand them down' : '')));
     const g = el('div', 'grid-2');
     for (const c of CREW) {
-      const sel = s.loadout.crew.includes(c.id);
-      g.appendChild(this.card(c.name, c.perk, { sel, pickLabel: 'Leading', tags: [['', c.role], ['tag-pay', c.ride]], onClick: () => { if (sel) return; s.loadout.crew = [s.loadout.crew[1], c.id]; } }));
+      const sel = L.crew.includes(c.id);
+      // a tap toggles: a leader stands down, anyone else steps up while there is room. With two leading it is refused, never a swap
+      g.appendChild(this.card(c.name, c.perk, { sel, pickLabel: 'Leading', tags: [['', c.role], ['tag-pay', c.ride]], onClick: () => { const t = tapCrew(L.crew, c.id); if (t.full) return false; L.crew = t.crew; } }));
     }
     body.appendChild(g);
   }
@@ -169,7 +171,7 @@ export class UI {
     const t = $('res-tally'); t.textContent = '';
     const row = (k, v, small) => { t.appendChild(el('dt', '', k)); const d = el('dd', '', v); if (small) d.appendChild(el('small', '', small)); t.appendChild(d); };
     row('Time', clock(res.time)); if (res.won) row('Hull left', Math.round(100 * res.hull / res.hullMax) + '%');
-    row('Accuracy', st.rounds ? Math.round(100 * st.fired / st.rounds) + '%' : '-', st.rounds ? `${st.fired}/${st.rounds}` : ''); row('Critical hits', String(st.crits)); row('Near misses', String(st.close));
+    row('Accuracy', st.rounds ? Math.round(100 * st.fired / st.rounds) + '%' : '-', st.rounds ? `${st.fired}/${st.rounds}` : ''); row('Critical hits', st.rounds ? Math.round(100 * st.crits / st.rounds) + '%' : '-', st.rounds ? `${st.crits}/${st.rounds}` : ''); // a share of rounds, as the grade reads it row('Near misses', String(st.close));
     t.appendChild(el('dt', 'total', res.won ? 'Data banked' : 'Data salvaged')); t.appendChild(el('dd', 'total', '+' + res.data));
     const u = $('res-unlock'); u.hidden = !unlockText; u.textContent = unlockText || '';
     const p = $('res-primary'), q = $('res-secondary'), sh = $('res-share');

@@ -4,10 +4,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { migrate, FRESH, save } from '../src/save.js';
+import { migrate, FRESH, save, crewOf, tapCrew } from '../src/save.js';
 import { grade, better, rankOf, LETTERS } from '../src/grade.js';
 import { dayKey, shiftDay, seedOf, dailyFor, stream, extendStreak, liveStreak, shareText, clock } from '../src/daily.js';
-import { GRADE, STORMS, SETPIECE, POWERLINES } from '../src/config.js';
+import { GRADE, STORMS, RIGS, CREW, SETPIECE, POWERLINES } from '../src/config.js';
 
 const V1 = fs.readFileSync(new URL('./fixtures/save-v1.json', import.meta.url), 'utf8');
 
@@ -39,7 +39,7 @@ test('a save from this build keeps its new fields', () => {
 });
 
 // ---- grades ----
-const fightOf = (id, o = {}) => ({ won: true, storm: STORMS.find((s) => s.id === id), time: GRADE.par[id], hull: 100, hullMax: 100, stats: { rounds: 1000, fired: 600, crits: GRADE.crits[id], close: GRADE.close, ...o.stats }, ...o });
+const fightOf = (id, o = {}) => ({ won: true, storm: STORMS.find((s) => s.id === id), time: GRADE.par[id], hull: 100, hullMax: 100, stats: { rounds: 1000, fired: 600, crits: Math.ceil(GRADE.crit[id] * 1000), close: GRADE.close, ...o.stats }, ...o });
 test('a perfect fight is an S, a wreck has no grade', () => {
   for (const s of STORMS) assert.equal(grade(fightOf(s.id)).letter, 'S');
   assert.equal(grade({ ...fightOf('pete'), won: false }).letter, null);
@@ -50,19 +50,49 @@ test('the letters are in order and the best is kept', () => {
 test("every hint names one thing, in the player's own units, and doing it does raise the grade", () => {
   let n = 0;
   for (const s of STORMS) for (const t of [1.1, 1.4, 1.7]) for (const hull of [20, 60, 95]) for (const acc of [0.25, 0.45]) for (const crits of [0.2, 0.7]) for (const close of [0, 3]) {
-    const f = fightOf(s.id, { time: GRADE.par[s.id] * t, hull, stats: { rounds: 1000, fired: Math.round(acc * 1000), crits: Math.round(crits * GRADE.crits[s.id]), close } }), g = grade(f);
+    const f = fightOf(s.id, { time: GRADE.par[s.id] * t, hull, stats: { rounds: 1000, fired: Math.round(acc * 1000), crits: Math.round(crits * GRADE.crit[s.id] * 1000), close } }), g = grade(f);
     if (g.letter === 'S') continue; const next = LETTERS[LETTERS.indexOf(g.letter) - 1];
-    // "6 s faster for A", "2 crits short of A", or two of them: "6 s faster and 40 more crits for A"
+    // "6 s faster for A", "3 near misses short of A", or two of them: "6 s faster and 4% more crits for A"
     const m = g.hint.match(/^(.+?) (?:for|short of) ([SABCD])$/); assert.ok(m, `"${g.hint}"`); assert.equal(m[2], next, g.hint);
     const b = structuredClone(f); b.storm = f.storm;
     for (const part of m[1].split(' and ')) { // do exactly what it says
-      const q = part.match(/^(\d+)(?: s faster|% more accuracy| more hull| (?:more )?crits?| (?:more )?near miss(?:es)?)$/); assert.ok(q, `"${part}" in "${g.hint}"`); const k = +q[1];
-      if (/faster/.test(part)) b.time -= k; else if (/hull/.test(part)) b.hull += k; else if (/accuracy/.test(part)) b.stats.fired += Math.ceil(k * b.stats.rounds / 100); else if (/crit/.test(part)) b.stats.crits += k; else b.stats.close += k;
+      const q = part.match(/^(\d+)(?: s faster|% more accuracy|% more crits| more hull| (?:more )?near miss(?:es)?)$/); assert.ok(q, `"${part}" in "${g.hint}"`); const k = +q[1];
+      if (/faster/.test(part)) b.time -= k; else if (/hull/.test(part)) b.hull += k; else if (/accuracy/.test(part)) b.stats.fired += Math.ceil(k * b.stats.rounds / 100); else if (/crit/.test(part)) b.stats.crits += Math.ceil(k * b.stats.rounds / 100); else b.stats.close += k;
     }
     assert.ok(m[1].split(' and ').length <= 2, g.hint);
     assert.ok(rankOf(grade(b).letter) <= rankOf(next), `${s.id}: "${g.hint}" did not reach ${next} (${grade(b).letter})`); n++;
   }
   assert.ok(n > 100);
+});
+
+// ---- crits are precision, not volume (2.13): until then the grade counted them, and a faster gun counted more of them ----
+test('the same aim grades the same on every rig: crits are a share of rounds, not a count', () => {
+  for (const s of STORMS) {
+    const at = (rig, share, acc) => { const rounds = Math.round(60 / rig.gun.every); return grade(fightOf(s.id, { time: GRADE.par[s.id] * 1.3, hull: 70, stats: { rounds, fired: Math.round(acc * rounds), crits: Math.round(share * rounds), close: 2 } })).score; };
+    const [mule, bulldog, whippet] = RIGS.map((r) => at(r, 0.25, 0.6));
+    assert.ok(Math.abs(bulldog - mule) <= 1 && Math.abs(whippet - mule) <= 1, `${s.id}: one minute of the same aim graded ${mule} / ${bulldog} / ${whippet} on the Mule / Bulldog / Whippet`);
+    const better = RIGS.map((r) => at(r, 0.35, 0.6)); assert.ok(better.every((v, i) => v > [mule, bulldog, whippet][i]), `${s.id}: more rounds on the seam did not grade higher on every rig`);
+  }
+});
+test('missed rounds and rounds off the seam still cost the grade', () => {
+  const base = { rounds: 1000, fired: 700, crits: 250, close: 2 }, f = (st) => grade(fightOf('agnes', { time: GRADE.par.agnes * 1.4, hull: 60, stats: { ...base, ...st } })).score;
+  const ref = f({});
+  assert.ok(f({ rounds: 1400 }) < ref, 'the same hits and crits from more rounds (400 missed) did not grade lower');
+  assert.ok(f({ crits: 120 }) < ref, 'the same hits with fewer of them on the seam did not grade lower');
+  assert.ok(f({ crits: 120, fired: 400 }) < f({ crits: 120 }), 'fewer hits did not grade lower');
+});
+
+// ---- the crew who lead (2.13): a tap toggles, two at most, never a silent swap; any older save's list still loads ----
+test('crew: a tap stands a leader down or steps one up, and with two leading anyone else is refused', () => {
+  const ids = CREW.map((c) => c.id);
+  assert.deepEqual(tapCrew(['doc', 'winch'], 'doc'), { crew: ['winch'], full: false }, 'a leader did not stand down');
+  assert.deepEqual(tapCrew(['winch'], 'june'), { crew: ['winch', 'june'], full: false }, 'a crew member did not step up into an open place');
+  assert.deepEqual(tapCrew(['doc', 'winch'], 'june'), { crew: ['doc', 'winch'], full: true }, 'with two leading a third replaced one');
+  assert.deepEqual(tapCrew([], 'sparks'), { crew: ['sparks'], full: false });
+  for (const a of ids) for (const b of ids) { const t = tapCrew(crewOf([a, b], ids), 'sparks'); assert.ok(t.crew.length <= 2 && new Set(t.crew).size === t.crew.length, `${a},${b}: ${t.crew}`); }
+  assert.deepEqual(crewOf(migrate(V1).loadout.crew, ids), ['june', 'winch'], 'a version 1 save lost its crew');
+  assert.deepEqual(crewOf(['doc', 'doc', 'nobody', 'sparks', 'june'], ids), ['doc', 'sparks'], 'repeats, unknown names or a third leader survived');
+  assert.deepEqual(crewOf('doc', ids), ['doc', 'winch'], 'a damaged list did not fall back to the default pair'); assert.deepEqual(crewOf([], ids), []);
 });
 
 // ---- the Daily Storm ----

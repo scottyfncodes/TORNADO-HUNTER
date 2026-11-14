@@ -37,7 +37,7 @@ export class Mission {
     // the decisions that make a fight this fight, each from its own stream: seeded (the Daily Storm) the same for everyone
     const S = (name) => (this.seed === null ? Math.random : stream(this.seed, name)); this.rj = S('juke'); this.ra = S('attack'); this.rt = S('tether'); this.rs = S('setpiece'); this.ef = def.ef + (opts.rematch || 0); this.rematch = opts.rematch || 0;
     const has = (id) => loadout.crew.includes(id), up = upgrades;
-    this.crew = loadout.crew.map((id) => CREW.find((c) => c.id === id));
+    this.crew = loadout.crew.map((id) => CREW.find((c) => c.id === id)).filter(Boolean); // none, one or two lead
     this.p = {
       kill: FEEL.killSeconds + (has('doc') ? 3 : 0), dorothyThin: has('doc') ? 0.5 : 0.62,
       stagger: FEEL.staggerSeconds + (has('winch') ? 2 : 0), hook: FEEL.hookSeconds + (has('winch') ? 2 : 0) + up.winch * 1.5,
@@ -48,10 +48,11 @@ export class Mission {
     this.storm = new Storm(G.scene, G.sky.uniforms, def, w, { low: !!G.low }); this.storm.place(rx + fx * lead + fz * 40, rz + fz * lead - fx * 40);
     this.ai = { hx: fx, hz: fz, jukeT: this.jr(3.5, 5), pending: null, edgeCd: 0 };
     this.rig = G.makeRig(); const gun = this.rig.def.gun, gk = (has('june') ? 1.3 : 1); this.gun = gun;
-    Object.assign(this.p, { mgRange: FEEL.mgRange * gun.range * gk, mgDps: FEEL.mgDebrisDps * gun.dps * gk, gunStorm: FEEL.gunStormDps * gun.dps * gk * (1 + up.cable * 0.1) });
+    // wreckRange: how far out your turret reaches wreckage (the rig's gun); mgRange: the crew's cover at the wheel
+    Object.assign(this.p, { wreckRange: FEEL.gunWreckRange * gun.range, mgRange: FEEL.mgRange * gun.range * gk, mgDps: FEEL.mgDebrisDps * gun.dps * gk, gunStorm: FEEL.gunStormDps * gun.dps * gk * (1 + up.cable * 0.1) });
     this.rig.place(rx, rz, hd, w); this.rig.vx = fx * 40; this.rig.vz = fz * 40; this.rig.speed = 40;
     this.convoy = new Convoy(G.scene, w, G.fx.dustTex); this.convoy.place(this.rig);
-    this.phase = 'chase'; this.time = 0; this.phaseT = 0; this.stage = 0; this.data = 0; this.dataShown = 0; this.result = null;
+    this.phase = 'chase'; this.time = 0; this.phaseT = 0; this.stage = 0; this.data = 0; this.dataShown = 0; this.owed = 0; this.result = null; // owed: band data on its way to the truck as shards, before the multiplier
     this.view = 'drive'; this.zoneLatch = false; this.autoHold = 0; this.inZone = false; this.killT = 0; this.cine = null; this.podBusy = false; this.harpoonBusy = false; this.reload = 0; this.shotgunCd = 0; this.mgT = 0; this.firing = 0;
     this.staggerT = 0; this.hookT = 0; this.tether = null; this.tetherSeed = 0; this.mercyT = 0; this.taughtLunge = false; this.home = null; this.busUnit = null; this.dropped = false; this.line = null; this.surge = null; this.wind = null; this.windWait = 0; this.hz = []; this.sats = []; this.attackT = 3.2;
     this.dist = lead; this.tension = null; this.bark = null; this.barkT = 0; this.callout = null; this.calloutT = 0; this.calloutUp = 0; this.callQ = []; this.far = 0;
@@ -97,7 +98,8 @@ export class Mission {
     this.calloutT -= dt; this.calloutUp += dt; if (this.calloutT > 0) return;
     while (this.callQ.length) { const c = this.callQ.shift(); if (c.pri >= 3 || this.time - c.at < FEEL.calloutStale) { this.showCall(c); return; } } // a beat that waited too long is old news
   }
-  earn(n) { this.data += n * this.p.dataMul; }
+  // data is earned until the fight has a result, and never after: what is still in the air when it ends is settled once, in end()
+  earn(n) { if (this.result) return; this.data += n * this.p.dataMul; }
   get dropR() { return this.storm.radiusAt(0.02) + FEEL.dropMargin; } // the ring at the funnel's foot where DOROTHY is set down
   // the ring is drawn round the line's anchor, not the funnel: you drive to a place, not after every lunge
   get ringDist() { return Math.hypot(this.rig.x - this.storm.ax, this.rig.z - this.storm.az); }
@@ -340,13 +342,13 @@ export class Mission {
 
   // ---- the harpoon pays off ----
   ripBand() {
-    const s = this.storm, b = s.band, G = this.G, fx = G.fx, r = this.rig; if (!b) return;
+    const s = this.storm, b = s.band, G = this.G, fx = G.fx, r = this.rig; if (!b || this.result) return; // a band breaks once, and never after the fight is over
     s.seam(b, r.x, r.z, _a); const bx = _a.x, by = _a.y, bz = _a.z;
     s.snapBand(b); this.stats.snaps++; this.stage++; this.line = null; this.cine = null; fx.hideCable(0); this.clearHazards(true); const wasGun = this.view === 'gun'; this.leaveGun(); this.zoneLatch = false; if (wasGun && s.bandsLeft > 0) this.note('BAND OFF: YOUR WHEEL, OUTRUN IT');
     fx.debris(bx, by, bz, 10, ['#5d6b62', '#b89a58', '#1d2a2b'], 2.2, 30);
     fx.hitStop(FEEL.hitStopBandSnap); fx.shake(FEEL.shakeBandSnap); fx.flash(1); G.audio.bandSnap(); G.audio.boom(1); G.sky.strike(1.2);
     fx.energy.play(bx, by, bz, 80, 80, { fps: 40 }); fx.explode(bx, by, bz, 26);
-    const each = this.pay / 12; fx.shardBurst(s.x, s.groundY + 12, s.z, 12, r, (i) => { this.earn(each); G.audio.pickup(i); });
+    const each = this.pay / 12; this.owed += this.pay; fx.shardBurst(s.x, s.groundY + 12, s.z, 12, r, (i) => { if (!this.result) { this.owed -= each; this.earn(each); } G.audio.pickup(i); }); // the last band's shards land after the result: end() has banked them
     this.say('snap'); for (const st of this.sats) { st.storm.die(); st.dead = true; }
     if (s.bandsLeft === 0) { this.end(true, 'destroyed'); return; }
     // it does not take that quietly: a wall of debris rolls out from where it stood, and it bolts
@@ -357,6 +359,7 @@ export class Mission {
   end(won, reason) {
     if (this.result) return; const s = this.storm, fx = this.G.fx;
     this.leaveBus(); this.leaveGun(); this.phase = won ? 'won' : 'lost'; this.phaseT = 0; this.cine = null; this.clearHazards(true); fx.hideCable(0); fx.hideRing(); this.line = null; this.tether = null; s.tug = null; this.surge = null; this.wind = null;
+    if (this.owed > 1e-6) { this.data += this.owed * this.p.dataMul; this.owed = 0; } // shards still flying are paid now, so the HUD, the results and the save agree
     const lines = [['Storm data', Math.round(this.data)]];
     if (won) {
       const fin = this.pay * this.p.dataMul, hull = Math.round(this.pay * 0.4 * (this.rig.hull / this.rig.hullMax) * this.p.dataMul);
