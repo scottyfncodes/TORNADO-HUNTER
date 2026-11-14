@@ -171,7 +171,7 @@ export class UI {
     const t = $('res-tally'); t.textContent = '';
     const row = (k, v, small) => { t.appendChild(el('dt', '', k)); const d = el('dd', '', v); if (small) d.appendChild(el('small', '', small)); t.appendChild(d); };
     row('Time', clock(res.time)); if (res.won) row('Hull left', Math.round(100 * res.hull / res.hullMax) + '%');
-    row('Accuracy', st.rounds ? Math.round(100 * st.fired / st.rounds) + '%' : '-', st.rounds ? `${st.fired}/${st.rounds}` : ''); row('Critical hits', st.rounds ? Math.round(100 * st.crits / st.rounds) + '%' : '-', st.rounds ? `${st.crits}/${st.rounds}` : ''); // a share of rounds, as the grade reads it row('Near misses', String(st.close));
+    row('Accuracy', st.rounds ? Math.round(100 * st.fired / st.rounds) + '%' : '-', st.rounds ? `${st.fired}/${st.rounds}` : ''); row('Critical hits', st.rounds ? Math.round(100 * st.crits / st.rounds) + '%' : '-', st.rounds ? `${st.crits}/${st.rounds}` : ''); /* a share of rounds, as the grade reads it */ row('Near misses', String(st.close));
     t.appendChild(el('dt', 'total', res.won ? 'Data banked' : 'Data salvaged')); t.appendChild(el('dd', 'total', '+' + res.data));
     const u = $('res-unlock'); u.hidden = !unlockText; u.textContent = unlockText || '';
     const p = $('res-primary'), q = $('res-secondary'), sh = $('res-share');
