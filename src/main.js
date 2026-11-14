@@ -5,6 +5,7 @@ import { save } from './save.js';
 import { input } from './input.js';
 import { audio } from './audio.js';
 import { Sky } from './sky.js';
+import { Crops } from './crops.js';
 import { World, TOWNS } from './world.js';
 import { Rig } from './rig.js';
 import { Storm } from './tornado.js';
@@ -218,7 +219,7 @@ function frame(now) {
   }
   if (dt > 0) fx.update(dt, simT);
   G.weather.update(dt, simT, m, storm, camera);
-  G.world.cull(camera, quality.detail); G.sky.update(dtBase, simT, stormLevel, storm, prox, m && !m.result ? m.rig : null); G.sky.capture(renderer, dtBase);
+  G.world.cull(camera, quality.detail); G.crops && G.crops.update(camera, m && !m.result ? m.rig : null, storm, G.fx.tele); G.sky.update(dtBase, simT, stormLevel, storm, prox, m && !m.result ? m.rig : null); G.sky.capture(renderer, dtBase);
   renderer.render(scene, camera);
 }
 
@@ -231,6 +232,7 @@ async function boot() {
   await G.sky.load(); prog(0.2);
   await G.world.load((v) => prog(0.2 + v * 0.6));
   await G.fx.load(); prog(0.95);
+  G.crops = G.low ? null : new Crops(scene, G.world, G.sky.uniforms, false); // the near field stands up (src/crops.js); not on the low tier, which keeps its frame rate
   G.weather = new Weather(G);
   G.hud = new Hud(); G.fx.flashCb = (s, c) => G.hud.flash(s, c); G.fx.calm = save.s.settings.calm || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   G.hud.onReady = () => audio.ready_();

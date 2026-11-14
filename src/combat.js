@@ -455,7 +455,11 @@ export class Mission {
     for (const e of w.collideRig(r)) { if (e.kind === 'smash') { G.audio.smash(); fx.shake(e.tree ? 4 : 2); fx.puff(e.x, e.y + 1.5, e.z, e.tree ? 9 : 6, e.type === 'bale' ? '#d9b45a' : '#cdb27a', 0.6); } else { G.audio.impact(); fx.shake(6); if (e.dmg && !over && this.view === 'drive' && !this.cine) this.hurt(e.dmg); } } // a building costs hull only with your hands on the wheel: the autodrive's crashes are not yours to pay for
     if (!over && this.p.regen && r.hull > 0 && r.hull < r.hullMax) r.hull = Math.min(r.hullMax, r.hull + this.p.regen * dt);
     const spd = Math.hypot(r.vx, r.vz);
-    if (r.air <= 0 && spd > 9 && Math.random() < dt * (r.drifting ? 60 : r.surface ? 10 : 20) * Math.min(1.5, spd / 40)) fx.puff(r.x - Math.sin(r.heading) * 2.6 + rand(-1.2, 1.2), r.y + 0.5, r.z - Math.cos(r.heading) * 2.6 + rand(-1.2, 1.2), (r.drifting ? 5 : 2.6) + spd * 0.05, r.surface === 2 ? '#8d9392' : '#cdb27a', 0.7, 2);
+    // dust off the rear wheels, drifting with the inflow toward the storm (src/fx.js trail); the convoy's too, while they drive themselves
+    const inflow = s.alive && dist < 600 ? 6 * (1 - dist / 600) : 0, wx = -nx * inflow, wz = -nz * inflow;
+    if (r.air <= 0) { const hx = Math.sin(r.heading), hz = Math.cos(r.heading), back = r.def.len * 0.33 * 1.2, side = r.def.wid * 0.55 * 1.2;
+      for (const sd of [1, -1]) fx.trail(r.x - hx * back + hz * side * sd, r.y, r.z - hz * back - hx * side * sd, dt, spd, r.surface, r.drifting, r.vx, r.vz, wx, wz); }
+    for (const u of this.convoy.units) if (!u.driven && u.speed > 7) { const hx = Math.sin(u.heading), hz = Math.cos(u.heading); for (const sd of [1, -1]) fx.trail(u.x - hx * 2 + hz * 1.2 * sd, u.y, u.z - hz * 2 - hx * 1.2 * sd, dt, u.speed, w.surfaceAt(u.x, u.z), false, hx * u.speed, hz * u.speed, wx, wz, 0.7); }
     dx = r.x - s.x; dz = r.z - s.z; dist = Math.hypot(dx, dz) || 0.01; this.dist = dist; nx = dx / dist; nz = dz / dist;
 
     // ---- wreckage in the air and on the ground ----

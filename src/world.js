@@ -51,8 +51,27 @@ const KIT = {
   oak: { r: 1.0, tree: 1, veg: 1, g: () => merge([open(cyl(0.35, 0.5, 3.2, C.trunk, 0, 1.6, 0, 4)), blob(2.6, C.leaf, 0, 4.6, 0, 0.85), octa(1.8, C.leaf2, 1.2, 5.6, 0.6)]) },
   pine: { r: 0.8, tree: 1, veg: 1, g: () => merge([open(cyl(0.25, 0.35, 2, C.trunk, 0, 1, 0, 4)), cone(2.2, 4, C.pine, 0, 3.6, 0, 5), cone(1.5, 3.2, C.pine, 0, 5.8, 0, 5)]) },
   bush: { r: 1.0, soft: 1, drag: 0.985, veg: 1, g: () => merge([octa(1.3, C.leaf2, 0, 0.8, 0, 0.75)]) },
+  // roadside (2.20): scenery only (deco: never collided with, never eaten), drawn near the camera like the vegetation.
+  // A span of power line is one instance: its pole, crossarm and insulators, and three wires sagging to the next pole 40 m on (+z)
+  span: { deco: 1, veg: 1, range: 900, g: () => { const P = [cyl(0.17, 0.24, 9.5, '#6b5640', 0, 4.75, 0, 6), box(2.8, 0.18, 0.18, '#5a4836', 0, 9.0, 0), box(1.4, 0.12, 0.12, '#5a4836', 0, 8.3, 0, 0, 0, 0.6)];
+    for (const x of [-1.2, 0, 1.2]) { P.push(cyl(0.07, 0.07, 0.32, '#cfd6d4', x, 9.25, 0, 5)); for (let i = 0; i < 6; i++) { const a = i / 6, b = (i + 1) / 6, sag = (t) => 9.35 - 1.6 * 4 * t * (1 - t); P.push(box(0.035, 0.035, 40 / 6 + 0.05, '#20262a', x, (sag(a) + sag(b)) / 2, (a + b) / 2 * 40, 0, Math.atan2(sag(a) - sag(b), 40 / 6))); } }
+    return merge(P); } },
+  rail: { deco: 1, veg: 1, range: 520, g: () => merge([box(0.22, 1.3, 0.22, '#7c6e5a', -3, 0.65, 0), box(0.22, 1.3, 0.22, '#7c6e5a', 3, 0.65, 0), box(6.2, 0.16, 0.1, '#a39780', 0, 1.1, 0), box(6.2, 0.16, 0.1, '#958a74', 0, 0.62, 0), box(0.18, 1.0, 0.1, '#958a74', 0, 0.75, 0, 0, 0, 0.9)]) },
   tuft: { deco: 1, veg: 1, range: 300, g: () => merge([cone(0.3, 1.3, C.wheat, 0, 0.65, 0, 3), cone(0.24, 1.0, '#e2c06a', 0.35, 0.5, 0.2, 3)]) },
 };
+
+// the ground's light, shared with the crops (src/crops.js): storm shadow, warm haze, fog
+// the light (2.15): the storm's shadow reaches across the ground toward you (it is lit from behind, as you see it), cool in the
+// shadow and faintly warm where the light still reaches; the haze toward the gold horizon behind the storm warms with it
+export const LIT = `c*=uTint*(1.0+uFlash);
+      vec2 rel=vW.xz-uTor.xy; float sa=-dot(rel,uTorDir), sc=dot(rel,vec2(-uTorDir.y,uTorDir.x)), td=length(vec2(sc,(sa-uTor.z*1.4)*0.62));
+      float sh=(0.46+0.54*smoothstep(uTor.z*0.6,uTor.z*4.5,td))*(0.8+0.2*smoothstep(uTor.z*2.0,uTor.z*9.0,td)); sh=mix(1.0,sh,uGoldK);
+      c*=sh*mix(vec3(0.78,0.87,0.97),vec3(1.0),smoothstep(0.46,1.0,sh))*mix(vec3(1.0),vec3(1.05,1.0,0.92),uGoldK*0.6*smoothstep(0.85,1.0,sh));
+      float dd=distance(vW,cameraPosition), f=smoothstep(uFogNear,uFogFar,dd);
+      float warm=uGoldK*smoothstep(0.1,0.95,dot(normalize(vW.xz-cameraPosition.xz+vec2(1e-4)),uTorDir))*smoothstep(uFogNear,uFogFar*0.8,dd);
+      c=mix(c,mix(uFog,uGoldHaze,warm*0.7),f); gl_FragColor=vec4(c,1.0);
+      #include <colorspace_fragment>`;
+export const HEAD = `uniform sampler2D uNoise; uniform vec3 uTint,uFog,uTor,uGoldHaze; uniform vec2 uTorDir; uniform float uFogNear,uFogFar,uFlash,uGoldK; varying vec3 vW;`;
 
 const FLY_MAX = 64;
 const dummy = new THREE.Object3D(), tmp = new THREE.Vector3();
@@ -86,26 +105,15 @@ export class World {
     const map = new THREE.CanvasTexture(canvas); map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 4; map.flipY = false;
     const u = this.env.uniforms;
     const shared = { uNoise: u.uNoise, uTint: u.uTint, uFog: u.uFog, uFogNear: u.uFogNear, uFogFar: u.uFogFar, uFlash: u.uFlash, uTor: u.uTor, uTorDir: u.uTorDir, uGoldHaze: u.uGoldHaze, uGoldK: u.uGoldK };
-    // the light (2.15): the storm's shadow reaches across the ground toward you (it is lit from behind, as you see it), cool in the
-    // shadow and faintly warm where the light still reaches; the haze toward the gold horizon behind the storm warms with it
-    const lit = `c*=uTint*(1.0+uFlash);
-          vec2 rel=vW.xz-uTor.xy; float sa=-dot(rel,uTorDir), sc=dot(rel,vec2(-uTorDir.y,uTorDir.x)), td=length(vec2(sc,(sa-uTor.z*1.4)*0.62));
-          float sh=(0.46+0.54*smoothstep(uTor.z*0.6,uTor.z*4.5,td))*(0.8+0.2*smoothstep(uTor.z*2.0,uTor.z*9.0,td)); sh=mix(1.0,sh,uGoldK);
-          c*=sh*mix(vec3(0.78,0.87,0.97),vec3(1.0),smoothstep(0.46,1.0,sh))*mix(vec3(1.0),vec3(1.05,1.0,0.92),uGoldK*0.6*smoothstep(0.85,1.0,sh));
-          float dd=distance(vW,cameraPosition), f=smoothstep(uFogNear,uFogFar,dd);
-          float warm=uGoldK*smoothstep(0.1,0.95,dot(normalize(vW.xz-cameraPosition.xz+vec2(1e-4)),uTorDir))*smoothstep(uFogNear,uFogFar*0.8,dd);
-          c=mix(c,mix(uFog,uGoldHaze,warm*0.7),f); gl_FragColor=vec4(c,1.0);
-          #include <colorspace_fragment>`;
-    const head = `uniform sampler2D uNoise; uniform vec3 uTint,uFog,uTor,uGoldHaze; uniform vec2 uTorDir; uniform float uFogNear,uFogFar,uFlash,uGoldK; varying vec3 vW;`;
     this.ground = new THREE.Mesh(g, new THREE.ShaderMaterial({
       uniforms: { uMap: { value: map }, ...shared },
       vertexShader: `varying vec2 vUv; varying vec3 vW; void main(){ vUv=uv; vec4 w=modelMatrix*vec4(position,1.0); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
-      fragmentShader: `${head} uniform sampler2D uMap; varying vec2 vUv;
+      fragmentShader: `${HEAD} uniform sampler2D uMap; varying vec2 vUv;
         void main(){ vec3 c=texture2D(uMap,vUv).rgb; float d=texture2D(uNoise,vW.xz*0.045).r; float d2=texture2D(uNoise,vW.xz*0.006).r; float d3=texture2D(uNoise,vW.xz*0.31).r;
-          c*=0.8+0.2*d+0.12*d2+0.16*d3; ${lit} }`,
+          c*=0.8+0.2*d+0.12*d2+0.16*d3; ${LIT} }`,
     }));
     if (this.env.low) { // weak GPU: one texture read a pixel instead of four
-      this.ground.material.fragmentShader = `${head} uniform sampler2D uMap; varying vec2 vUv; void main(){ vec3 c=texture2D(uMap,vUv).rgb*1.04; ${lit} }`;
+      this.ground.material.fragmentShader = `${HEAD} uniform sampler2D uMap; varying vec2 vUv; void main(){ vec3 c=texture2D(uMap,vUv).rgb*1.04; ${LIT} }`;
     }
     // roads as their own draped strips: the ground texture is 1.5 m a texel, a road edge has to be sharper than that
     const rp = [], rc = [], ri = [], col = (h) => { const k = new THREE.Color(h); return [k.r, k.g, k.b]; };
@@ -122,7 +130,7 @@ export class World {
     this.roads = new THREE.Mesh(rgeo, new THREE.ShaderMaterial({
       uniforms: shared, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
       vertexShader: `varying vec3 vC; varying vec3 vW; void main(){ vC=color; vec4 w=modelMatrix*vec4(position,1.0); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
-      fragmentShader: this.env.low ? `${head} varying vec3 vC; void main(){ vec3 c=vC; ${lit} }` : `${head} varying vec3 vC; void main(){ vec3 c=vC*(0.86+0.28*texture2D(uNoise,vW.xz*0.33).r); ${lit} }`,
+      fragmentShader: this.env.low ? `${HEAD} varying vec3 vC; void main(){ vec3 c=vC; ${LIT} }` : `${HEAD} varying vec3 vC; void main(){ vec3 c=vC*(0.86+0.28*texture2D(uNoise,vW.xz*0.33).r); ${LIT} }`,
     }));
     this.roads.frustumCulled = false; this.group.add(this.roads);
     this.ground.frustumCulled = false; this.group.add(this.ground);
@@ -170,6 +178,14 @@ export class World {
       for (let i = -7; i <= 7; i++) if (Math.abs(i) > 1) put('fence', x + i * 6, fz + side * 10.5, 0);
       put('sign', x + 6, fz + side * 9, 0);
     }
+    // the roads: power lines down some of them, fence runs along stretches of most (scenery only: deco kits)
+    const ROADS = []; for (let v = WORLD.roadOffset - WORLD.roadSpacing * 3; v < HALF; v += WORLD.roadSpacing) ROADS.push(v);
+    const open = (x, z, d) => Math.abs(x) < HALF - 60 && Math.abs(z) < HALF - 60 && !nearTown(x, z, 190) && hwDist(x, z) > d && !this.farms.some((f) => Math.hypot(f.x - x, f.z - z) < 150) && ROADS.every((r) => Math.abs(x - r) > 24 || Math.abs(z - r) > 24);
+    ROADS.forEach((v, k) => { for (const along of [0, 1]) { // along 0: the road runs along z at x = v; 1: along x at z = v
+      const at = (t, o) => (along ? [t, v + o] : [v + o, t]), rot = along ? Math.PI / 2 : 0;
+      if ((k + along) % 2 === 0) { const side = R() < 0.5 ? 1 : -1; for (let t = -HALF + 80; t < HALF - 120; t += 40) { const [x, z] = at(t, side * 16), [x2, z2] = at(t + 40, side * 16); if (open(x, z, 30) && open(x2, z2, 30)) put('span', x, z, rot); } }
+      if (!this.env.low) for (const side of [1, -1]) { let run = 0; /* fence runs: not on the low tier, where they cost the most for the least (tests/perf.mjs) */ for (let t = -HALF + 80; t < HALF - 80; t += 6.2) { if (run <= 0 && R() < 0.035) run = 10 + Math.floor(R() * 26); if (run > 0) { run--; const [x, z] = at(t, side * 12.5); if (open(x, z, 22)) put('rail', x, z, rot); } } }
+    } });
     for (let s = 40; s < HWL - 40; s += 70) { const x = HW0.x + HWD.x * s - HWD.z * 14, z = HW0.z + HWD.z * s + HWD.x * 14; if (gridDist(x) > 10 && gridDist(z) > 10 && !nearTown(x, z, 60)) put('pole', x, z, Math.atan2(HWD.x, HWD.z)); }
     for (let i = 0; i < 46; i++) { const x = (R() - 0.5) * (WORLD.size - 200), z = (R() - 0.5) * (WORLD.size - 200); if (this.clear(x, z, 30) && !nearTown(x, z, 170)) for (let k = 0, n = 3 + Math.floor(R() * 3); k < n; k++) put('bale', x + (R() - 0.5) * 30, z + (R() - 0.5) * 30, R() * 3.14); }
     // herds out in the open: the plains are full of cattle, and the storm knows it
@@ -191,7 +207,7 @@ export class World {
     const bx = base.getContext('2d'), img = bx.createImageData(S, S), d = img.data;
     const CROPS = [[214, 174, 70, 1.0, 12], [228, 190, 92, 0.9, 10], [205, 163, 62, 1.1, 14], [196, 176, 118, 1.3, 8], [112, 150, 66, 0, 0], [146, 176, 74, 0.8, 14], [126, 88, 56, 1.2, 16], [236, 200, 104, 1.0, 9], [128, 160, 72, 0, 0], [221, 182, 80, 1.0, 12]];
     const M = 257, at = (im, ix, iz, c = 0) => im.data[(iz * M + ix) * 4 + c];
-    const H = this.heights, q = 256;
+    const H = this.heights, q = 256, CM = this.cropMap = new Uint8ClampedArray(512 * 512 * 4); // the crop map (2.20): each field's colour, and how much stands in it (src/crops.js)
     for (let py = 0; py < S; py++) {
       const wz = (py + 0.5) / S * WORLD.size - HALF, iz = Math.min(M - 1, (py / S * (M - 1)) | 0), hz = Math.min(N - 2, Math.max(1, (py / S * (N - 1)) | 0));
       for (let px = 0; px < S; px++) {
@@ -210,6 +226,7 @@ export class World {
         const cliff = at(m.cliff, ix, iz) / 255; r += (120 - r) * cliff; g += (118 - g) * cliff; b += (112 - b) * cliff;
         const beach = at(m.beach, ix, iz) / 255 * 0.5; r += (214 - r) * beach; g += (196 - g) * beach; b += (150 - b) * beach;
         const water = at(m.water, ix, iz) / 255; r += (70 - r) * water; g += (104 - g) * water; b += (110 - b) * water;
+        if (!(px & 1) && !(py & 1)) { const o = ((py >> 1) * 512 + (px >> 1)) * 4; CM[o] = r; CM[o + 1] = g; CM[o + 2] = b; CM[o + 3] = (ex < 4 || ez < 4) ? 0 : 255 * Math.max(0, (1 - water * 3) * (1 - beach * 3) * (1 - cliff * 2) * (1 - forest * 1.5) * (1 - dirt * 0.5)); } // water, sand and rock: none; trees and bare earth only thin it
         // light: hillshade from the height grid, micro-relief from the normal map, altitude from the heightmap
         const hi = hz * N + hx, shade = 1 + ((H[hi - 1] - H[hi + 1]) * 0.75 + (H[hi - N] - H[hi + N]) * 0.25) * 0.06;
         const micro = 0.94 + at(m.normal, ix, iz, 2) / 255 * 0.08, alt = 0.93 + at(m.height16, ix, iz) / 255 * 0.12, slope = 1 - at(m.slope, ix, iz) / 255 * 0.3;
