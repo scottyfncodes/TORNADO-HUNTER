@@ -35,6 +35,34 @@ export function prism(w, h, d, color, x = 0, y = 0, z = 0, ry = 0) {
   return paint(g, color, x, y, z, 0, ry, 0);
 }
 
+// ---- hero kit (2.17): chamfered boxes whose bevels catch the light in a worn-edge colour, and baked ambient occlusion ----
+const _t = new THREE.Vector3(), _u = new THREE.Vector3(), _n = new THREE.Vector3(), _c = new THREE.Vector3();
+// a box (w, h, d) with every edge bevelled by `b`: 6 faces, 12 edge strips, 8 corners. `edge` colours the bevels (lighter: wear)
+export function bev(w, h, d, color, x = 0, y = 0, z = 0, b = 0.01, edge = null, rx = 0, ry = 0, rz = 0) {
+  const H = [w / 2, h / 2, d / 2], I = H.map((v) => Math.max(1e-4, v - b)), tris = [], cols = [], fc = new THREE.Color(color), ec = new THREE.Color(edge || color);
+  const pt = (k, s, o) => { const p = [0, 0, 0]; for (let a = 0; a < 3; a++) p[a] = a === k ? s * H[a] : o[a] * I[a]; return p; }; // on face (k, s), at the inner corner signs o
+  const tri = (A, B, C, col) => { _t.set(B[0] - A[0], B[1] - A[1], B[2] - A[2]); _u.set(C[0] - A[0], C[1] - A[1], C[2] - A[2]); _n.crossVectors(_t, _u); _c.set(A[0] + B[0] + C[0], A[1] + B[1] + C[1], A[2] + B[2] + C[2]);
+    if (_n.dot(_c) < 0) tris.push(...A, ...C, ...B); else tris.push(...A, ...B, ...C); for (let i = 0; i < 3; i++) cols.push(col.r, col.g, col.b); };
+  const quad = (A, B, C, D, col) => { tri(A, B, C, col); tri(A, C, D, col); };
+  for (let k = 0; k < 3; k++) for (const s of [1, -1]) { // faces
+    const u = (k + 1) % 3, v = (k + 2) % 3, o = (a, b2) => { const r = [0, 0, 0]; r[u] = a; r[v] = b2; return r; };
+    quad(pt(k, s, o(1, 1)), pt(k, s, o(-1, 1)), pt(k, s, o(-1, -1)), pt(k, s, o(1, -1)), fc);
+  }
+  for (let k = 0; k < 3; k++) for (let m = k + 1; m < 3; m++) for (const s1 of [1, -1]) for (const s2 of [1, -1]) { // edges between faces (k, s1) and (m, s2)
+    const t = 3 - k - m, o1 = (st) => { const r = [0, 0, 0]; r[m] = s2; r[t] = st; return r; }, o2 = (st) => { const r = [0, 0, 0]; r[k] = s1; r[t] = st; return r; };
+    quad(pt(k, s1, o1(1)), pt(k, s1, o1(-1)), pt(m, s2, o2(-1)), pt(m, s2, o2(1)), ec);
+  }
+  for (const sx of [1, -1]) for (const sy of [1, -1]) for (const sz of [1, -1]) { const o = [sx, sy, sz]; tri(pt(0, sx, o), pt(1, sy, o), pt(2, sz, o), ec); } // corners
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(tris), 3)); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(cols), 3));
+  E.set(rx, ry, rz); Q.setFromEuler(E); V.set(x, y, z); g.applyMatrix4(M.compose(V, Q, S)); g.computeVertexNormals(); return g;
+}
+// baked occlusion on a merged geometry: colours darken toward `lo` along `axis` (0 x, 1 y, 2 z), down to `min` of themselves
+export function ao(g, axis, lo, hi, min = 0.6) {
+  const p = g.attributes.position, c = g.attributes.color;
+  for (let i = 0; i < p.count; i++) { const t = Math.max(0, Math.min(1, (p.getComponent(i, axis) - lo) / (hi - lo))), k = min + (1 - min) * t * t * (3 - 2 * t); c.setXYZ(i, c.getX(i) * k, c.getY(i) * k, c.getZ(i) * k); }
+  c.needsUpdate = true; return g;
+}
+
 export function merge(parts) {
   let n = 0; for (const p of parts) n += p.attributes.position.count;
   const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3);

@@ -65,6 +65,9 @@ export class Sky {
         }`,
     }));
     this.dome.renderOrder = -10; this.dome.frustumCulled = false; this.scene.add(this.dome);
+    // the storm sky as a reflection (2.17): the dome alone (layer 1), rendered into a small cube twice a second where the camera is,
+    // so steel shows the shelf and the gold strip under it rather than the clear morning the cube map was baked from. Not on the low tier
+    if (!this.low) { this.cubeRT = new THREE.WebGLCubeRenderTarget(64, { type: THREE.HalfFloatType }); this.cubeCam = new THREE.CubeCamera(1, 12000, this.cubeRT); this.cubeCam.layers.set(1); this.dome.layers.enable(1); this.stormEnv = this.cubeRT.texture; this.capT = 0; }
     // the wall cloud: a rotating collar the funnel hangs from
     this.wall = new THREE.Mesh(new THREE.CircleGeometry(1, 40), new THREE.ShaderMaterial({
       transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false,
@@ -97,6 +100,7 @@ export class Sky {
     return this;
   }
 
+  capture(renderer, dt) { if (!this.cubeCam) return; this.capT -= dt; if (this.capT > 0) return; this.capT = 0.5; this.cubeCam.position.copy(this.camera.position); this.cubeCam.update(renderer, this.scene); this.stormEnv.needsPMREMUpdate = true; }
   strike(power = 1) { this.flash = Math.max(this.flash, power); }
   setRain(on) { this.rain.visible = on; }
 

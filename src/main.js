@@ -218,7 +218,7 @@ function frame(now) {
   }
   if (dt > 0) fx.update(dt, simT);
   G.weather.update(dt, simT, m, storm, camera);
-  G.world.cull(camera, quality.detail); G.sky.update(dtBase, simT, stormLevel, storm, prox, m && !m.result ? m.rig : null);
+  G.world.cull(camera, quality.detail); G.sky.update(dtBase, simT, stormLevel, storm, prox, m && !m.result ? m.rig : null); G.sky.capture(renderer, dtBase);
   renderer.render(scene, camera);
 }
 
