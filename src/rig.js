@@ -13,9 +13,9 @@ const _n = new THREE.Vector3(), _q = new THREE.Quaternion(), _up = new THREE.Vec
 // and plate carry the detail. The turret, wheels, lights and muzzle are where they were: handling, aim and the cable are unchanged.
 const INK = '#1b2224', CHROME = '#c9cdca', GLASS = '#16262a', AMBER = '#ffc531', HAZ = '#e8b21c', RED = '#e2322c', CREAM = '#f3ecd8', OLIVE = '#4f6b54';
 const Z = Math.PI / 2, _white = new THREE.Color('#ffffff'), MUD = new THREE.Color('#5b4a36');
-const lite = (hex, k = 0.3) => '#' + new THREE.Color(hex).lerp(_white, k).getHexString();
+export const lite = (hex, k = 0.3) => '#' + new THREE.Color(hex).lerp(_white, k).getHexString();
 // mud thrown up the body: colours pull toward dried mud below y1, heaviest at y0
-function grime(g, y0, y1, k = 0.55) {
+export function grime(g, y0, y1, k = 0.55) {
   const p = g.attributes.position, c = g.attributes.color;
   for (let i = 0; i < p.count; i++) { const t = 1 - Math.max(0, Math.min(1, (p.getY(i) - y0) / (y1 - y0))), a = k * t * t; c.setXYZ(i, c.getX(i) + (MUD.r - c.getX(i)) * a, c.getY(i) + (MUD.g - c.getY(i)) * a, c.getZ(i) + (MUD.b - c.getZ(i)) * a); }
   c.needsUpdate = true; return g;
@@ -28,7 +28,7 @@ function cradle(P, K, W, z, y) { // hazard-striped frame holding the probe canis
   for (const x of [-0.42, 0, 0.42]) { P.push(cyl(0.2, 0.2, 0.75, '#62f58c', x, y + 0.42, z, 10), cyl(0.12, 0.12, 0.76, '#9ff7b8', x, y + 0.42, z + 0.11, 6)); K.push(cyl(0.215, 0.215, 0.1, INK, x, y + 0.72, z, 10), cyl(0.215, 0.215, 0.06, INK, x, y + 0.12, z, 10)); }
 }
 // a tyre with a tread, a rim with lugs; returns [rubber, steel] part lists centred on the axle (axis along x)
-function wheelParts(wr, wide, low) {
+export function wheelParts(wr, wide, low) {
   const T = [cyl(wr * 0.97, wr * 0.97, wide, '#15191a', 0, 0, 0, 16, 0, Z)], S = [], n = low ? 8 : 14;
   for (let i = 0; i < n; i++) { const a = i / n * 6.283; T.push(bev(wide * 1.02, 0.11, wr * 0.32, '#1e2426', 0, Math.cos(a) * (wr * 0.97), Math.sin(a) * (wr * 0.97), 0.025, '#2b3335', a)); }
   S.push(cyl(wr * 0.52, wr * 0.52, wide + 0.04, CHROME, 0, 0, 0, 12, 0, Z), cyl(wr * 0.2, wr * 0.2, wide + 0.1, INK, 0, 0, 0, 8, 0, Z));
