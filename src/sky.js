@@ -13,7 +13,10 @@ export class Sky {
       uNoise: { value: noise }, uTime: { value: 0 }, uStorm: { value: 1 }, uFlash: { value: 0 },
       uTint: { value: new THREE.Color(1, 1, 1) }, uFog: { value: new THREE.Color('#6f8280') }, uFogNear: { value: 250 }, uFogFar: { value: 2600 },
       uTor: { value: new THREE.Vector3(0, 0, 1) }, uCloud: { value: new THREE.Color('#16282a') }, uCloudLit: { value: new THREE.Color('#3d5a52') },
+      // the light under the shelf (2.15): a dusty gold horizon behind the storm as you see it, the storm's shadow reaching toward you
+      uTorDir: { value: new THREE.Vector2(0, 1) }, uGold: { value: new THREE.Color('#c9a466') }, uGoldHaze: { value: new THREE.Color('#9c9072') }, uGoldK: { value: 0 },
     };
+    this.goldK = 0; this.shade = 1; // shade: how much light reaches what the camera is following (0.42 deep under the storm .. 1)
     scene.fog = new THREE.Fog('#6f8280', 250, 2600);
     this.hemi = new THREE.HemisphereLight('#9fc0c4', '#b5a66a', 1.2); scene.add(this.hemi);
     this.sun = new THREE.DirectionalLight('#ffe2b0', 2.2); this.sun.position.set(0.97, 0.3, 0.09); scene.add(this.sun);
@@ -34,12 +37,15 @@ export class Sky {
     const u = this.uniforms;
     this.dome = new THREE.Mesh(new THREE.SphereGeometry(6000, 32, 16), new THREE.ShaderMaterial({
       side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false, defines: this.low ? { LOW: 1 } : {},
-      uniforms: { uSky: { value: eq }, uNoise: u.uNoise, uTime: u.uTime, uStorm: u.uStorm, uFlash: u.uFlash, uCloud: u.uCloud, uCloudLit: u.uCloudLit, uTor: u.uTor },
+      uniforms: { uSky: { value: eq }, uNoise: u.uNoise, uTime: u.uTime, uStorm: u.uStorm, uFlash: u.uFlash, uCloud: u.uCloud, uCloudLit: u.uCloudLit, uTor: u.uTor, uTorDir: u.uTorDir, uGold: u.uGold, uGoldK: u.uGoldK },
       vertexShader: `varying vec3 vDir; void main(){ vDir=normalize(position); vec4 p=projectionMatrix*viewMatrix*vec4(position+cameraPosition,1.0); gl_Position=p.xyww; }`,
-      fragmentShader: `uniform sampler2D uSky,uNoise; uniform float uTime,uStorm,uFlash; uniform vec3 uCloud,uCloudLit,uTor; varying vec3 vDir;
+      fragmentShader: `uniform sampler2D uSky,uNoise; uniform float uTime,uStorm,uFlash,uGoldK; uniform vec3 uCloud,uCloudLit,uTor,uGold; uniform vec2 uTorDir; varying vec3 vDir;
         void main(){ vec3 d=normalize(vDir);
           vec2 uv=vec2(atan(d.z,d.x)/6.2831853+0.5, asin(clamp(d.y,-1.0,1.0))/3.14159265+0.5);
           vec3 clear=texture2D(uSky,uv).rgb;
+          // the strip of clear sky under the shelf goes dusty gold, strongest behind the storm: the light it is silhouetted against
+          float toward=smoothstep(-0.3,0.95,dot(normalize(d.xz+vec2(1e-4)),uTorDir)), hz=smoothstep(-0.06,0.0,d.y)*(1.0-smoothstep(0.0,0.2,d.y));
+          clear=mix(clear,uGold*(0.88+0.3*toward)*(1.0-0.25*smoothstep(0.02,0.2,d.y)),hz*(0.25+0.75*toward)*uGoldK);
           vec2 cp=d.xz/max(0.08,d.y+0.12);
           float n=texture2D(uNoise,cp*0.11+vec2(uTime*0.006,uTime*0.004)).r;
           #ifdef LOW
@@ -50,7 +56,7 @@ export class Sky {
           float edge=mix(1.25,0.075,uStorm);
           float cover=smoothstep(edge-0.03,edge+0.10,d.y+(n-0.5)*0.11+(n2-0.5)*0.04);
           vec3 cloud=mix(uCloud,uCloudLit,n*0.65+n2*0.35);
-          float under=1.0-smoothstep(edge,edge+0.22,d.y); cloud+=vec3(0.30,0.24,0.12)*under*under*0.55;
+          float under=1.0-smoothstep(edge,edge+0.22,d.y); cloud+=vec3(0.30,0.24,0.12)*under*under*(0.4+0.5*toward*uGoldK); // the shelf's underside catches it
           cloud+=vec3(0.75,0.85,1.0)*uFlash*(0.35+n*0.9);
           vec3 c=mix(clear,cloud,cover);
           c=mix(c,c*vec3(0.80,0.88,0.84),uStorm*(1.0-cover)*0.5);
@@ -108,7 +114,14 @@ export class Sky {
     const see = (1 - (1 - this.vis) * (1 - Math.min(1, fl * 1.4))) * (1 + fl * 0.5);
     u.uFogNear.value = this.scene.fog.near = (260 - 120 * s * prox) * (0.4 + 0.6 * see); u.uFogFar.value = this.scene.fog.far = (3000 - 1300 * s) * see;
     this.hemi.intensity = (2.2 - 0.5 * s) * (1 + fl * 2.5); this.hemi.color.copy(this.clearAmbient).lerp(_stormSky, s);
-    this.sun.intensity = 2.4 - 0.9 * s;
+    // the light comes from behind the storm as you see it: the gold strip, the sun swung round under the shelf (low, so it rakes),
+    // and the storm's shadow reaching across the ground toward you. What the camera follows darkens with the ground under it
+    const cam = this.camera.position, gk = tor && tor.visible ? s * tor.fade : 0; this.goldK += (gk - this.goldK) * Math.min(1, dt * 1.5); u.uGoldK.value = this.goldK;
+    if (tor) { _w.set(tor.x - cam.x, 0, tor.z - cam.z); if (_w.lengthSq() > 1) { _w.normalize(); const td = u.uTorDir.value, k = Math.min(1, dt * 2); td.x += (_w.x - td.x) * k; td.y += (_w.z - td.y) * k; td.normalize(); } }
+    const TD = u.uTorDir.value, sd = this.sunDir || this.sun.position, b = 0.7 * this.goldK; _s.set(sd.x + (TD.x - sd.x) * b, 0, sd.z + (TD.y - sd.z) * b).normalize(); this.sun.position.set(_s.x, sd.y + (0.26 - sd.y) * b, _s.z);
+    const subj = mover || cam; this.shade = 1;
+    if (tor && tor.alive) { const r = tor.shadowR, rx = subj.x - tor.x, rz = subj.z - tor.z, al = -(rx * TD.x + rz * TD.y), ac = -rx * TD.y + rz * TD.x, td = Math.hypot(ac, (al - r * 1.4) * 0.62); this.shade = 1 - (1 - (0.46 + 0.54 * sstep(r * 0.6, r * 4.5, td)) * (0.8 + 0.2 * sstep(r * 2, r * 9, td))) * this.goldK; }
+    const lit = this.shade; this.sun.intensity = (2.4 - 0.9 * s) * (0.3 + 0.7 * lit); this.hemi.intensity *= 0.72 + 0.28 * lit; this.hemi.color.lerp(_shadeSky, (1 - lit) * 0.5); this.sun.color.copy(_sunClear).lerp(_sunGold, this.goldK);
     if (tor) {
       u.uTor.value.set(tor.x, tor.z, tor.alive ? tor.shadowR : 0.001);
       this.wall.visible = tor.visible; this.wall.position.set(tor.x + tor.topOffset.x, tor.groundY + tor.height + 6, tor.z + tor.topOffset.z);
@@ -120,4 +133,6 @@ export class Sky {
     const st = this.rain.material.uniforms.uStreak.value, wv = this.rain.material.uniforms.uWind.value; if (mover) st.set(wv.x * 2.6 - mover.vx * 0.055, -2.6, wv.z * 2.6 - mover.vz * 0.055); else st.set(wv.x * 2.6, -2.6, wv.z * 2.6);
   }
 }
+const sstep = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+const _sunClear = new THREE.Color('#ffe2b0'), _sunGold = new THREE.Color('#ffd296'), _shadeSky = new THREE.Color('#7f9aa6'), _s = new THREE.Vector3();
 const _iceFog = new THREE.Color('#93a8a6'), _stormFog = new THREE.Color('#42585a'), _stormSky = new THREE.Color('#7fa6a2'), _w = new THREE.Vector3();

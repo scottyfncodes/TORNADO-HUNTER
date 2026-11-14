@@ -85,11 +85,18 @@ export class World {
     progress(0.7);
     const map = new THREE.CanvasTexture(canvas); map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 4; map.flipY = false;
     const u = this.env.uniforms;
-    const shared = { uNoise: u.uNoise, uTint: u.uTint, uFog: u.uFog, uFogNear: u.uFogNear, uFogFar: u.uFogFar, uFlash: u.uFlash, uTor: u.uTor };
-    const lit = `c*=uTint*(1.0+uFlash); float td=distance(vW.xz,uTor.xy); c*=mix(0.5,1.0,smoothstep(uTor.z*0.5,uTor.z*2.8,td));
-          float f=smoothstep(uFogNear,uFogFar,distance(vW,cameraPosition)); c=mix(c,uFog,f); gl_FragColor=vec4(c,1.0);
+    const shared = { uNoise: u.uNoise, uTint: u.uTint, uFog: u.uFog, uFogNear: u.uFogNear, uFogFar: u.uFogFar, uFlash: u.uFlash, uTor: u.uTor, uTorDir: u.uTorDir, uGoldHaze: u.uGoldHaze, uGoldK: u.uGoldK };
+    // the light (2.15): the storm's shadow reaches across the ground toward you (it is lit from behind, as you see it), cool in the
+    // shadow and faintly warm where the light still reaches; the haze toward the gold horizon behind the storm warms with it
+    const lit = `c*=uTint*(1.0+uFlash);
+          vec2 rel=vW.xz-uTor.xy; float sa=-dot(rel,uTorDir), sc=dot(rel,vec2(-uTorDir.y,uTorDir.x)), td=length(vec2(sc,(sa-uTor.z*1.4)*0.62));
+          float sh=(0.46+0.54*smoothstep(uTor.z*0.6,uTor.z*4.5,td))*(0.8+0.2*smoothstep(uTor.z*2.0,uTor.z*9.0,td)); sh=mix(1.0,sh,uGoldK);
+          c*=sh*mix(vec3(0.78,0.87,0.97),vec3(1.0),smoothstep(0.46,1.0,sh))*mix(vec3(1.0),vec3(1.05,1.0,0.92),uGoldK*0.6*smoothstep(0.85,1.0,sh));
+          float dd=distance(vW,cameraPosition), f=smoothstep(uFogNear,uFogFar,dd);
+          float warm=uGoldK*smoothstep(0.1,0.95,dot(normalize(vW.xz-cameraPosition.xz+vec2(1e-4)),uTorDir))*smoothstep(uFogNear,uFogFar*0.8,dd);
+          c=mix(c,mix(uFog,uGoldHaze,warm*0.7),f); gl_FragColor=vec4(c,1.0);
           #include <colorspace_fragment>`;
-    const head = `uniform sampler2D uNoise; uniform vec3 uTint,uFog,uTor; uniform float uFogNear,uFogFar,uFlash; varying vec3 vW;`;
+    const head = `uniform sampler2D uNoise; uniform vec3 uTint,uFog,uTor,uGoldHaze; uniform vec2 uTorDir; uniform float uFogNear,uFogFar,uFlash,uGoldK; varying vec3 vW;`;
     this.ground = new THREE.Mesh(g, new THREE.ShaderMaterial({
       uniforms: { uMap: { value: map }, ...shared },
       vertexShader: `varying vec2 vUv; varying vec3 vW; void main(){ vUv=uv; vec4 w=modelMatrix*vec4(position,1.0); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
