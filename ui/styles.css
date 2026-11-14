@@ -347,6 +347,25 @@ body:not(.playing) #lens { display: none; }
   .pad { transform: scale(0.92); transform-origin: bottom right; }
 }
 /* ---- portrait and narrow ---- */
+/* ---- 2.22: the HUD keeps the sky clear. The same plates, type and colours, lighter and slimmer: translucent backing
+   (still dark enough to read over the gold horizon and the lightning), hairline borders, a thinner storm plate, and the
+   coach line on outlined text instead of a box. No backdrop blur: over a WebGL canvas it costs a frame on a phone ---- */
+#hud .plate { background: rgba(14, 27, 29, 0.6); border-width: 1.5px; border-color: rgba(58, 89, 87, 0.85); }
+#hud .hud-left { gap: var(--s1); }
+#hud .hud-hull { padding: 6px var(--s2); }
+#hud .segs i { width: 7px; height: 10px; }
+#hud .hud-speed { padding: 2px var(--s2) 3px; }
+#hud .hud-speed b { font-size: 22px; }
+#hud .hud-storm { width: min(300px, 38vw); padding: 6px var(--s3) 7px var(--s2); gap: 5px; }
+#hud .storm-name { font-size: 15px; }
+#hud .pips i { width: 11px; height: 11px; border-width: 2px; }
+#hud .stab-bar { height: 6px; }
+#hud .hud-data { min-height: 44px; padding: 2px var(--s2); }
+#hud .hud-data b { font-size: var(--t-md); }
+#hud .icon-btn { width: 44px; height: 44px; }
+#hud .hud-bark { top: calc(102px + var(--st)); background: rgba(14, 27, 29, 0.55); }
+.coach { top: calc(70px + var(--st)); background: none; padding: 2px var(--s2); text-shadow: 0 0 2px var(--ink), 0 1px 0 var(--ink), 0 0 8px rgba(14, 27, 29, 0.95), 0 0 14px rgba(14, 27, 29, 0.7); }
+
 @media (max-width: 620px) {
   .grid-3, .grid-4, .grid-2, .storm-wrap { grid-template-columns: minmax(0, 1fr); }
   .radar { max-width: 240px; justify-self: center; width: 100%; }
@@ -361,12 +380,12 @@ body:not(.playing) #lens { display: none; }
   .hq-foot .slab { width: 100%; }
   .tabs { overflow-x: auto; touch-action: pan-x; }
   .tab { padding: 0 var(--s3); }
-  .hud-storm { top: calc(116px + var(--st)); width: calc(100% - 24px); }
-  .hud-bark { top: calc(230px + var(--st)); max-width: 70vw; }
-  .coach { top: calc(192px + var(--st)); }
+  #hud .hud-storm { top: calc(80px + var(--st)); width: calc(100% - 24px); } /* (116 until 2.22: the plates above it are slimmer) */
+  #hud .hud-bark { top: calc(170px + var(--st)); max-width: 70vw; }
+  .coach { top: calc(140px + var(--st)); }
   .callout { top: 40%; }
 }
 @media (min-width: 621px) and (max-width: 900px) { .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* the smallest landscape phones: slimmer plates so nothing touches */
-@media (min-width: 621px) and (max-width: 760px) { .segs i { width: 6px; } .hud-storm { width: min(280px, 38vw); padding-right: var(--s3); } .storm-mph { display: none; } .hud-data .lbl { display: none; } }
+@media (min-width: 621px) and (max-width: 760px) { #hud .segs i { width: 6px; } #hud .hud-storm { width: min(280px, 38vw); padding-right: var(--s3); } .storm-mph { display: none; } .hud-data .lbl { display: none; } }
 @media (prefers-reduced-motion: reduce) { .screen { animation: none; } .pad-btn.ready, .pad-btn.danger, .marks i.urgent::before { animation: none; } .slab { transition: none; } }
