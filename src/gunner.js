@@ -7,7 +7,7 @@
 // Two phases of the finale are seats on other vehicles (src/convoy.js): Winch's harpoon truck and
 // Sparks' rocket truck. (Doc's bus you drive: src/combat.js.) `mount` is the convoy unit you are sitting on, or null for your own rig.
 import * as THREE from '../vendor/three.module.min.js';
-import { FEEL, PALETTE, WORLD } from './config.js';
+import { FEEL, PALETTE, WORLD, upgradeFx } from './config.js';
 import { box, cyl, merge, bev, ao } from './geo.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -89,28 +89,30 @@ function mgModel(kind, G) {
   g.userData.muzzle = new THREE.Vector3(0, 0.01, muzzleZ); g.userData.spin = spin;
   return g;
 }
-function podModel(G) { // four tubes strapped in a rack; a rocket's nose shows in every one that is loaded; their dark mouths at you
-  const P = [], Mt = [], g = new THREE.Group(), M = mats(G), tips = [];
+function podModel(G, n = 4) { // tubes strapped in a rack, two rows, one per rocket it can carry (four, up to seven with Ordnance: 2.23);
+  // a rocket's nose shows in every one that is loaded; their dark mouths at you
+  const P = [], Mt = [], g = new THREE.Group(), M = mats(G), tips = [], cols = Math.ceil(n / 2), sw = 0.42 + (cols - 2) * 0.19, at = [];
+  for (let r = 0; r < 2; r++) { const k = r ? n - cols : cols; for (let c = 0; c < k; c++) at.push([(c - (k - 1) / 2) * 0.19, r ? -0.095 : 0.085]); }
   const tipGeo = merge([cyl(0.0, 0.055, 0.15, PALETTE.accent, 0, 0, 0, 8, -Z), cyl(0.055, 0.055, 0.05, CREAM, 0, 0, 0.1, 8, Z)]);
-  for (const [x, y] of [[-0.095, 0.085], [0.095, 0.085], [-0.095, -0.095], [0.095, -0.095]]) {
+  for (const [x, y] of at) {
     Mt.push(cyl(0.078, 0.078, 0.74, GUNMETAL, x, y, 0, 12, Z), cyl(0.086, 0.086, 0.05, INK, x, y, -0.35, 12, Z), cyl(0.086, 0.086, 0.05, INK, x, y, 0.35, 12, Z), cyl(0.058, 0.058, 0.02, '#0a0e0f', x, y, 0.377, 12, Z));
     P.push(cyl(0.064, 0.064, 0.012, HAZ, x, y, 0.385, 12, Z)); // a yellow ring round each mouth
     const t = new THREE.Mesh(tipGeo, M[0]); t.position.set(x, y, -0.4); g.add(t); tips.push(t);
   }
-  P.push(bev(0.42, 0.42, 0.07, HAZ, 0, -0.005, -0.12, 0.012, '#f6d36a'), bev(0.42, 0.42, 0.07, HAZ, 0, -0.005, 0.16, 0.012, '#f6d36a'));
-  for (const z of [-0.12, 0.16]) for (let i = -2; i <= 2; i++) P.push(bev(0.03, 0.43, 0.072, INK, i * 0.085, -0.005, z, 0.004, null, 0, 0, 0.6)); // hazard chevrons on the straps
+  P.push(bev(sw, 0.42, 0.07, HAZ, 0, -0.005, -0.12, 0.012, '#f6d36a'), bev(sw, 0.42, 0.07, HAZ, 0, -0.005, 0.16, 0.012, '#f6d36a'));
+  for (const z of [-0.12, 0.16]) for (let i = -2 - (cols - 2); i <= 2 + (cols - 2); i++) P.push(bev(0.03, 0.43, 0.072, INK, i * 0.085, -0.005, z, 0.004, null, 0, 0, 0.6)); // hazard chevrons on the straps
   Mt.push(bev(0.05, 0.03, 0.42, INK, 0, 0.215, 0.02, 0.008, '#3a4446'), bev(0.014, 0.05, 0.014, CREAM, 0, 0.25, -0.16, 0.003, WORN), bev(0.04, 0.03, 0.012, CREAM, 0, 0.245, 0.15, 0.003, WORN));
   grips(P, Mt, 0.16, -0.04, 0.44);
   Mt.push(bev(0.2, 0.035, 0.16, STEEL, 0, -0.215, 0, 0.008, STEEL_E), cyl(0.04, 0.05, 0.6, STEEL, 0, -0.5, 0, 8));
   finish(g, P, Mt, M, -0.24, 0.2); g.userData.muzzle = new THREE.Vector3(0, 0, -0.45); g.userData.tips = tips; tipGeo.userData = {};
   return g;
 }
-function harpModel(G) { // Winch's launcher: a pale barrel as thick as your arm, a barbed magenta head, the cable drum beside it, cable wound on
-  const P = [], Mt = [], g = new THREE.Group(), M = mats(G);
+function harpModel(G, lv = 0) { // Winch's launcher: a pale barrel as thick as your arm, a barbed magenta head, the cable drum beside it, cable wound on
+  const P = [], Mt = [], g = new THREE.Group(), M = mats(G), w = lv * 0.012; // w: each Winch level winds more cable on the drum (2.23)
   P.push(bev(0.2, 0.2, 0.6, AMBER, 0, 0, 0.05, 0.015, AMBER_E), bev(0.206, 0.06, 0.2, INK, 0, 0, 0.15, 0.006, '#3a4446'), bev(0.21, 0.21, 0.03, INK, 0, 0, 0.36, 0.008, '#3a4446'));
   Mt.push(cyl(0.075, 0.085, 1.2, CREAM, 0, 0.02, -0.8, 12, Z), cyl(0.093, 0.093, 0.06, INK, 0, 0.02, -0.3, 12, Z), cyl(0.093, 0.093, 0.06, INK, 0, 0.02, -1.3, 12, Z));
   P.push(cyl(0.0, 0.1, 0.34, PALETTE.accent, 0, 0.02, -1.6, 6, -Z), bev(0.3, 0.02, 0.1, PALETTE.accent, 0, 0.02, -1.42, 0.005), bev(0.02, 0.3, 0.1, PALETTE.accent, 0, 0.02, -1.42, 0.005));
-  Mt.push(cyl(0.16, 0.16, 0.2, INK, 0.25, -0.02, 0.0, 14, 0, Z)); for (let i = 0; i < 6; i++) P.push(cyl(0.13, 0.13, 0.022, '#c9b98e', 0.17 + i * 0.03, -0.02, 0.0, 14, 0, Z));
+  Mt.push(cyl(0.16 + w, 0.16 + w, 0.2, INK, 0.25, -0.02, 0.0, 14, 0, Z)); for (let i = 0; i < 6; i++) P.push(cyl(0.13 + w, 0.13 + w, 0.022, '#c9b98e', 0.17 + i * 0.03, -0.02, 0.0, 14, 0, Z));
   P.push(box(0.016, 0.016, 0.9, '#c9b98e', 0.14, 0.06, -0.5));
   grips(P, Mt, 0.085, -0.015, 0.47);
   Mt.push(bev(0.26, 0.035, 0.18, STEEL, 0, -0.12, 0, 0.008, STEEL_E), cyl(0.045, 0.055, 0.6, STEEL, 0, -0.42, 0, 8));
@@ -121,14 +123,14 @@ export class Gunner {
   constructor(mission, upgrades) {
     const G = mission.G; this.m = mission; this.G = G;
     this.on = false; this.why = ''; this.weapon = 'mg'; this.mount = null; this.seatId = 'rig'; this.yaw = 0; this.pitch = 0.2; this.eyeY = null;
-    this.rocketMax = FEEL.rocketMax + upgrades.cable; this.rockets = Math.min(this.rocketMax, FEEL.rocketAmmo + upgrades.cable);
+    const up = upgradeFx(upgrades); this.rocketMax = FEEL.rocketMax + up.rockets; this.rockets = Math.min(this.rocketMax, FEEL.rocketAmmo + up.rockets);
     this.reload = 0; this.shotT = 0; this.recoil = 0; this.kick = 0; this.flashT = 0; this.swapT = 1; this.spinV = 0; this.swayX = 0; this.swayY = 0;
     this.lock = null; this.lockT = 0; this.lockLost = 0; this.locked = false; this.wasFiring = false; this.lastRef = null; this.lastAz = 0; this.lastEl = 0;
     this.aim = { kind: null, ref: null, t: 0, crit: false, point: new THREE.Vector3() }; this.hit = { kind: null, ref: null, t: 0, crit: false, point: new THREE.Vector3() };
     this.note = ''; this.noteT = 0; this.hitT = 0; this.stuckT = 0; this.backT = 0; this.weakT = Math.random() * 20; this.weak = new THREE.Vector3(); this.weakR = 6;
     // the weapon in front of you
     this.root = new THREE.Group(); this.root.visible = false; G.camera.add(this.root);
-    this.mg = mgModel(mission.gun.sound, G); this.pod = podModel(G); this.harp = harpModel(G); this.models = { mg: this.mg, rocket: this.pod, harpoon: this.harp }; this.root.add(this.mg, this.pod, this.harp);
+    this.mg = mgModel(mission.gun.sound, G); this.pod = podModel(G, this.rocketMax); this.harp = harpModel(G, upgrades.winch | 0); this.models = { mg: this.mg, rocket: this.pod, harpoon: this.harp }; this.root.add(this.mg, this.pod, this.harp);
     this.muzzleFlash = new THREE.Sprite(new THREE.SpriteMaterial({ map: G.fx.dustTex, color: '#ffd27a', blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false })); this.muzzleFlash.visible = false; this.root.add(this.muzzleFlash);
     // the heart: the one glowing place on the storm where a hit counts double (the shader draws it into the funnel; these mark it on the gun)
     const sm = (color, order) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: G.fx.dustTex, color, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false })); s.visible = false; s.renderOrder = order; G.scene.add(s); return s; };

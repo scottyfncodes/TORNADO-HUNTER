@@ -36,7 +36,7 @@ export function wheelParts(wr, wide, low) {
   return [T, S];
 }
 
-function buildModel(def, envMap, glowTex, low) {
+function buildModel(def, envMap, glowTex, low, ups = {}) {
   const g = new THREE.Group(), L = def.len, W = def.wid, id = def.id, P = [], K = [], M = [], Gl = [], lit = [], B = def.body, BE = lite(def.body), T = def.trim, TE = lite(def.trim, 0.18);
   const wr = id === 'bulldog' ? 0.78 : 0.64, base = wr + 0.34; // lifted: daylight between tyre and arch
   let cabTop = base + 1.45, barZ = L * 0.06, bedZ = -L * 0.3, turretY = base + 0.55;
@@ -88,6 +88,24 @@ function buildModel(def, envMap, glowTex, low) {
     plate(base + 0.22, -L / 2 - 0.02); flaps(-L * 0.33 - wr - 0.1, W / 2 + 0.2);
     cabTop = base + 1.56; barZ = -L * 0.1; bedZ = -L * 0.26; turretY = base + 0.42;
   }
+  // the workshop, bolted on where you can see it (2.23). Plating: riveted steel on the flanks, taller each level, a guard over the
+  // rear window from 3, a hazard edge at 5. Turbo: exhaust tips under the tail, two then four, wider each level (they flame on boost)
+  const pl = Math.min(5, ups.plating | 0), tb = Math.min(5, ups.turbo | 0), STEEL = '#7d8886', STEEL_E = '#b9c2bf', tips = [];
+  if (pl) {
+    const F = { mule: [W / 2 + 0.02, base + 0.28, 0.4, [[0, L * 0.27]]], bulldog: [(W + 0.36) / 2 + 0.02, base + 0.12, 0.52, [[L * 0.15, L * 0.2], [-L * 0.15, L * 0.2]]], whippet: [W / 2 + 0.02, base + 0.16, 0.34, [[0, L * 0.25]]] }[id];
+    const [fx, fy, fh0] = F, fh = fh0 * (0.62 + 0.095 * pl);
+    for (const sx of [1, -1]) for (const [z, len] of F[3]) {
+      M.push(bev(0.05, fh, len, STEEL, sx * fx, fy, z, 0.015, STEEL_E));
+      const n = 2 + pl; for (let i = 0; i < n; i++) for (const ry of [fh / 2 - 0.06, -fh / 2 + 0.06]) K.push(bev(0.03, 0.04, 0.04, '#2c3436', sx * (fx + 0.03), fy + ry, z + (i / (n - 1) - 0.5) * (len - 0.14), 0.01));
+      if (pl >= 5) P.push(bev(0.06, 0.06, len, HAZ, sx * (fx + 0.005), fy + fh / 2 + 0.03, z, 0.015, '#f6d36a'));
+    }
+    const R = { mule: [base + 1.04, L * 0.045 - L * 0.145 - 0.03, W * 0.72, 0.34], bulldog: [base + 1.32, -L * 0.02 - L * 0.21 - 0.03, W * 0.6, 0.14] }[id];
+    if (pl >= 3 && R) for (let i = 0; i < 3; i++) M.push(bev(R[2] + 0.06, 0.035, 0.035, STEEL, 0, R[0] - R[3] / 2 + (i + 0.5) * R[3] / 3, R[1], 0.008, STEEL_E));
+  }
+  if (tb) {
+    const ty = { mule: base - 0.2, bulldog: base - 0.08, whippet: base + 0.06 }[id], tz = -L / 2 - 0.12, r = 0.055 + tb * 0.01, xs = tb >= 3 ? [0.26, 0.38] : [0.3];
+    for (const sx of [1, -1]) for (const k of xs) { const x = sx * W * k; M.push(cyl(r, r * 0.9, 0.42, CHROME, x, ty, tz + 0.1, 10, Z)); K.push(cyl(r * 0.68, r * 0.68, 0.43, '#0a0e0f', x, ty, tz + 0.1, 10, Z)); tips.push([x, ty, tz - 0.14]); }
+  }
   // roof light bar: four amber lamps, always on in the gloom
   K.push(bev(W * 0.84, 0.1, 0.16, INK, 0, cabTop, barZ, 0.03));
   for (const x of [-0.36, -0.12, 0.12, 0.36]) lit.push(bev(0.3, 0.24, 0.22, AMBER, x * W, cabTop + 0.16, barZ, 0.04, '#ffe08a'));
@@ -103,7 +121,8 @@ function buildModel(def, envMap, glowTex, low) {
   // the turret: the one thing that makes it a hunter's rig. Amber, worn at the edges; the harpoon, its head, the cable drum
   const turret = new THREE.Group(); turret.position.set(0, turretY, bedZ);
   const tp = [cyl(0.5, 0.62, 0.5, INK, 0, 0.25, 0, 12), bev(0.56, 0.5, 0.74, AMBER, 0, 0.75, 0, 0.06, '#ffe08a'), bev(0.58, 0.12, 0.3, INK, 0, 0.75, 0.1, 0.03), cyl(0.05, 0.32, 0.75, '#ff3f8e', 0, 0.85, 3.0, 6, Z), cyl(0.46, 0.46, 0.5, INK, 0.58, 0.75, -0.1, 12, 0, Z)];
-  for (let i = 0; i < 5; i++) tp.push(cyl(0.36, 0.36, 0.06, '#b9b39f', 0.4 + i * 0.09, 0.75, -0.1, 12, 0, Z));
+  const wd = Math.min(5, ups.winch | 0) * 0.022; tp[4] = cyl(0.46 + wd, 0.46 + wd, 0.5, INK, 0.58, 0.75, -0.1, 12, 0, Z); // more cable on the drum each Winch level (2.23)
+  for (let i = 0; i < 5; i++) tp.push(cyl(0.36 + wd, 0.36 + wd, 0.06, '#b9b39f', 0.4 + i * 0.09, 0.75, -0.1, 12, 0, Z));
   const tm = [cyl(0.16, 0.2, 2.7, CREAM, 0, 0.85, 1.45, 10, Z), cyl(0.21, 0.21, 0.08, INK, 0, 0.85, 0.5, 10, Z), cyl(0.21, 0.21, 0.08, INK, 0, 0.85, 2.2, 10, Z)];
   turret.add(new THREE.Mesh(ao(merge(tp), 1, -0.1, 1.0, 0.7), paint), new THREE.Mesh(merge(tm), steel));
   g.add(turret); g.userData.turret = turret;
@@ -117,6 +136,7 @@ function buildModel(def, envMap, glowTex, low) {
   if (glowTex) {
     const glow = (color, x, y, z, size, kind) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, transparent: true })); sp.position.set(x, y, z); sp.scale.setScalar(size); sp.userData.kind = kind; sp.userData.size = size; g.add(sp); g.userData.glows.push(sp); };
     glow('#fff1c4', W * 0.33, base + 0.3, L / 2 + 0.2, 1.15, 'head'); glow('#fff1c4', -W * 0.33, base + 0.3, L / 2 + 0.2, 1.15, 'head');
+    for (const [x, y, z] of tips) glow('#ff9a3c', x, y, z, 0.8 + tb * 0.12, 'flame'); // Turbo: the exhausts flame while the boost burns
     glow('#ffb52e', -W * 0.3, cabTop + 0.2, barZ, 1.5, 'barA'); glow('#ffb52e', W * 0.3, cabTop + 0.2, barZ, 1.5, 'barB');
     if (id === 'mule') { g.add(new THREE.Mesh(merge([cyl(0.14, 0.16, 0.26, RED, W * 0.34, base + 1.7, -L / 2 + 0.8, 10)]), new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }))); glow('#ff3a2e', W * 0.34, base + 1.72, -L / 2 + 0.8, 1.9, 'beacon'); }
   }
@@ -128,7 +148,7 @@ function buildModel(def, envMap, glowTex, low) {
 export class Rig {
   constructor(scene, def, envMap, mods) {
     this.def = def; this.mods = mods; this.scene = scene;
-    this.model = buildModel(def, envMap, mods.glow, !!mods.low); scene.add(this.model); this.alert = 0; this.clock = 0; this.ghost = !!mods.ghost; // ghost: handling only, drawn by something else (a crew vehicle you are driving)
+    this.model = buildModel(def, envMap, mods.glow, !!mods.low, mods.ups || {}); scene.add(this.model); this.alert = 0; this.clock = 0; this.ghost = !!mods.ghost; // ghost: handling only, drawn by something else (a crew vehicle you are driving)
     const sh = new THREE.Mesh(new THREE.CircleGeometry(1, 20), new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: 0.32, depthWrite: false, fog: false }));
     sh.rotation.x = -Math.PI / 2; sh.scale.set(def.wid * 1.1, def.len * 0.95, 1); sh.renderOrder = 1; scene.add(sh); this.shadow = sh; if (this.ghost) { this.model.visible = false; sh.visible = false; }
     this.x = 0; this.z = 0; this.y = 0; this.heading = 0; this.vx = 0; this.vz = 0; this.speed = 0;
@@ -209,7 +229,7 @@ export class Rig {
     m.userData.turret.rotation.y = this.aim - this.heading;
     // lights: the bar wig-wags when the storm is close, the beacon turns, headlights hold steady
     this.clock += dt || 0; const fl = Math.sin(this.clock * 13) > 0, bc = 0.5 + 0.5 * Math.sin(this.clock * 7);
-    for (const sp of m.userData.glows) { const k = sp.userData.kind, v = k === 'head' ? 1 : k === 'beacon' ? 0.25 + bc * 1.1 : this.alert > 0.5 ? ((k === 'barA') === fl ? 1.25 : 0.2) : 0.6; sp.scale.setScalar(sp.userData.size * (0.7 + 0.3 * v)); sp.material.opacity = Math.min(1, v) * (this.dead ? 0.2 : 0.9); }
+    for (const sp of m.userData.glows) { const k = sp.userData.kind, v = k === 'flame' ? (this.boostT > 0 ? 0.75 + 0.5 * Math.abs(Math.sin(this.clock * 37 + sp.position.x * 9)) : 0) : k === 'head' ? 1 : k === 'beacon' ? 0.25 + bc * 1.1 : this.alert > 0.5 ? ((k === 'barA') === fl ? 1.25 : 0.2) : 0.6; sp.scale.setScalar(sp.userData.size * (0.7 + 0.3 * v)); sp.material.opacity = Math.min(1, v) * (this.dead ? 0.2 : 0.9); }
     this.shadow.position.set(this.x, world.heightAt(this.x, this.z) + 0.12, this.z); this.shadow.rotation.z = this.heading; this.shadow.material.opacity = 0.32 * (this.air > 0 ? 0.5 : 1);
     m.visible = !this.ghost && !(this.immune > 0 && this.hull > 0 && Math.floor(this.immune * 20) % 2 === 0);
   }

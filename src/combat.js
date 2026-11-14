@@ -8,7 +8,7 @@
 //   5 KILL SHOT the turret again: lock the launcher on the critical core, one rocket
 // Storms with more than one band shed the outer ones to gunfire first (a debris wall, a bolt, chase again).
 import * as THREE from '../vendor/three.module.min.js';
-import { FEEL, PALETTE, CREW, BUS, TETHER, GRADE } from './config.js';
+import { FEEL, PALETTE, CREW, BUS, TETHER, GRADE, upgradeFx } from './config.js';
 import { Rig } from './rig.js';
 import { box, cyl, merge } from './geo.js';
 import { Storm } from './tornado.js';
@@ -36,11 +36,11 @@ export class Mission {
     this.G = G; this.def = def; this.coach = !!opts.coach; this.daily = opts.daily || null; this.seed = opts.seed ?? null; // daily: 'scored' or 'practice'
     // the decisions that make a fight this fight, each from its own stream: seeded (the Daily Storm) the same for everyone
     const S = (name) => (this.seed === null ? Math.random : stream(this.seed, name)); this.rj = S('juke'); this.ra = S('attack'); this.rt = S('tether'); this.rs = S('setpiece'); this.ef = def.ef + (opts.rematch || 0); this.rematch = opts.rematch || 0;
-    const has = (id) => loadout.crew.includes(id), up = upgrades;
+    const has = (id) => loadout.crew.includes(id), up = upgradeFx(upgrades);
     this.crew = loadout.crew.map((id) => CREW.find((c) => c.id === id)).filter(Boolean); // none, one or two lead
     this.p = {
       kill: FEEL.killSeconds + (has('doc') ? 3 : 0), dorothyThin: has('doc') ? 0.5 : 0.62,
-      stagger: FEEL.staggerSeconds + (has('winch') ? 2 : 0), hook: FEEL.hookSeconds + (has('winch') ? 2 : 0) + up.winch * 1.5,
+      stagger: FEEL.staggerSeconds + (has('winch') ? 2 : 0), hook: FEEL.hookSeconds + (has('winch') ? 2 : 0) + up.hook,
             regen: has('sparks') ? 1.3 : 0, dataMul: (has('june') ? 1.2 : 1) * (1 + this.rematch * 0.5), tele: 1 - this.rematch * 0.12,
     };
     this.zone = def.zone; this.pay = def.pay; this.stageMax = def.stageHp * (1 + this.rematch * 0.3); this.hp = this.stageMax;
@@ -49,7 +49,7 @@ export class Mission {
     this.ai = { hx: fx, hz: fz, jukeT: this.jr(3.5, 5), pending: null, edgeCd: 0 };
     this.rig = G.makeRig(); const gun = this.rig.def.gun, gk = (has('june') ? 1.3 : 1); this.gun = gun;
     // wreckRange: how far out your turret reaches wreckage (the rig's gun); mgRange: the crew's cover at the wheel
-    Object.assign(this.p, { wreckRange: FEEL.gunWreckRange * gun.range, mgRange: FEEL.mgRange * gun.range * gk, mgDps: FEEL.mgDebrisDps * gun.dps * gk, gunStorm: FEEL.gunStormDps * gun.dps * gk * (1 + up.cable * 0.1) });
+    Object.assign(this.p, { wreckRange: FEEL.gunWreckRange * gun.range * gk, /* (2.23: June's reach on the turret too, as her card says) */ mgRange: FEEL.mgRange * gun.range * gk, mgDps: FEEL.mgDebrisDps * gun.dps * gk, gunStorm: FEEL.gunStormDps * gun.dps * gk * up.gun });
     this.rig.place(rx, rz, hd, w); this.rig.vx = fx * 40; this.rig.vz = fz * 40; this.rig.speed = 40;
     this.convoy = new Convoy(G.scene, w, G.fx.dustTex, G.sky.stormEnv || G.sky.envMap, !!G.low); this.convoy.place(this.rig);
     this.phase = 'chase'; this.time = 0; this.phaseT = 0; this.stage = 0; this.data = 0; this.dataShown = 0; this.owed = 0; this.result = null; // owed: band data on its way to the truck as shards, before the multiplier
@@ -60,7 +60,7 @@ export class Mission {
     this.stats = { snaps: 0, shot: 0, rockets: 0, direct: 0, hits: 0, close: 0, dorothys: 0, fired: 0, rounds: 0, crits: 0, sats: 0 }; // fired: turret rounds that hit something, rounds: all of them
     // how each phase went, for the share text: hull lost at the wheel and the turret's rounds per band, each window of the finale
     this.rec = { wheel: [], rounds: [], hits: [], harpoon: [], dorothy: [], kill: [], busHits: 0 };
-    this.gn = new Gunner(this, up);
+    this.gn = new Gunner(this, upgrades);
     this.dorothy = new THREE.Mesh(DOROTHY_GEO, new THREE.MeshLambertMaterial({ vertexColors: true })); this.dorothy.scale.setScalar(1.5); this.dorothy.visible = false; G.scene.add(this.dorothy);
     this.say('start'); this.spawnSats(); this.sp = new SetPiece(this);
   }

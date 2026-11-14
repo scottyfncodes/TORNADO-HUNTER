@@ -1,6 +1,6 @@
 // TORNADO HUNTER: boot, state machine (title, hq, playing, over), camera and the frame loop.
 import * as THREE from '../vendor/three.module.min.js';
-import { FEEL, STORMS, RIGS } from './config.js';
+import { FEEL, STORMS, RIGS, upgradeFx } from './config.js';
 import { save } from './save.js';
 import { input } from './input.js';
 import { audio } from './audio.js';
@@ -52,8 +52,8 @@ window.addEventListener('resize', resize); window.addEventListener('orientationc
 
 // ---- game api used by the menus and the mission ----
 G.makeRig = () => {
-  const s = save.s, def = RIGS.find((r) => r.id === s.loadout.rig) || RIGS[0], sparks = s.loadout.crew.includes('sparks');
-  return new Rig(scene, def, G.sky.stormEnv || G.sky.envMap, { low: !!G.low, hull: 1 + s.upgrades.plating * 0.2, boost: 1 + s.upgrades.turbo * 0.15, recharge: (1 + s.upgrades.turbo * 0.15) * (sparks ? 1.35 : 1), glow: G.fx.dustTex });
+  const s = save.s, def = RIGS.find((r) => r.id === s.loadout.rig) || RIGS[0], sparks = s.loadout.crew.includes('sparks'), u = upgradeFx(s.upgrades);
+  return new Rig(scene, def, G.sky.stormEnv || G.sky.envMap, { low: !!G.low, hull: u.hull, boost: u.boost, recharge: u.boost * (sparks ? 1.35 : 1), glow: G.fx.dustTex, ups: s.upgrades });
 };
 G.kickFov = () => { G.fovKick = 10; };
 G.onScreen = (name) => { G.state = name === 'results' ? 'over' : name; input.setEnabled(false); input.setMode('drive'); document.body.classList.remove('playing'); G.hud.show(false); };

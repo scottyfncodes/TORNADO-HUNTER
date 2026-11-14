@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import { migrate, FRESH, save, crewOf, tapCrew } from '../src/save.js';
 import { grade, better, rankOf, LETTERS } from '../src/grade.js';
 import { dayKey, shiftDay, seedOf, dailyFor, stream, extendStreak, liveStreak, shareText, clock } from '../src/daily.js';
-import { GRADE, STORMS, RIGS, CREW, SETPIECE, POWERLINES } from '../src/config.js';
+import { GRADE, STORMS, RIGS, CREW, SETPIECE, POWERLINES, UPGRADES, upgradeFx } from '../src/config.js';
 
 const V1 = fs.readFileSync(new URL('./fixtures/save-v1.json', import.meta.url), 'utf8');
 
@@ -138,4 +138,34 @@ test('the power lines come on about a fifth of Daily Storm days, and never on th
   for (let i = 0; i < days; i++) { const r = stream(dailyFor(shiftDay('2026-01-01', i)).seed, 'setpiece')(), el = r < SETPIECE.chance, ln = !el && r < SETPIECE.chance + POWERLINES.chance; if (ln) lines++; if (el && ln) both++; }
   assert.ok(Math.abs(lines / days - POWERLINES.chance) < 0.05, `${lines} of ${days} days`); assert.equal(both, 0);
   assert.ok(POWERLINES.tele0 >= 1.2 && SETPIECE.tele.every((t) => t >= 1.2), 'every piece has at least 1.2 s of warning');
+});
+
+// ---- 2.23: the workshop. What a first clear of the three storms pays, measured (tests/fullfight.mjs prints data per fight:
+// about 230, 525 and 800 on the Mule, whatever the skill), against what there is to spend it on ----
+const FIRST_CLEAR = 1555;
+test('upgrade levels 1 to 3 do what they always did, so a save keeps its rig as it was', () => {
+  assert.deepEqual(upgradeFx({}), { hook: 0, gun: 1, rockets: 0, hull: 1, boost: 1 });
+  for (let lv = 0; lv <= 3; lv++) {
+    const f = upgradeFx({ winch: lv, cable: lv, plating: lv, turbo: lv });
+    assert.ok(Math.abs(f.hook - lv * 1.5) < 1e-9 && Math.abs(f.gun - (1 + lv * 0.1)) < 1e-9 && f.rockets === lv && Math.abs(f.hull - (1 + lv * 0.2)) < 1e-9 && Math.abs(f.boost - (1 + lv * 0.15)) < 1e-9, `level ${lv}: ${JSON.stringify(f)}`);
+  }
+});
+test('levels 4 and 5 are half steps: every level still helps, nothing runs away, the rack stops at seven', () => {
+  for (const id of ['winch', 'cable', 'plating', 'turbo']) for (let lv = 1; lv <= 5; lv++) {
+    const a = upgradeFx({ [id]: lv - 1 }), b = upgradeFx({ [id]: lv }); assert.ok(['hook', 'gun', 'hull', 'boost'].some((k) => b[k] > a[k]), `${id} ${lv} adds nothing`);
+  }
+  const top = upgradeFx({ winch: 5, cable: 5, plating: 5, turbo: 5 }); assert.equal(top.rockets, 3); assert.ok(top.hull <= 1.8 + 1e-9 && top.boost <= 1.6 + 1e-9 && top.gun <= 1.5 + 1e-9);
+  assert.deepEqual(upgradeFx({ plating: 99, cable: -2 }), upgradeFx({ plating: 5 }), 'levels out of range are clamped');
+  for (const u of UPGRADES) { assert.equal(u.prices.length, 5); assert.ok(u.prices.every((p, i) => !i || p > u.prices[i - 1]), `${u.id} prices climb`); }
+});
+test('pacing: a rig to buy after the first win, data to spend long after the last', () => {
+  const ups = UPGRADES.reduce((n, u) => n + u.prices.reduce((a, b) => a + b, 0), 0), rigs = RIGS.reduce((n, r) => n + r.price, 0), all = ups + rigs;
+  assert.ok(all > FIRST_CLEAR * 4 && all < FIRST_CLEAR * 6, `everything costs ${all}, ${(all / FIRST_CLEAR).toFixed(1)} first clears`);
+  const last = STORMS[STORMS.length - 1].id;
+  for (const r of RIGS) if (r.needs) {
+    assert.notEqual(r.needs, last, `${r.id}'s blueprint comes after the last storm: nothing left to drive it in`);
+    assert.equal(STORMS.find((s) => s.id === r.needs).unlocks, r.id, `${r.needs} names ${r.id} as its blueprint`);
+  }
+  // the first rig's blueprint is affordable by the time the next storm is beaten
+  const bull = RIGS.find((r) => r.needs === STORMS[0].id); assert.ok(bull && bull.price < 230 + 525, 'the Bulldog is in reach after Big Agnes');
 });

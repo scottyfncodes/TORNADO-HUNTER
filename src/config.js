@@ -225,7 +225,7 @@ export const STORMS = [
     pay: 60, run: 45, juke: [4.5, 7.5], jukeAngle: [0.55, 1.5],
     r0: 11, r1: 74, height: 310, suckR: 115, suck: 12, killR: 15, dorothyRange: 135,
     attackEvery: [2.8, 2.2], attacks: [['debris', 'debris', 'crosswind', 'big'], ['debris', 'big', 'lightning', 'crosswind', 'debris']],
-    volley: [1, 2], unlocks: null,
+    volley: [1, 2], unlocks: 'bulldog', // (2.23: blueprints come one storm sooner, so each rig has fights left to be used in)
     // harpooned: the teacher. Small lunges, long warnings, long breathers. Metres of reach, and multipliers on TETHER
     tether: { jitter: 1.5, restless: 3, aggressive: 9, violent: 17, windup: 1.2, rest: 1.35, fury: 0.7 },
   },
@@ -236,7 +236,7 @@ export const STORMS = [
     pay: 110, run: 40, juke: [8, 12], jukeAngle: [0.3, 0.8], lead: 430, // her zone is 240 m: start her further out so the chase still lasts five seconds
     r0: 30, r1: 150, height: 340, suckR: 200, suck: 17, killR: 36, dorothyRange: 175,
     attackEvery: [2.7, 2.3, 1.9], attacks: [['field', 'big', 'debris'], ['field', 'big', 'lightning', 'field'], ['field', 'field', 'big', 'lightning']],
-    volley: [2, 2, 3], unlocks: 'bulldog',
+    volley: [2, 2, 3], unlocks: 'whippet',
     tether: { jitter: 2.5, restless: 5, aggressive: 14, violent: 30, windup: 1.05, rest: 1.1, fury: 0.95 }, // a lot of storm moving a long way
   },
   {
@@ -246,7 +246,7 @@ export const STORMS = [
     pay: 180, run: 54, juke: [3.5, 6], jukeAngle: [0.6, 1.6],
     r0: 16, r1: 96, height: 320, suckR: 130, suck: 13, killR: 20, dorothyRange: 145,
     attackEvery: [2.9, 2.5, 2.1], attacks: [['debris', 'lightning', 'crosswind'], ['debris', 'big', 'lightning', 'crosswind'], ['field', 'big', 'lightning', 'debris']],
-    volley: [2, 2, 3], satellites: [3, 4, 5], unlocks: 'whippet',
+    volley: [2, 2, 3], satellites: [3, 4, 5], unlocks: null,
     tether: { jitter: 2, restless: 4, aggressive: 12, violent: 24, windup: 1, rest: 0.95, fury: 1.1 }, // the angriest; her satellites keep circling the anchor
   },
 ];
@@ -255,10 +255,10 @@ export const RIGS = [
   { id: 'mule', name: 'The Mule', blurb: 'A lifted farm pickup with a machine gun. Balanced: the reach and the punch the other guns are measured against.', price: 0,
     gun: { name: 'Machine gun', dps: 1, range: 1, every: 0.085, sound: 'mg' },
     speed: 1.0, accel: 1.0, turn: 1.0, hull: 1.0, resist: 1.0, boost: 1.0, body: '#e0662b', trim: '#f3ecd8', len: 4.8, wid: 2.2, hgt: 1.1 },
-  { id: 'bulldog', name: 'Bulldog', blurb: 'An armoured wedge with a minigun: 35% more damage, but it reaches wreckage 15% less far. Most hull, shrugs off the wind, turns like a barn.', price: 260, needs: 'agnes',
+  { id: 'bulldog', name: 'Bulldog', blurb: 'An armoured wedge with a minigun: 35% more damage, but it reaches wreckage 15% less far. Most hull, shrugs off the wind, turns like a barn.', price: 450, needs: 'pete',
     gun: { name: 'Minigun', dps: 1.35, range: 0.85, every: 0.045, sound: 'minigun' },
     speed: 0.9, accel: 0.85, turn: 0.82, hull: 1.6, resist: 0.55, boost: 0.9, body: '#4f6b54', trim: '#ffc531', len: 5.4, wid: 2.6, hgt: 1.5 },
-  { id: 'whippet', name: 'Whippet', blurb: 'A stripped prerunner with an autocannon: slow, heavy shots that reach wreckage 30% further, for 10% less damage. Fastest, made of paper.', price: 320, needs: 'sisters',
+  { id: 'whippet', name: 'Whippet', blurb: 'A stripped prerunner with an autocannon: slow, heavy shots that reach wreckage 30% further, for 10% less damage. Fastest, made of paper.', price: 700, needs: 'agnes',
     gun: { name: 'Autocannon', dps: 0.9, range: 1.3, every: 0.2, sound: 'cannon' },
     speed: 1.13, accel: 1.25, turn: 1.2, hull: 0.7, resist: 1.25, boost: 1.35, body: '#2f8f9a', trim: '#f3ecd8', len: 4.2, wid: 2.0, hgt: 0.8 },
 ];
@@ -280,12 +280,22 @@ export const BUS = { id: 'bus', name: 'Science bus', gun: { name: '', dps: 0, ra
 // kept so old saves load; the gadget slot was retired with the tether fight
 export const GADGETS = [{ id: 'anchor', name: 'Ground Anchor' }, { id: 'thumper', name: 'Thumper' }];
 
+// Five levels each (2.23). The first three are full steps; the fourth and fifth, half steps for a lot more data: where data goes
+// once the rigs are bought. A first clear of all three storms pays about 1,550; everything costs about 7,700 (tests/progress.test.mjs).
+// Every level is bolted on where you can see it: plating on the sides, exhausts that flame on boost, tubes in the rocket rack,
+// cable on the drum.
 export const UPGRADES = [
-  { id: 'winch', name: 'Winch', blurb: 'The harpoon line holds longer', prices: [80, 160, 280], step: 0.15 },
-  { id: 'cable', name: 'Ordnance', blurb: 'Guns hit harder; one more rocket in the rack', prices: [70, 140, 240], step: 0.1 },
-  { id: 'plating', name: 'Plating', blurb: 'More hull', prices: [70, 150, 260], step: 0.2 },
-  { id: 'turbo', name: 'Turbo', blurb: 'Boost lasts longer and recharges faster', prices: [60, 130, 220], step: 0.15 },
+  { id: 'winch', name: 'Winch', blurb: 'The harpoon line holds longer. More cable on the drum', prices: [80, 160, 280, 480, 760] },
+  { id: 'cable', name: 'Ordnance', blurb: 'The turret hits harder; a rocket tube more in the rack, up to seven', prices: [70, 150, 260, 460, 740] },
+  { id: 'plating', name: 'Plating', blurb: 'More hull. Steel bolted to the body', prices: [70, 150, 260, 460, 740] },
+  { id: 'turbo', name: 'Turbo', blurb: 'Boost lasts longer and recharges faster. Exhausts that flame', prices: [60, 130, 220, 400, 640] },
 ];
+const step = (lv) => Math.min(lv, 3) + Math.max(0, lv - 3) * 0.5; // full steps to level 3, half steps after
+// what the levels do, one place for the fight and the headquarters: hook seconds added, multipliers, rockets added
+export function upgradeFx(u = {}) {
+  const lv = (id) => Math.max(0, Math.min(5, u[id] | 0));
+  return { hook: 1.5 * step(lv('winch')), gun: 1 + 0.1 * lv('cable'), rockets: Math.min(3, lv('cable')), hull: 1 + 0.2 * step(lv('plating')), boost: 1 + 0.15 * step(lv('turbo')) };
+}
 
 export const RANKS = [[0, 'Rookie'], [4, 'Chaser'], [10, 'Wrangler'], [20, 'Roper'], [40, 'Storm Boss']];
 
