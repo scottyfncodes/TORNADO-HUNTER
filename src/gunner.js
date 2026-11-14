@@ -8,7 +8,7 @@
 // Sparks' rocket truck. (Doc's bus you drive: src/combat.js.) `mount` is the convoy unit you are sitting on, or null for your own rig.
 import * as THREE from '../vendor/three.module.min.js';
 import { FEEL, PALETTE, WORLD } from './config.js';
-import { box, cyl, merge } from './geo.js';
+import { box, cyl, merge, bev, ao } from './geo.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
@@ -22,54 +22,99 @@ export const TARGET = {
 };
 
 // ---- what you see of your own weapon (camera space: -Z is down the barrel) ----
+// 2.17: built to be looked at. Bevelled parts whose edges catch the light in a worn colour, steel that reflects the storm sky
+// (MeshStandard with the sky's cube map; Lambert on the low tier), baked occlusion under and between the parts. You see these from
+// behind and above, so the detail is where the eye lands: back plate and grips, top cover and sights, the belt, the can, the tubes.
+// Every muzzle, spinner and rocket tip sits where it did, so the recoil, flash, spin and the rack all work as before.
 const Z = Math.PI / 2;
-function mgModel(kind) {
-  const P = [], g = new THREE.Group(), mat = new THREE.MeshLambertMaterial({ vertexColors: true });
-  // receiver in the turret's amber, a pale feed cover you look down on, notch sight, back plate
-  P.push(box(0.13, 0.15, 0.6, AMBER, 0, 0, 0), box(0.11, 0.035, 0.36, GUNMETAL, 0, 0.09, -0.06), box(0.05, 0.04, 0.05, INK, 0, 0.095, 0.16), box(0.135, 0.155, 0.03, INK, 0, 0, 0.31));
-  P.push(box(0.014, 0.05, 0.014, CREAM, 0.024, 0.125, 0.22), box(0.014, 0.05, 0.014, CREAM, -0.024, 0.125, 0.22));
-  // spade grips and the butterfly trigger between them
-  for (const sx of [1, -1]) P.push(box(0.022, 0.022, 0.13, STEEL, sx * 0.075, 0.045, 0.38), box(0.022, 0.022, 0.13, STEEL, sx * 0.075, -0.075, 0.38), cyl(0.021, 0.021, 0.15, INK, sx * 0.075, -0.015, 0.44, 6));
-  P.push(box(0.075, 0.04, 0.02, AMBER, 0, -0.015, 0.4));
-  // ammunition can on the left, brass belt into the feed
-  P.push(box(0.16, 0.15, 0.24, OLIVE, -0.175, -0.07, -0.04), box(0.163, 0.03, 0.243, CREAM, -0.175, -0.03, -0.04), box(0.1, 0.022, 0.05, AMBER, -0.085, 0.085, -0.06), box(0.022, 0.07, 0.05, AMBER, -0.125, 0.05, -0.06));
-  P.push(box(0.22, 0.035, 0.16, STEEL, 0, -0.095, -0.05), cyl(0.04, 0.05, 0.6, STEEL, 0, -0.4, -0.05, 7)); // cradle, pintle
+const BRASS = '#d4a24a', COPPER = '#b8683a', WORN = '#e6d3a0', AMBER_E = '#ffe08a', OLIVE_E = '#7d977f', STEEL_E = '#7d8b8c';
+function mats(G) { // painted (satin) and steel (metal), both vertex-coloured
+  if (G.low) { const a = new THREE.MeshLambertMaterial({ vertexColors: true }); return [a, a]; }
+  const env = G.sky && (G.sky.stormEnv || G.sky.envMap); // the storm sky as it is now (src/sky.js capture)
+  return [new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.62, metalness: 0.12, envMap: env, envMapIntensity: 0.55 }),
+    new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.38, metalness: 0.8, envMap: env, envMapIntensity: 1.1 })];
+}
+function finish(g, paint, metal, M, lo = -0.16, hi = 0.12) { // two meshes, occlusion baked low down
+  const [pm, mm] = M; if (paint.length) g.add(new THREE.Mesh(ao(merge(paint), 1, lo, hi, 0.5), pm)); if (metal.length) g.add(new THREE.Mesh(ao(merge(metal), 1, lo, hi, 0.55), mm));
+  g.userData.mats = pm === mm ? [pm] : [pm, mm]; return g;
+}
+// the belt: brass rounds in steel links, hanging from the can and rising into the feed (x from a to b, a sag in the middle)
+function belt(P, M, x0, y0, x1, y1, z, n, sag) {
+  for (let i = 0; i < n; i++) { const t = (i + 0.5) / n, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t - sag * 4 * t * (1 - t), a = Math.atan2((y1 - y0) - sag * 4 * (1 - 2 * t), x1 - x0);
+    P.push(cyl(0.0105, 0.0105, 0.07, BRASS, x, y, z - 0.005, 7, Z, 0, 0)); P.push(cyl(0.004, 0.0105, 0.022, COPPER, x, y, z - 0.05, 6, -Z));
+    M.push(bev(0.016, 0.026, 0.012, STEEL, x, y - 0.002, z + 0.022, 0.003, STEEL_E, 0, 0, a), bev(0.016, 0.026, 0.012, STEEL, x, y - 0.002, z - 0.03, 0.003, STEEL_E, 0, 0, a)); }
+}
+function grips(P, M, sx0, y, z) { // spade grips with knurled rings and the butterfly trigger between them
+  for (const sx of [1, -1]) { const x = sx * sx0; M.push(bev(0.024, 0.024, 0.14, STEEL, x, y + 0.06, z, 0.005, STEEL_E), bev(0.024, 0.024, 0.14, STEEL, x, y - 0.06, z, 0.005, STEEL_E));
+    P.push(cyl(0.024, 0.024, 0.16, INK, x, y, z + 0.065, 8)); for (const k of [-0.05, 0, 0.05]) P.push(cyl(0.027, 0.027, 0.014, '#2c3436', x, y + k, z + 0.065, 8)); }
+  P.push(bev(0.08, 0.042, 0.022, AMBER, 0, y, z - 0.005, 0.006, AMBER_E));
+}
+function mgModel(kind, G) {
+  const P = [], Mt = [], g = new THREE.Group(), M = mats(G);
+  // receiver in the turret's amber, edges worn pale; the top cover you look down on, its hinge and latch; back plate with buffer
+  P.push(bev(0.14, 0.16, 0.62, AMBER, 0, 0, 0, 0.012, AMBER_E));
+  Mt.push(bev(0.118, 0.036, 0.38, GUNMETAL, 0, 0.09, -0.06, 0.008, CHROME), cyl(0.012, 0.012, 0.13, INK, 0, 0.1, 0.13, 8, 0, Z), bev(0.04, 0.02, 0.03, STEEL, 0, 0.112, -0.24, 0.005, STEEL_E));
+  P.push(bev(0.15, 0.17, 0.034, INK, 0, 0, 0.315, 0.008, '#3a4446'), cyl(0.03, 0.03, 0.03, '#2c3436', 0, 0, 0.34, 10, Z));
+  // rear sight: a folding leaf on a base, notch in it; stencil stripe down the side
+  Mt.push(bev(0.06, 0.012, 0.04, STEEL, 0, 0.114, 0.19, 0.003, STEEL_E));
+  P.push(bev(0.016, 0.056, 0.008, CREAM, 0.022, 0.146, 0.2, 0.003, WORN), bev(0.016, 0.056, 0.008, CREAM, -0.022, 0.146, 0.2, 0.003, WORN), bev(0.06, 0.012, 0.008, CREAM, 0, 0.17, 0.2, 0.003, WORN));
+  P.push(box(0.002, 0.03, 0.3, INK, 0.0705, -0.03, -0.02), box(0.002, 0.03, 0.3, INK, -0.0705, -0.03, -0.02));
+  grips(P, Mt, 0.075, -0.015, 0.4);
+  // ammunition can on the left, latch and handle, a cream stencil band; the belt out of it into the feed
+  P.push(bev(0.16, 0.15, 0.24, OLIVE, -0.175, -0.07, -0.04, 0.01, OLIVE_E), bev(0.164, 0.026, 0.244, CREAM, -0.175, -0.03, -0.04, 0.004, WORN), bev(0.17, 0.02, 0.25, '#3d5242', -0.175, 0.008, -0.04, 0.005, OLIVE_E));
+  Mt.push(bev(0.03, 0.03, 0.02, STEEL, -0.175, -0.07, 0.085, 0.005, STEEL_E), cyl(0.006, 0.006, 0.1, STEEL, -0.175, 0.03, -0.04, 6, Z, 0, 0), bev(0.008, 0.02, 0.008, STEEL, -0.175, 0.02, 0.01, 0.002), bev(0.008, 0.02, 0.008, STEEL, -0.175, 0.02, -0.09, 0.002));
+  belt(P, Mt, -0.16, 0.03, -0.075, 0.075, -0.06, 6, 0.025);
+  Mt.push(bev(0.22, 0.036, 0.16, STEEL, 0, -0.095, -0.05, 0.008, STEEL_E), cyl(0.04, 0.05, 0.6, STEEL, 0, -0.4, -0.05, 8)); // cradle, pintle
   let muzzleZ = -1.3, spin = null;
-  if (kind === 'minigun') { // six barrels in a cage that turns
-    const B = []; for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; B.push(cyl(0.017, 0.017, 0.86, GUNMETAL, Math.cos(a) * 0.046, Math.sin(a) * 0.046, -0.43, 5, Z)); }
-    B.push(cyl(0.072, 0.072, 0.04, INK, 0, 0, -0.28, 10, Z), cyl(0.072, 0.072, 0.04, INK, 0, 0, -0.82, 10, Z), cyl(0.03, 0.03, 0.86, STEEL, 0, 0, -0.43, 6, Z));
-    spin = new THREE.Mesh(merge(B), mat); spin.position.set(0, 0.01, -0.3); muzzleZ = -1.2;
-  } else if (kind === 'cannon') { // one long heavy barrel, a recoil sleeve and a slotted brake
-    P.push(cyl(0.045, 0.055, 1.2, GUNMETAL, 0, 0.01, -0.9, 8, Z), cyl(0.07, 0.07, 0.3, STEEL, 0, 0.01, -0.48, 8, Z), cyl(0.074, 0.074, 0.04, CREAM, 0, 0.01, -0.36, 8, Z), box(0.16, 0.085, 0.17, INK, 0, 0.01, -1.56), box(0.17, 0.025, 0.05, GUNMETAL, 0, 0.01, -1.56)); muzzleZ = -1.68;
-  } else { // perforated jacket, two pale bands, a flash hider and a front post
-    P.push(cyl(0.03, 0.03, 0.96, GUNMETAL, 0, 0.01, -0.78, 8, Z), cyl(0.05, 0.05, 0.5, STEEL, 0, 0.01, -0.57, 8, Z), cyl(0.054, 0.054, 0.04, CREAM, 0, 0.01, -0.36, 8, Z), cyl(0.054, 0.054, 0.04, CREAM, 0, 0.01, -0.78, 8, Z), cyl(0.05, 0.036, 0.1, INK, 0, 0.01, -1.25, 8, Z), box(0.012, 0.06, 0.012, CREAM, 0, 0.075, -1.16));
+  if (kind === 'minigun') { // six barrels in a turning cage, three clamps; a motor at the back of them; the feed chute curving in from the can
+    const B = []; for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; B.push(cyl(0.017, 0.017, 0.86, GUNMETAL, Math.cos(a) * 0.046, Math.sin(a) * 0.046, -0.43, 6, Z)); B.push(cyl(0.007, 0.007, 0.01, INK, Math.cos(a) * 0.046, Math.sin(a) * 0.046, -0.865, 6, Z)); }
+    for (const z of [-0.12, -0.5, -0.82]) B.push(cyl(0.074, 0.074, 0.035, INK, 0, 0, z, 12, Z)); B.push(cyl(0.03, 0.03, 0.86, STEEL, 0, 0, -0.43, 6, Z));
+    spin = new THREE.Mesh(ao(merge(B), 1, -0.08, 0.08, 0.6), M[1]); spin.position.set(0, 0.01, -0.3); muzzleZ = -1.2;
+    Mt.push(cyl(0.085, 0.085, 0.12, INK, 0, 0.01, -0.33, 12, Z)); for (let i = 0; i < 5; i++) Mt.push(cyl(0.09, 0.09, 0.008, STEEL, 0, 0.01, -0.29 - i * 0.02, 12, Z));
+    for (let i = 0; i < 5; i++) { const t = i / 4; P.push(bev(0.05, 0.03, 0.05, OLIVE, -0.13 + t * 0.06, 0.035 + Math.sin(t * 3) * 0.02, -0.12 - t * 0.12, 0.006, OLIVE_E, 0, 0, -0.4 + t * 0.5)); }
+  } else if (kind === 'cannon') { // one long heavy barrel, a chromed recoil sleeve, a slotted muzzle brake; a box magazine on the left
+    Mt.push(cyl(0.045, 0.056, 1.2, GUNMETAL, 0, 0.01, -0.9, 10, Z), cyl(0.07, 0.07, 0.3, CHROME, 0, 0.01, -0.48, 12, Z), cyl(0.074, 0.074, 0.03, CREAM, 0, 0.01, -0.36, 12, Z), cyl(0.074, 0.074, 0.03, CREAM, 0, 0.01, -0.62, 12, Z));
+    Mt.push(bev(0.16, 0.085, 0.17, INK, 0, 0.01, -1.56, 0.012, '#3a4446')); for (const z of [-1.52, -1.58, -1.64]) Mt.push(bev(0.17, 0.02, 0.022, '#0e1416', 0, 0.01, z, 0.004));
+    P.push(bev(0.075, 0.13, 0.13, OLIVE, -0.108, 0.04, -0.1, 0.01, OLIVE_E), bev(0.079, 0.02, 0.134, CREAM, -0.108, 0.075, -0.1, 0.004, WORN)); // box magazine against the left side
+    muzzleZ = -1.68;
+  } else { // perforated jacket, two pale bands, a flash hider and a front post; the carrying handle
+    Mt.push(cyl(0.03, 0.03, 0.96, GUNMETAL, 0, 0.01, -0.78, 10, Z), cyl(0.05, 0.05, 0.5, STEEL, 0, 0.01, -0.57, 12, Z));
+    for (let r = 0; r < 6; r++) for (let k = 0; k < 7; k++) { const a = r / 6 * 6.283 + (k % 2) * 0.52, z = -0.37 - k * 0.062; Mt.push(cyl(0.011, 0.011, 0.008, '#0e1416', Math.cos(a) * 0.05, 0.01 + Math.sin(a) * 0.05, z, 6, 0, a - Z)); }
+    Mt.push(cyl(0.054, 0.054, 0.035, CREAM, 0, 0.01, -0.34, 12, Z), cyl(0.054, 0.054, 0.035, CREAM, 0, 0.01, -0.8, 12, Z), cyl(0.05, 0.036, 0.1, INK, 0, 0.01, -1.25, 8, Z));
+    for (const a of [0, 1.57, 3.14, 4.71]) Mt.push(bev(0.012, 0.012, 0.07, '#0e1416', Math.cos(a) * 0.044, 0.01 + Math.sin(a) * 0.044, -1.25, 0.002));
+    P.push(bev(0.012, 0.06, 0.012, CREAM, 0, 0.075, -1.16, 0.003, WORN));
+    Mt.push(bev(0.014, 0.05, 0.014, STEEL, 0, 0.08, -0.42, 0.003), bev(0.014, 0.05, 0.014, STEEL, 0, 0.08, -0.66, 0.003), bev(0.018, 0.016, 0.26, INK, 0, 0.108, -0.54, 0.004, '#3a4446'));
   }
-  g.add(new THREE.Mesh(merge(P), mat)); if (spin) g.add(spin);
-  g.userData = { muzzle: new THREE.Vector3(0, 0.01, muzzleZ), spin, mat };
+  finish(g, P, Mt.filter(Boolean), M); if (spin) g.add(spin);
+  g.userData.muzzle = new THREE.Vector3(0, 0.01, muzzleZ); g.userData.spin = spin;
   return g;
 }
-function podModel() { // four tubes strapped in a rack; a rocket's nose shows in every one that is loaded
-  const P = [], g = new THREE.Group(), mat = new THREE.MeshLambertMaterial({ vertexColors: true }), tips = [];
-  const tipGeo = merge([cyl(0.0, 0.055, 0.15, PALETTE.accent, 0, 0, 0, 6, -Z), cyl(0.055, 0.055, 0.05, CREAM, 0, 0, 0.1, 6, Z)]);
+function podModel(G) { // four tubes strapped in a rack; a rocket's nose shows in every one that is loaded; their dark mouths at you
+  const P = [], Mt = [], g = new THREE.Group(), M = mats(G), tips = [];
+  const tipGeo = merge([cyl(0.0, 0.055, 0.15, PALETTE.accent, 0, 0, 0, 8, -Z), cyl(0.055, 0.055, 0.05, CREAM, 0, 0, 0.1, 8, Z)]);
   for (const [x, y] of [[-0.095, 0.085], [0.095, 0.085], [-0.095, -0.095], [0.095, -0.095]]) {
-    P.push(cyl(0.078, 0.078, 0.74, GUNMETAL, x, y, 0, 8, Z), cyl(0.084, 0.084, 0.05, INK, x, y, -0.35, 8, Z), cyl(0.084, 0.084, 0.05, INK, x, y, 0.35, 8, Z), cyl(0.05, 0.05, 0.02, '#0c1112', x, y, 0.376, 8, Z));
-    const t = new THREE.Mesh(tipGeo, mat); t.position.set(x, y, -0.4); g.add(t); tips.push(t);
+    Mt.push(cyl(0.078, 0.078, 0.74, GUNMETAL, x, y, 0, 12, Z), cyl(0.086, 0.086, 0.05, INK, x, y, -0.35, 12, Z), cyl(0.086, 0.086, 0.05, INK, x, y, 0.35, 12, Z), cyl(0.058, 0.058, 0.02, '#0a0e0f', x, y, 0.377, 12, Z));
+    P.push(cyl(0.064, 0.064, 0.012, HAZ, x, y, 0.385, 12, Z)); // a yellow ring round each mouth
+    const t = new THREE.Mesh(tipGeo, M[0]); t.position.set(x, y, -0.4); g.add(t); tips.push(t);
   }
-  P.push(box(0.4, 0.4, 0.07, HAZ, 0, -0.005, -0.12), box(0.4, 0.4, 0.07, HAZ, 0, -0.005, 0.16), box(0.05, 0.03, 0.4, INK, 0, 0.2, 0.02), box(0.012, 0.05, 0.012, CREAM, 0, 0.24, -0.16)); // hazard straps, top rail, sight post
-  for (const sx of [1, -1]) P.push(box(0.022, 0.022, 0.12, STEEL, sx * 0.16, 0.0, 0.42), cyl(0.021, 0.021, 0.15, INK, sx * 0.16, -0.05, 0.47, 6));
-  P.push(box(0.2, 0.035, 0.16, STEEL, 0, -0.21, 0), cyl(0.04, 0.05, 0.6, STEEL, 0, -0.5, 0, 7));
-  g.add(new THREE.Mesh(merge(P), mat)); g.userData = { muzzle: new THREE.Vector3(0, 0, -0.45), tips, mat };
+  P.push(bev(0.42, 0.42, 0.07, HAZ, 0, -0.005, -0.12, 0.012, '#f6d36a'), bev(0.42, 0.42, 0.07, HAZ, 0, -0.005, 0.16, 0.012, '#f6d36a'));
+  for (const z of [-0.12, 0.16]) for (let i = -2; i <= 2; i++) P.push(bev(0.03, 0.43, 0.072, INK, i * 0.085, -0.005, z, 0.004, null, 0, 0, 0.6)); // hazard chevrons on the straps
+  Mt.push(bev(0.05, 0.03, 0.42, INK, 0, 0.215, 0.02, 0.008, '#3a4446'), bev(0.014, 0.05, 0.014, CREAM, 0, 0.25, -0.16, 0.003, WORN), bev(0.04, 0.03, 0.012, CREAM, 0, 0.245, 0.15, 0.003, WORN));
+  grips(P, Mt, 0.16, -0.04, 0.44);
+  Mt.push(bev(0.2, 0.035, 0.16, STEEL, 0, -0.215, 0, 0.008, STEEL_E), cyl(0.04, 0.05, 0.6, STEEL, 0, -0.5, 0, 8));
+  finish(g, P, Mt, M, -0.24, 0.2); g.userData.muzzle = new THREE.Vector3(0, 0, -0.45); g.userData.tips = tips; tipGeo.userData = {};
   return g;
 }
-
-function harpModel() { // Winch's launcher: a pale barrel as thick as your arm, a barbed magenta head, the cable drum beside it
-  const P = [], g = new THREE.Group(), mat = new THREE.MeshLambertMaterial({ vertexColors: true });
-  P.push(box(0.2, 0.2, 0.6, AMBER, 0, 0, 0.05), box(0.205, 0.06, 0.2, INK, 0, 0, 0.15), box(0.21, 0.21, 0.03, INK, 0, 0, 0.36), cyl(0.075, 0.085, 1.2, CREAM, 0, 0.02, -0.8, 8, Z), cyl(0.092, 0.092, 0.06, INK, 0, 0.02, -0.3, 8, Z), cyl(0.092, 0.092, 0.06, INK, 0, 0.02, -1.3, 8, Z));
-  P.push(cyl(0.0, 0.1, 0.34, PALETTE.accent, 0, 0.02, -1.6, 4, -Z), box(0.3, 0.02, 0.1, PALETTE.accent, 0, 0.02, -1.42), box(0.02, 0.3, 0.1, PALETTE.accent, 0, 0.02, -1.42));
-  P.push(cyl(0.16, 0.16, 0.2, INK, 0.25, -0.02, 0.0, 10, 0, Z), cyl(0.125, 0.125, 0.16, CREAM, 0.25, -0.02, 0.0, 10, 0, Z), box(0.02, 0.02, 0.9, CREAM, 0.14, 0.06, -0.5));
-  for (const sx of [1, -1]) P.push(box(0.022, 0.022, 0.13, STEEL, sx * 0.085, 0.045, 0.42), cyl(0.021, 0.021, 0.15, INK, sx * 0.085, -0.015, 0.48, 6));
-  P.push(box(0.26, 0.035, 0.18, STEEL, 0, -0.12, 0), cyl(0.045, 0.055, 0.6, STEEL, 0, -0.42, 0, 7));
-  g.add(new THREE.Mesh(merge(P), mat)); g.userData = { muzzle: new THREE.Vector3(0, 0.02, -1.7), mat };
+function harpModel(G) { // Winch's launcher: a pale barrel as thick as your arm, a barbed magenta head, the cable drum beside it, cable wound on
+  const P = [], Mt = [], g = new THREE.Group(), M = mats(G);
+  P.push(bev(0.2, 0.2, 0.6, AMBER, 0, 0, 0.05, 0.015, AMBER_E), bev(0.206, 0.06, 0.2, INK, 0, 0, 0.15, 0.006, '#3a4446'), bev(0.21, 0.21, 0.03, INK, 0, 0, 0.36, 0.008, '#3a4446'));
+  Mt.push(cyl(0.075, 0.085, 1.2, CREAM, 0, 0.02, -0.8, 12, Z), cyl(0.093, 0.093, 0.06, INK, 0, 0.02, -0.3, 12, Z), cyl(0.093, 0.093, 0.06, INK, 0, 0.02, -1.3, 12, Z));
+  P.push(cyl(0.0, 0.1, 0.34, PALETTE.accent, 0, 0.02, -1.6, 6, -Z), bev(0.3, 0.02, 0.1, PALETTE.accent, 0, 0.02, -1.42, 0.005), bev(0.02, 0.3, 0.1, PALETTE.accent, 0, 0.02, -1.42, 0.005));
+  Mt.push(cyl(0.16, 0.16, 0.2, INK, 0.25, -0.02, 0.0, 14, 0, Z)); for (let i = 0; i < 6; i++) P.push(cyl(0.13, 0.13, 0.022, '#c9b98e', 0.17 + i * 0.03, -0.02, 0.0, 14, 0, Z));
+  P.push(box(0.016, 0.016, 0.9, '#c9b98e', 0.14, 0.06, -0.5));
+  grips(P, Mt, 0.085, -0.015, 0.47);
+  Mt.push(bev(0.26, 0.035, 0.18, STEEL, 0, -0.12, 0, 0.008, STEEL_E), cyl(0.045, 0.055, 0.6, STEEL, 0, -0.42, 0, 8));
+  finish(g, P, Mt, M); g.userData.muzzle = new THREE.Vector3(0, 0.02, -1.7);
   return g;
 }
 export class Gunner {
@@ -83,14 +128,14 @@ export class Gunner {
     this.note = ''; this.noteT = 0; this.hitT = 0; this.stuckT = 0; this.backT = 0; this.weakT = Math.random() * 20; this.weak = new THREE.Vector3(); this.weakR = 6;
     // the weapon in front of you
     this.root = new THREE.Group(); this.root.visible = false; G.camera.add(this.root);
-    this.mg = mgModel(mission.gun.sound); this.pod = podModel(); this.harp = harpModel(); this.models = { mg: this.mg, rocket: this.pod, harpoon: this.harp }; this.root.add(this.mg, this.pod, this.harp);
+    this.mg = mgModel(mission.gun.sound, G); this.pod = podModel(G); this.harp = harpModel(G); this.models = { mg: this.mg, rocket: this.pod, harpoon: this.harp }; this.root.add(this.mg, this.pod, this.harp);
     this.muzzleFlash = new THREE.Sprite(new THREE.SpriteMaterial({ map: G.fx.dustTex, color: '#ffd27a', blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false })); this.muzzleFlash.visible = false; this.root.add(this.muzzleFlash);
     // the heart: the one glowing place on the storm where a hit counts double (the shader draws it into the funnel; these mark it on the gun)
     const sm = (color, order) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: G.fx.dustTex, color, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false })); s.visible = false; s.renderOrder = order; G.scene.add(s); return s; };
     this.seam = sm(PALETTE.accent, 8); this.seamHot = sm('#fff1c4', 9);
   }
   dispose() {
-    this.G.camera.remove(this.root); this.G.scene.remove(this.seam, this.seamHot); this.root.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); for (const k in this.models) this.models[k].userData.mat.dispose();
+    this.G.camera.remove(this.root); this.G.scene.remove(this.seam, this.seamHot); this.root.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); for (const k in this.models) for (const mt of this.models[k].userData.mats) mt.dispose();
     this.seam.material.dispose(); this.seamHot.material.dispose(); this.muzzleFlash.material.dispose();
     if (this.on) { this.on = false; this.G.input.setMode('drive'); this.G.fx.fp = false; }
   }
