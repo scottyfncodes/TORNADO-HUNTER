@@ -134,13 +134,12 @@ export class Fx {
 
   async load() {
     const L = new THREE.TextureLoader();
-    const [lt, et, lm, em, la, ea] = await Promise.all([
-      L.loadAsync(F + 'lightning_flipbook.png'), L.loadAsync(F + 'energy_flipbook.png'),
-      fetch(F + 'lightning_flipbook.json').then((r) => r.json()), fetch(F + 'energy_flipbook.json').then((r) => r.json()),
-      fetch(F + 'lightning_atlas.json').then((r) => r.json()), fetch(F + 'energy_atlas.json').then((r) => r.json()),
+    // (the energy flipbook, a looping magenta ring, was retired in 2.16 for blowout() below: its files stay in assets/fx, unloaded)
+    const [lt, lm, la] = await Promise.all([
+      L.loadAsync(F + 'lightning_flipbook.png'), fetch(F + 'lightning_flipbook.json').then((r) => r.json()), fetch(F + 'lightning_atlas.json').then((r) => r.json()),
     ]);
-    lt.colorSpace = et.colorSpace = THREE.SRGBColorSpace;
-    this.lightning = new Flipbook(this.scene, lt, lm, la, 4); this.energy = new Flipbook(this.scene, et, em, ea, 6);
+    lt.colorSpace = THREE.SRGBColorSpace;
+    this.lightning = new Flipbook(this.scene, lt, lm, la, 4);
     return this;
   }
 
@@ -195,6 +194,16 @@ export class Fx {
   }
   tracer(a, b) { const t = this.tracers.find((e) => !e.on) || this.tracers[0]; t.on = true; t.t = 0; t.a.copy(a); t.b.copy(b); t.life = Math.min(0.14, 0.04 + a.distanceTo(b) / 1600); }
   flashAt(x, y, z, size, color = '#ffd27a', life = 0.08) { const f = this.flashes.find((e) => !e.on) || this.flashes[0]; f.on = true; f.t = 0; f.life = life; f.size = size; f.s.visible = true; f.s.position.set(x, y, z); f.s.material.color.set(color); }
+  // the storm coming apart where it was hurt (2.16, in place of the energy flipbook): a white-hot core flash inside a wider flare
+  // of `color` (the heart's magenta, or the cable's amber), a ring of its own cloud blown out of the wound, dark storm matter flung
+  // with sparks. Nothing flat or ring-shaped: it is lit and fogged like the storm it comes out of. `k` 0..1 scales the lot
+  blowout(x, y, z, size, color = '#ff3f8e', k = 1) {
+    this.flashAt(x, y, z, size * 1.1, '#fff4ec', 0.12 + 0.06 * k); this.flashAt(x, y, z, size * 2.2, color, 0.3 + 0.25 * k);
+    const n = this.low ? 4 : 6 + Math.round(4 * k), far = this.camera.position.distanceTo(_a.set(x, y, z)), sc = Math.max(1, far * 0.012);
+    for (let i = 0; i < n; i++) { const a = i / n * 6.283 + Math.random() * 0.5, r = size * (0.25 + 0.35 * Math.random()); this.puff(x + Math.cos(a) * r, y + (Math.random() - 0.4) * size * 0.4, z + Math.sin(a) * r, size * (0.35 + 0.3 * Math.random()), i % 3 === 0 ? '#5a4733' : i % 3 === 1 ? '#2a3231' : '#4a5650', 0.9 + 0.7 * k, 2 + 4 * k); }
+    this.debris(x, y, z, this.low ? 4 : Math.round(6 + 8 * k), ['#1d2a2b', '#4d5a53', '#6e5637'], 0.9 * sc, 16 + 18 * k);
+    this.sparks(x, y, z, this.low ? 3 : Math.round(4 + 6 * k), sc * 1.5, 22, color);
+  }
   explode(x, y, z, size = 14) {
     this.flashAt(x, y, z, size * 2.2, '#ffe9b0', 0.14); this.flashAt(x, y, z, size * 1.3, '#ff9a3c', 0.22);
     for (let i = 0; i < 5; i++) this.puff(x + (Math.random() - 0.5) * size * 0.7, y + (Math.random() - 0.3) * size * 0.5, z + (Math.random() - 0.5) * size * 0.7, size * (0.5 + Math.random() * 0.5), i % 2 ? '#2a2420' : '#6e5637', 0.9 + Math.random() * 0.5, 4);
@@ -346,8 +355,8 @@ export class Fx {
     if (any || this.shardDirty) { this.shardMesh.instanceMatrix.needsUpdate = true; this.shardDirty = any; }
     if (this.wave.visible) { this.waveT += dt * 2.4; const s = this.waveR * Math.min(1, this.waveT); this.wave.scale.setScalar(s); this.wave.material.opacity = 1 - this.waveT; if (this.waveT >= 1) this.wave.visible = false; }
     for (let i = this.anims.length - 1; i >= 0; i--) { const a = this.anims[i]; a.t += dt; const k = Math.min(1, a.t / a.dur); a.step(k); if (k >= 1) { this.anims.splice(i, 1); a.done && a.done(); } }
-    this.lightning.update(dt); this.energy.update(dt);
+    this.lightning.update(dt);
   }
 
-  reset() { this.clearTelegraphs(); this.hideCable(0); this.hideCable(1); this.hideRing(); this.setStake(false); this.anims.length = 0; this.pod.visible = this.bolt.visible = this.wave.visible = false; this.lightning.stop(); this.energy.stop(); this.swarm = { on: false }; this.swarmMesh.visible = false; for (const h of this.haz) { h.on = false; h.m.visible = false; } for (const r of this.rockets) { r.on = false; r.m.visible = false; } for (const f of this.flashes) { f.on = false; f.s.visible = false; } for (const t of this.tracers) t.on = false; for (const s of this.sparkList) s.on = false; for (const r of this.rings) { r.on = false; r.s.visible = false; } for (let i = 0; i < this.CH; i++) { this.chunks[i].on = false; dummy.scale.setScalar(0); dummy.updateMatrix(); this.chunkMesh.setMatrixAt(i, dummy.matrix); } this.chunkMesh.instanceMatrix.needsUpdate = true; for (const s of this.shards) s.on = false; for (let i = 0; i < this.SH; i++) { dummy.scale.setScalar(0); dummy.updateMatrix(); this.shardMesh.setMatrixAt(i, dummy.matrix); } this.shardMesh.instanceMatrix.needsUpdate = true; this.stopT = 0; this.slowT = 0; this.shakeAmt = 0; }
+  reset() { this.clearTelegraphs(); this.hideCable(0); this.hideCable(1); this.hideRing(); this.setStake(false); this.anims.length = 0; this.pod.visible = this.bolt.visible = this.wave.visible = false; this.lightning.stop(); this.swarm = { on: false }; this.swarmMesh.visible = false; for (const h of this.haz) { h.on = false; h.m.visible = false; } for (const r of this.rockets) { r.on = false; r.m.visible = false; } for (const f of this.flashes) { f.on = false; f.s.visible = false; } for (const t of this.tracers) t.on = false; for (const s of this.sparkList) s.on = false; for (const r of this.rings) { r.on = false; r.s.visible = false; } for (let i = 0; i < this.CH; i++) { this.chunks[i].on = false; dummy.scale.setScalar(0); dummy.updateMatrix(); this.chunkMesh.setMatrixAt(i, dummy.matrix); } this.chunkMesh.instanceMatrix.needsUpdate = true; for (const s of this.shards) s.on = false; for (let i = 0; i < this.SH; i++) { dummy.scale.setScalar(0); dummy.updateMatrix(); this.shardMesh.setMatrixAt(i, dummy.matrix); } this.shardMesh.instanceMatrix.needsUpdate = true; this.stopT = 0; this.slowT = 0; this.shakeAmt = 0; }
 }

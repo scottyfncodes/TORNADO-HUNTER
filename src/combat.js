@@ -157,7 +157,7 @@ export class Mission {
     G.fx.launchHarpoon(this.seatMuzzle(_a), (out) => s.seam(b, u.x, u.z, out), () => {
       this.harpoonBusy = false; if (this.phase !== 'stagger' || s.band !== b) { G.fx.hideCable(0); return; }
       this.rec.harpoon.push('g'); this.phase = 'rip'; this.phaseT = 0; this.hookT = this.p.hook; this.line = { u: u === this.rig ? null : u }; this.restrainStart(); G.audio.twang(); G.audio.stagger(); G.fx.hitStop(FEEL.hitStopHarpoon); G.fx.shake(10); G.fx.slowMo(0.35); this.call('HOOKED', 'good', 1.4);
-      s.seam(b, u.x, u.z, _a); G.fx.energy.play(_a.x, _a.y, _a.z, 26, 26, { fps: 48 }); G.fx.ringAt(_a.x, _a.y, _a.z, 60, PALETTE.primary, 0.5); this.leaveGun(); this.takeBus();
+      s.seam(b, u.x, u.z, _a); G.fx.blowout(_a.x, _a.y, _a.z, 18, PALETTE.primary, 0.5); this.leaveGun(); this.takeBus();
     });
     return true;
   }
@@ -222,7 +222,7 @@ export class Mission {
       this.cine = null; this.sawCine('dorothy'); this.skipped = false; if (this.phase !== 'dorothy') return; this.note("CORE CRITICAL: SPARKS' ROCKET");
       this.phase = 'kill'; this.phaseT = 0; this.killT = this.p.kill; this.reload = 0; s.thinTarget = Math.max(0.28, s.thinTarget * this.p.dorothyThin); this.enterGun('kill');
       G.audio.ping(); G.audio.dorothy(); G.audio.stagger(); G.fx.flash(0.6, PALETTE.signal); G.fx.shake(9); G.fx.hitStop(0.06); G.sky.strike(1); this.earn(10); this.call('CORE CRITICAL', 'good', 1.0);
-      for (let i = 0; i < 5; i++) { s.spineAt(0.1 + i * 0.07, _a); G.fx.energy.play(s.x + _a.x, s.groundY + (0.1 + i * 0.07) * s.height, s.z + _a.z, 30, 30, { fps: 30 + i * 4 }); }
+      for (let i = 0; i < 4; i++) { s.spineAt(0.1 + i * 0.09, _a); G.fx.blowout(s.x + _a.x, s.groundY + (0.1 + i * 0.09) * s.height, s.z + _a.z, 16, PALETTE.accent, 0.4); }
     });
     return true;
   }
@@ -262,7 +262,7 @@ export class Mission {
     const was = this.hp / this.stageMax; this.hp -= n; const is = this.hp / this.stageMax; this.storm.hit = Math.max(this.storm.hit || 0, crit ? 1 : 0.6);
     // a band fails in stages you can see and hear: it cracks at two thirds, it is coming apart at one third
     for (const th of [0.66, 0.33]) if (was > th && is <= th && is > 0 && pt) {
-      const G = this.G; G.fx.energy.play(pt.x, pt.y, pt.z, 44, 44, { fps: 44 }); G.fx.ringAt(pt.x, pt.y, pt.z, 40, th > 0.5 ? PALETTE.primary : PALETTE.accent, 0.4); G.audio.crack(); G.audio.stormCrack(th < 0.5); G.fx.shake(4); this.call(th > 0.5 ? 'IT IS CRACKING' : 'IT IS COMING APART', 'good', 0.8, 1);
+      const G = this.G; G.fx.blowout(pt.x, pt.y, pt.z, 22, th > 0.5 ? PALETTE.primary : PALETTE.accent, 0.35); G.audio.crack(); G.audio.stormCrack(th < 0.5); G.fx.shake(4); this.call(th > 0.5 ? 'IT IS CRACKING' : 'IT IS COMING APART', 'good', 0.8, 1);
     }
     if (this.hp <= 0) {
       this.hp = 0; const G = this.G, s = this.storm;
@@ -347,7 +347,7 @@ export class Mission {
     s.snapBand(b); this.stats.snaps++; this.stage++; this.line = null; this.cine = null; fx.hideCable(0); this.clearHazards(true); const wasGun = this.view === 'gun'; this.leaveGun(); this.zoneLatch = false; if (wasGun && s.bandsLeft > 0) this.note('TORN OPEN: YOUR WHEEL, OUTRUN IT');
     fx.debris(bx, by, bz, 10, ['#5d6b62', '#b89a58', '#1d2a2b'], 2.2, 30);
     fx.hitStop(FEEL.hitStopBandSnap); fx.shake(FEEL.shakeBandSnap); fx.flash(1); G.audio.bandSnap(); G.audio.roar(1); G.audio.boom(1); G.sky.strike(1.2);
-    fx.energy.play(bx, by, bz, 80, 80, { fps: 40 }); fx.explode(bx, by, bz, 26);
+    fx.blowout(bx, by, bz, 40, PALETTE.accent, 1); fx.explode(bx, by, bz, 26);
     const each = this.pay / 12; this.owed += this.pay; fx.shardBurst(s.x, s.groundY + 12, s.z, 12, r, (i) => { if (!this.result) { this.owed -= each; this.earn(each); } G.audio.pickup(i); }); // the last band's shards land after the result: end() has banked them
     this.say('snap'); for (const st of this.sats) { st.storm.die(); st.dead = true; }
     if (s.bandsLeft === 0) { this.end(true, 'destroyed'); return; }
@@ -364,7 +364,7 @@ export class Mission {
     if (won) {
       const fin = this.pay * this.p.dataMul, hull = Math.round(this.pay * 0.4 * (this.rig.hull / this.rig.hullMax) * this.p.dataMul);
       lines.push(['Storm destroyed', Math.round(fin)], ['Hull intact', hull]); this.data += fin + hull;
-      s.die(); fx.slowMo(1.4); fx.flash(1); fx.shake(18); fx.hitStop(0.12); this.G.audio.win(); this.say('win'); fx.energy.play(s.x, s.groundY + 24, s.z, 110, 110, { fps: 28 });
+      s.die(); fx.slowMo(1.4); fx.flash(1); fx.shake(18); fx.hitStop(0.12); this.G.audio.win(); this.say('win'); fx.blowout(s.x, s.groundY + 24, s.z, 60, PALETTE.accent, 1);
       for (let i = 0; i < 4; i++) fx.anim(0.25 + i * 0.3, () => {}, () => { fx.explode(s.x + rand(-20, 20), s.groundY + 20 + i * 28, s.z + rand(-20, 20), 22); this.G.audio.boom(0.8); fx.shake(8); });
       fx.shardBurst(s.x, s.groundY + 14, s.z, 20, this.rig, (i) => this.G.audio.pickup(i));
     } else { this.G.audio.fail(); this.rig.dead = true; const d = this.dist || 1; this.rig.fling((this.rig.x - s.x) / d, (this.rig.z - s.z) / d, 24, 13); fx.explode(this.rig.x, this.rig.y + 2, this.rig.z, 14); this.G.audio.boom(0.9); }
