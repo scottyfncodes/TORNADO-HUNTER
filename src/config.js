@@ -130,7 +130,12 @@ export const GRADE = {
   par: { pete: 45, agnes: 78, sisters: 80 }, // s: full marks for time at par (a clean fight by a gunner who never misses), none at timeZero times par. (40, 72, 75 until 2.11: measured on a test clock that ran wreckage ahead of the truck; no played fight reached them)
   timeZero: 3,                              // (2.2 until 2.11: a 90-second first win of Skinny Pete scored nothing for time)
   accZero: 0.2, accFull: 0.85,              // share of turret rounds that hit something you can hurt (nothing below 0.3 until 2.11)
-  crit: { pete: 0.5, agnes: 0.5, sisters: 0.5 }, // CALIBRATE
+  // the share of turret rounds that were critical (the seam on a band, dead centre on wreckage), for full marks. A share, not a
+  // count (Pete 170, Agnes 360, the Sisters 275 until 2.13): a count graded the Bulldog's minigun about 1.4 times the Mule's for
+  // the same aim, and the Whippet's cannon half of it. Set from fights on the 2.13 build so the thumb gunner on the Mule keeps
+  // the share of these marks it had (Pete 25% of rounds critical, Agnes 66%, the Sisters 33%); a sharp one is over all three.
+  // Agnes's seam is the biggest target of the three
+  crit: { pete: 0.55, agnes: 0.85, sisters: 0.6 },
   close: 5,                                 // near misses for full marks (8 until 2.11: a near miss is a dodge at the wheel, and most of a fight is on the gun)
   letters: [['S', 90], ['A', 75], ['B', 55], ['C', 25], ['D', 0]], // (B from 60 and C from 45 until 2.11)
   share: { accGood: 0.75, accOk: 0.45, hullOk: 25 }, // the share text's squares: the turret's accuracy on a band, hull lost at the wheel
