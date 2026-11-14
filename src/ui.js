@@ -24,13 +24,14 @@ export class UI {
     click('p-resume', () => G.setPaused(false));
     click('p-restart', () => G.restart());
     click('p-quit', () => G.toHQ());
-    click('p-sound', () => { save.s.settings.mute = !save.s.settings.mute; save.write(); G.audio.setMuted(save.s.settings.mute); this.syncSettings(); });
+    // one button, three settings: everything, everything but the music, nothing
+    click('p-sound', () => { const st = save.s.settings; if (st.mute) { st.mute = false; st.music = true; } else if (st.music) st.music = false; else st.mute = true; save.write(); G.audio.setMuted(st.mute); G.audio.setMusic(st.music); this.syncSettings(); });
     click('p-calm', () => { save.s.settings.calm = !save.s.settings.calm; save.write(); G.fx.calm = save.s.settings.calm; this.syncSettings(); });
     for (const t of document.querySelectorAll('.tab')) t.addEventListener('click', () => { G.audio.ui(); this.tab = t.dataset.tab; this.renderHQ(); });
     this.syncSettings();
   }
   syncSettings() {
-    const st = save.s.settings; $('p-sound').textContent = st.mute ? 'Sound off' : 'Sound on'; $('p-sound').setAttribute('aria-pressed', String(!st.mute));
+    const st = save.s.settings; $('p-sound').textContent = st.mute ? 'Sound off' : st.music ? 'Sound on' : 'Sound on, music off'; $('p-sound').setAttribute('aria-pressed', String(!st.mute));
     $('p-calm').textContent = st.calm ? 'Screen shake off' : 'Screen shake on'; $('p-calm').setAttribute('aria-pressed', String(!st.calm));
   }
   show(name) {
@@ -163,6 +164,7 @@ export class UI {
     const gb = $('res-grade'), best = save.s.grades[res.storm.id], fresh = !!g.letter && (!res.bestBefore || g.letter !== res.bestBefore) && best === g.letter;
     gb.hidden = !g.letter; if (g.letter) { $('res-letter').textContent = g.letter; gb.dataset.l = g.letter; gb.classList.toggle('new', fresh && !!res.bestBefore); $('res-best').textContent = fresh && res.bestBefore ? 'New best' : `Best ${best}`; gb.setAttribute('aria-label', `Grade ${g.letter}, best ${best}`); }
     $('res-hint').textContent = g.letter ? g.hint : '';
+    if (g.letter) this.G.audio.grade(g.letter, fresh && !!res.bestBefore); // the letter is heard as it is read
     // the numbers the grade read, then the data
     const t = $('res-tally'); t.textContent = '';
     const row = (k, v, small) => { t.appendChild(el('dt', '', k)); const d = el('dd', '', v); if (small) d.appendChild(el('small', '', small)); t.appendChild(d); };

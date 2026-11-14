@@ -1,6 +1,6 @@
 # TORNADO HUNTER: Game Design
 
-*Design of record. Version 2.11: the turret made fair, after the live build was played start to finish by a scripted player: the harpoon only says LOCKED when it can fire; on the gun the storm aims one piece at you at a time and never twice running, the piece that will hit is ringed in the sky where the gunner is looking, and armour can be shot down; a first win grades B or C; and the tests' fast-forward clock, which had hidden all of this, is fixed. (2.10: the power lines, the second set piece. 2.9: the grain elevator, the first. 2.8: a grade for every fight and the Daily Storm, one storm a day for everyone. 2.7: the first minute measured and re-paced, a drift worth taking, a reason for every seat change, and cinematics you can skip once seen. 2.6: five phases, a crew member and a vehicle for each, DOROTHY driven to the foot of a harpooned storm that fights the line, and weather.) Tuning numbers live in `src/config.js`.*
+*Design of record. Version 2.12: a score. One theme, played by each storm in its own key and tempo, that follows the fight phase by phase and ends on a fanfare as the results come up; a ping for wreckage coming down on you, a run of critical hits that climbs, a heartbeat for a hull that is nearly gone; all of it synthesised, with a switch of its own. (2.11: the turret made fair, after the live build was played start to finish by a scripted player: the harpoon only says LOCKED when it can fire; on the gun the storm aims one piece at you at a time and never twice running, the piece that will hit is ringed in the sky where the gunner is looking, and armour can be shot down; a first win grades B or C; and the tests' fast-forward clock, which had hidden all of this, is fixed. 2.10: the power lines, the second set piece. 2.9: the grain elevator, the first. 2.8: a grade for every fight and the Daily Storm, one storm a day for everyone. 2.7: the first minute measured and re-paced, a drift worth taking, a reason for every seat change, and cinematics you can skip once seen. 2.6: five phases, a crew member and a vehicle for each, DOROTHY driven to the foot of a harpooned storm that fights the line, and weather.) Tuning numbers live in `src/config.js`.*
 
 ---
 
@@ -309,6 +309,51 @@ Checked at 667×375, 844×390 and 390×844 by `node tests/layout.mjs`: nothing o
 
 ---
 
+### Sound and the score (2.12)
+
+The live 2.10 build was measured through a tap on its speakers: no music, the same level and colour of noise from the first second of a fight to the last, and a win that was silent three seconds after the kill. The game now has a score. Like every other sound in it, it is synthesised in the browser: nothing to download, it works offline, and it starts on the first tap (a browser rule: no sound before one).
+
+**One tune.** Eight bars over four chords (i, VII, VI, VII, two bars each), a gallop of three, three and two, every held note on the chord under it. `src/score.js` decides what is played and is pure; `src/music.js` is the band, scheduled a fifth of a second ahead on the audio clock from the frame loop, so a dropped frame is never a dropped beat.
+
+| | Key | Tempo | How it plays the tune |
+|---|---|---|---|
+| **Camp** (title, headquarters) | A minor | 84 | Alone, plucked, every other time round, over a pad. No drums |
+| **Skinny Pete** | A minor | 126 | Light: a plucked lead, a backbeat |
+| **Big Agnes** | D minor, a fifth lower | 108 | Heavy: brass, half-time drums with the snare once a bar, a bass in three, three, two |
+| **The Sisters** | E minor | 138 | The fastest, and the arpeggio is answered a chord tone up, two steps late |
+
+Each band the storm loses makes it 6% faster; the music goes with it, 4% a band.
+
+**It follows the fight.** A change of section lands on the next sixteenth; the tune's bar count never resets, so it carries across a seat change.
+
+| The fight | The band |
+|---|---|
+| Chasing, out of range | Bass in eighths, hats, a kick: the tune is held back |
+| In range, on the gun | The backbeat comes in, the bass gallops, an arpeggio; the tune arrives the second time round |
+| Something about to land on you, a later band, a hull under 40% | Pushes harder: sixteenth hats, an extra kick, the bass and pad open up |
+| Band shot off, GET CLEAR | A snare roll climbing through each bar over one bass note |
+| WEAKENED, the harpoon window | Drops to a suspended chord and a ticking hat that doubles in the last second and a half |
+| Hooked, driving the bus in | Everything, four on the floor, the tune from the first bar and doubled an octave up: its moment |
+| DOROTHY's ride | No drums or bass: the arpeggio climbing, the pad wide open |
+| The kill window | The bass sits on the fifth and wants to come home; snares on the off-beats in the last second and a half |
+| The rocket in flight | A roll |
+| The kill | The loop stops. A fanfare: the tune's first two bars turned major (keeping its flat seventh), a run up the scale, and the last chord 5.8 s after the kill, which is when the results come up. Then a meadowlark |
+| The results | The letter is sounded in the storm's key: one note for a C, a chord for an A, the octave on top for an S, a ring above for a new best. Then the tune again, slow and major, for as long as you stay |
+| A wreck | Four notes down, and a low chord left hanging; then the camp's pad |
+
+**Reactive sound.**
+
+- **Wreckage that will hit you pings** (on the gun): the fifth of the key, quicker and louder as the ring closes, lower and doubled for armour. The ring of 2.11 for the ears, for a gunner whose eyes are on the seam.
+- **A run of critical hits climbs** the key's pentatonic, a note every half second on the seam; coming off it starts again at the bottom.
+- **A hull under 30% has a heartbeat**, quicker the less there is; under 25% the band goes muffled behind it.
+- **The band steps back** for a band coming off, a hit, thunder and the harpoon landing, and the wind and the roar give it room: a quarter less wind (which sits where the tune does) and 15% less roar while it plays.
+
+**The Sound button** in the pause menu has three settings: *Sound on*, *Sound on, music off*, *Sound off*. Kept in the save (`settings.music`). With the music off a win still plays its old four notes, and nothing is scheduled.
+
+**Measured, not heard.** `node tests/audio.mjs` renders the score for a whole scripted fight on an offline audio context (the same code and graph the game plays) and measures it, then plays a real fight in the page. Per storm: no clipping (true peak −4 dB or lower on its own bus, −24.5 LUFS, loudness range 7.7), every section audible and each at least 0.02 RMS above 300 Hz, which is all a phone's speaker keeps; on the gun louder than the chase, the line loudest, the harpoon window and the camp quieter; no silent second from the kill through the results; the band follows every phase of a played fight in order; paused it stops; off it schedules nothing; it costs 0.04 ms a frame. In a played fight on the gun, turning the music on leaves the level above 300 Hz where it was (0.09 either way): it takes the room the wind gave up. None of that says whether it is a good tune. That is question 7.
+
+---
+
 ## 6. The storms
 
 | Storm | Speed | Stages | Temperament |
@@ -440,7 +485,13 @@ Upgrades (Data): Winch (the line holds longer), Ordnance (guns hit harder, one m
 | Taking less damage on the gun (a flat discount) | not done (2.11) | it hides the problem. The pieces are fewer, slower, rarer after a hit, marked and shootable instead; a hit still costs what it says |
 | Crosswind arrows repeated in the gun's sky | not done (2.11) | a crosswind shoves the truck, which the autodrive is driving; on the gun there is nothing to do about it. It is still called |
 | A dodge button on the gun | never (2.11) | one seat at a time. DRIVE is the dodge, and it sits beside the trigger |
-| Adaptive music, a longer win sting | postponed (2.11) | the live build's audio was measured flat (no music; the win is silent after 3 s). It is the next pass; fairness on the turret came first |
+| Adaptive music, a longer win sting | built (2.12) | the live build's audio was measured flat (no music; the win silent after 3 s). Postponed in 2.11 for fairness on the turret |
+| Recorded or generated music files | not used (2.12) | everything else is synthesised and works offline with nothing to download; a file cannot change a note when the fight changes, and stems would be megabytes on a phone. The band is 26 kB of code |
+| A different tune per storm | not built (2.12) | one theme you can learn, three ways of playing it. Three tunes would be three you cannot hum |
+| A volume slider | not built (2.12) | one button, three settings, no new row in the pause menu at 667×375 |
+| The band stepping back under every callout | not done (2.12) | a callout is read, not heard. It steps back for the sounds that carry information |
+| Music before the first tap | impossible | browsers do not allow sound until the player has touched the page |
+| Stereo, haptics | not started | one speaker on most phones held sideways; haptics need a native wrapper on iOS |
 
 ---
 
@@ -461,7 +512,9 @@ src/fx.js        pooled wreckage, tracers, sparks, debris, rockets, explosions, 
 src/convoy.js    the camper truck and the bus
 src/world.js     terrain, ground texture, roads, towns, props
 src/sky.js       sky dome, wall cloud, rain, light
-src/audio.js     synthesised engine, wind, guns, explosions
+src/audio.js     synthesised engine, wind, guns, explosions, and the pings, rings and stings tuned to the storm's key
+src/score.js     the score: the theme, each storm's key and tempo, which part of it the fight is in, the fanfare (pure)
+src/music.js     the band: plays the score on the audio clock, live or offline
 src/hud.js       in-mission HUD     src/ui.js   title, headquarters, results, the Daily Storm, Share
 src/grade.js     the letter for a fight and the line that would have raised it (pure)
 src/daily.js     the Daily Storm: the Denver day, its seed and streams, the streak, the share text (pure)
@@ -469,11 +522,11 @@ src/save.js      the save, and migrate() for every older one
 src/main.js      boot, the three cameras (chase, gun, cinematic) and the swing between them, frame loop, resolution governor
 ```
 
-**Tests.** `node --test tests/*.test.mjs`: the tether's movement, the truck's handling, saves (a real version 1 save), grades and the Daily Storm, under Node. `node tests/e2e.mjs`: the finale on every storm, the seat-change reasons, the cinematics, the turret's fairness rules (the harpoon out of range, the ring on a piece that will hit, the breather after a hit), the Daily Storm (one scored attempt, the same fight at two frame rates, Share) and a version 1 save loaded cold, in a browser. `node tests/fullfight.mjs`: whole fights by the test aimer at three skills (sharp, thumb, novice: `SKILLS=`, `AIM=deg,delay,rest`), read the way the results screen reads them. `node tests/firstminute.mjs`: the first minute of every storm, played by a scripted player at two gunning skills, every beat timed and every callout checked for being read (`AUDIT=1` prints the timeline). `node tests/layout.mjs`: the interface bar at the three sizes (`SHOTS=<folder>` saves screenshots). `node tests/driving.probe.mjs` prints the handling numbers.
+**Tests.** `node --test tests/*.test.mjs`: the tether's movement, the truck's handling, saves (a real version 1 save), grades, the Daily Storm and the score (every note in the key, the same bar always the same notes), under Node. `node tests/e2e.mjs`: the finale on every storm, the seat-change reasons, the cinematics, the turret's fairness rules (the harpoon out of range, the ring on a piece that will hit, the breather after a hit), the Daily Storm (one scored attempt, the same fight at two frame rates, Share) and a version 1 save loaded cold, in a browser. `node tests/fullfight.mjs`: whole fights by the test aimer at three skills (sharp, thumb, novice: `SKILLS=`, `AIM=deg,delay,rest`), read the way the results screen reads them. `node tests/firstminute.mjs`: the first minute of every storm, played by a scripted player at two gunning skills, every beat timed and every callout checked for being read (`AUDIT=1` prints the timeline). `node tests/audio.mjs`: the music, rendered offline for a whole fight and measured, then followed through a played one (`OUT=<folder>` saves the render as WAV). `node tests/layout.mjs`: the interface bar at the three sizes (`SHOTS=<folder>` saves screenshots). `node tests/driving.probe.mjs` prints the handling numbers.
 
 **The test clock (2.11).** `G.fast`, the tests' fast-forward, stepped the mission at a fixed 1/60 s but left the effects (which carry thrown wreckage) on the real frame time. In a headless browser at 25 frames a second the wreckage ran 20 to 40% ahead of the truck and landed in front of it: about half of every throw "missed" in tests, and none did in play. Every full-fight number from 2.7 to 2.10 was measured in that kinder game, which is why the suites never saw what a played fight showed. Both clocks now take the same step, and the numbers in this document dated 2.11 are measured after the fix.
 
-**Saves.** Same key and shape as version 1 (`tornado-hunter/v1`). Data, kills, owned rigs, upgrades and crew carry over. The `winch` and `cable` upgrade levels keep their value and now mean "the line holds longer" and "ordnance" (guns hit harder, one more rocket in the rack per level). Fields are only ever added: `seen` (2.7, the cinematics watched), `grades`, `daily` and `streak` (2.8). `migrate()` in `src/save.js` fills in whatever an older save lacks and turns anything unreadable into a fresh start; `tests/fixtures/save-v1.json` is a real version 1 save, loaded by the unit tests and cold in the browser.
+**Saves.** Same key and shape as version 1 (`tornado-hunter/v1`). Data, kills, owned rigs, upgrades and crew carry over. The `winch` and `cable` upgrade levels keep their value and now mean "the line holds longer" and "ordnance" (guns hit harder, one more rocket in the rack per level). Fields are only ever added: `seen` (2.7, the cinematics watched), `grades`, `daily` and `streak` (2.8), `settings.music` (2.12). `migrate()` in `src/save.js` fills in whatever an older save lacks and turns anything unreadable into a fresh start; `tests/fixtures/save-v1.json` is a real version 1 save, loaded by the unit tests and cold in the browser.
 
 ---
 
@@ -498,3 +551,4 @@ src/main.js      boot, the three cameras (chase, gun, cinematic) and the swing b
 4. On the gun, could you hold the seam with a thumb? Did you ever take the wheel back on purpose, and did being put on the gun ever feel like having it taken away? (A scripted gunner on the seam sheds the first band in 15 to 20 s, a sloppy one in 27 to 32: which one is a person?)
 5. Harpoon, DOROTHY, lock, kill shot: did that finale feel like the best moment of the fight? Was losing control during the DOROTHY shot welcome or annoying?
 6. Did you start the next storm without being asked? Did the line under the grade make you try again? Did you come back for tomorrow's storm?
+7. The music: is it a tune, and would you leave it on? On a phone's speaker, is it too quiet under the storm or too loud over the guns? Did the ping make you look up before a piece hit you?

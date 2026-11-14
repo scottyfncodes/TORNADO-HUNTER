@@ -55,7 +55,7 @@ export class Mission {
     this.view = 'drive'; this.zoneLatch = false; this.autoHold = 0; this.inZone = false; this.killT = 0; this.cine = null; this.podBusy = false; this.harpoonBusy = false; this.reload = 0; this.shotgunCd = 0; this.mgT = 0; this.firing = 0;
     this.staggerT = 0; this.hookT = 0; this.tether = null; this.tetherSeed = 0; this.mercyT = 0; this.taughtLunge = false; this.home = null; this.busUnit = null; this.dropped = false; this.line = null; this.surge = null; this.wind = null; this.windWait = 0; this.hz = []; this.sats = []; this.attackT = 3.2;
     this.dist = lead; this.tension = null; this.bark = null; this.barkT = 0; this.callout = null; this.calloutT = 0; this.calloutUp = 0; this.callQ = []; this.far = 0;
-    this.seatT = -9; this.attacks = 0; this.lastAttack = ''; this.lastAimed = false; this.seatWhy = ''; this.seatNote = null; this.skipped = false;
+    this.seatT = -9; this.attacks = 0; this.lastAttack = ''; this.lastAimed = false; this.pipT = 0; this.seatWhy = ''; this.seatNote = null; this.skipped = false;
     this.stats = { snaps: 0, shot: 0, rockets: 0, direct: 0, hits: 0, close: 0, dorothys: 0, fired: 0, rounds: 0, crits: 0, sats: 0 }; // fired: turret rounds that hit something, rounds: all of them
     // how each phase went, for the share text: hull lost at the wheel and the turret's rounds per band, each window of the finale
     this.rec = { wheel: [], rounds: [], hits: [], harpoon: [], dorothy: [], kill: [], busHits: 0 };
@@ -508,6 +508,8 @@ export class Mission {
 
     // ---- attacks ----
     if (!over && s.alive && this.phase === 'chase' && dist < 360) {
+      // a piece that will land on the truck is heard as well as ringed: pings that close up as it comes down
+      if (this.view === 'gun') { let hot = null; for (const z of this.hz) if (this.willHit(z) && (!hot || z.h.dur - z.h.t < hot.h.dur - hot.h.t)) hot = z; if (!hot) this.pipT = 0; else if ((this.pipT -= dt) <= 0) { const left = hot.h.dur - hot.h.t; G.audio.incoming(clamp(1 - left / 2.2, 0, 1), hot.big); this.pipT = clamp(left * 0.28, 0.11, 0.5); } }
       this.attackT -= dt * (this.inZone ? 1.1 : 1); if (this.attackT <= 0 && this.time - this.seatT >= FEEL.seatQuiet && !this.sp.busy) { const ev = this.def.attackEvery[Math.min(this.stage, this.def.attackEvery.length - 1)]; this.attackT = ev * this.ar(0.8, 1.2) * this.p.tele * (this.view === 'gun' ? FEEL.gunnerBreather : 1); this.attack(); }
     }
 

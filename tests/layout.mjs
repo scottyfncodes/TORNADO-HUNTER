@@ -21,6 +21,10 @@ const ok = (cond, msg) => { checks++; if (!cond) { fails.push(msg); console.log(
 // each state: a name, and a function run in the page that puts the game there (and returns once it is)
 export const STATES = {
   title: async () => { const G = window.__G; if (G.mission) G.toHQ(); G.ui.show('title'); },
+  pause: async () => { // the pause menu, the Sound button on its longest setting
+    const G = window.__G, { STORMS } = await import('/src/config.js'); G.startMission(STORMS[0]); for (let i = 0; i < 10; i++) await new Promise((r) => requestAnimationFrame(r));
+    G.setPaused(true); const b = document.getElementById('p-sound'); for (let i = 0; i < 3 && b.textContent !== 'Sound on, music off'; i++) b.click();
+  },
   drive: async () => { // at the wheel, a seat-change reason on the coach line, a callout up
     const G = window.__G, { STORMS } = await import('/src/config.js'); G.startMission(STORMS[0]); const m = G.mission;
     for (let i = 0; i < 10; i++) await new Promise((r) => requestAnimationFrame(r));

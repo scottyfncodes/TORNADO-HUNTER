@@ -8,7 +8,7 @@ export const FRESH = () => ({
   owned: { mule: true, anchor: true },
   upgrades: { winch: 0, cable: 0, plating: 0, turbo: 0 },
   loadout: { rig: 'mule', crew: ['doc', 'winch'], gadget: 'anchor', storm: 'pete' },
-  settings: { mute: false, calm: false },
+  settings: { mute: false, calm: false, music: true }, // music (2.12): the band has its own switch
   seenCoach: false,
   seen: { dorothy: false, kill: false }, // 2.7: the two cinematics, watched to the end at least once: from then on a tap skips them
   grades: {},                            // 2.8: the best letter per storm, { pete: 'A' }
