@@ -17,7 +17,7 @@ function funnelMaterial(shared, params) {
   return new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, fog: false,
     uniforms: {
-      uNoise: shared.uNoise, uTime: shared.uTime, uFlash: shared.uFlash, uFog: shared.uFog, uFogNear: shared.uFogNear, uFogFar: shared.uFogFar, uCloud: shared.uCloud,
+      uNoise: shared.uNoise, uTime: shared.uTime, uFlash: shared.uFlash, uFog: shared.uFog, uFogNear: shared.uFogNear, uFogFar: shared.uFogFar, uCloud: shared.uCloud, uGold: shared.uGold, uGoldK: shared.uGoldK,
       uH: { value: params.height }, uR0: { value: params.r0 }, uR1: { value: params.r1 }, uPow: { value: params.pow }, uWob: { value: params.wob }, uSpin: { value: 1 }, uThin: { value: 1 },
       uLean: { value: new THREE.Vector2() }, uFade: { value: 1 }, uCut: { value: 0 }, uCore: { value: 0 },
       // the monster (2.14): its heart (world position, radius, how bright), how hurt this phase is, how angry it is, lightning inside, the tear
@@ -31,7 +31,7 @@ function funnelMaterial(shared, params) {
         vec2 sp=spine(v); vec3 p=vec3(cos(a)*r+sp.x, v*uH, sin(a)*r+sp.y);
         vUv=vec2(a/6.2831853+0.5,v); vN=normalize(mat3(modelMatrix)*vec3(cos(a),0.3,sin(a)));
         vec4 w=modelMatrix*vec4(p,1.0); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
-    fragmentShader: `uniform sampler2D uNoise; uniform float uTime,uSpin,uFade,uCut,uCore,uFlash,uFogNear,uFogFar,uHeartR,uHeartK,uWound,uRage,uVein; uniform vec3 uColA,uColB,uDust,uHot,uCloud,uFog,uHeart; uniform vec4 uTear;
+    fragmentShader: `uniform sampler2D uNoise; uniform float uTime,uSpin,uFade,uCut,uCore,uFlash,uFogNear,uFogFar,uHeartR,uHeartK,uWound,uRage,uVein,uGoldK; uniform vec3 uColA,uColB,uDust,uHot,uCloud,uFog,uHeart,uGold; uniform vec4 uTear;
       varying vec2 vUv; varying float vV; varying vec3 vN; varying vec3 vW;
       void main(){
         float tw=uTime*uSpin;
@@ -42,7 +42,8 @@ function funnelMaterial(shared, params) {
         c=mix(uDust*(0.55+0.5*n),c,smoothstep(0.0,0.13,vV));
         c=mix(c,uCloud*0.75,smoothstep(0.62,1.0,vV));
         vec3 view=normalize(cameraPosition-vW); float rim=1.0-abs(dot(normalize(vN),view));
-        c+=vec3(0.16,0.2,0.18)*rim*rim; c+=uHot*uCore*(0.25+0.75*pow(1.0-rim,2.0))*(0.6+0.4*s2)*(1.0-smoothstep(0.0,0.5,vV));
+        c+=vec3(0.16,0.2,0.18)*rim*rim*(1.0-0.5*uGoldK); c+=uGold*0.3*uGoldK*rim*rim*rim; // its edges: backlit by the gold behind it (2.15)
+        c+=uHot*uCore*(0.25+0.75*pow(1.0-rim,2.0))*(0.6+0.4*s2)*(1.0-smoothstep(0.0,0.5,vV));
         // rage: darker, with the heat showing at the edges
         c*=1.0-0.18*uRage; c+=uHot*0.1*uRage*rim*(0.5+n);
         // lightning crawling inside it: thin bright veins along the noise, anywhere on the body, while uVein flickers
