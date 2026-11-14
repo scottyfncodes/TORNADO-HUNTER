@@ -474,7 +474,7 @@ How (`src/geo.js`, `src/gunner.js`): `bev()` is a box with every edge chamfered,
 | Torn open (a phase lost) | 40, magenta, 1, with the explosion and the gash in the funnel |
 | It dies | 60, magenta, 1 |
 
-The energy flipbook's files stay in `assets/fx` (catalogued in `gitcraft.assets.json`) but are no longer loaded: 0.6 MB less to download before the first storm.
+The energy flipbook is no longer loaded (0.6 MB less to download before the first storm), and since 2.21 its files are gone from `assets/fx` and the catalogue.
 
 ## The light (2.15)
 

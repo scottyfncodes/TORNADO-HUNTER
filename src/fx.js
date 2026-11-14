@@ -134,7 +134,7 @@ export class Fx {
 
   async load() {
     const L = new THREE.TextureLoader();
-    // (the energy flipbook, a looping magenta ring, was retired in 2.16 for blowout() below: its files stay in assets/fx, unloaded)
+    // (the energy flipbook, a looping magenta ring, was retired in 2.16 for blowout() below, and its files removed in 2.21)
     const [lt, lm, la] = await Promise.all([
       L.loadAsync(F + 'lightning_flipbook.png'), fetch(F + 'lightning_flipbook.json').then((r) => r.json()), fetch(F + 'lightning_atlas.json').then((r) => r.json()),
     ]);

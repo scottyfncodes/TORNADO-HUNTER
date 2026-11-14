@@ -369,8 +369,9 @@ try {
     // it lands: a hit on the gun buys a breather
     m.clearHazards(true); m.rig.immune = 0; m.attackT = 0.4; const h0 = m.rig.hull; m.hurt(16); out.dmg = h0 - m.rig.hull; out.attackT = +m.attackT.toFixed(2); out.mercy = FEEL.gunnerMercy;
     // the autodrive's own crash costs nothing; yours does
-    m.rig.immune = 0; const h1 = m.rig.hull, crash = () => { const w = G.world.collideRig; G.world.collideRig = () => { G.world.collideRig = w; return [{ kind: 'crash', dmg: 8, x: m.rig.x, y: m.rig.y, z: m.rig.z }]; }; };
-    crash(); await frame(); await frame(); out.autoCrash = h1 - m.rig.hull; m.leaveGun(true); m.rig.immune = 0; const h2 = m.rig.hull; crash(); await frame(); await frame(); out.wheelCrash = h2 - m.rig.hull;
+    // (waits for the planted crash to be read rather than two frames: the hit just before freezes the step for a few frames)
+    m.rig.immune = 0; const h1 = m.rig.hull, crash = async () => { const w = G.world.collideRig; let read = false; G.world.collideRig = () => { G.world.collideRig = w; read = true; return [{ kind: 'crash', dmg: 8, x: m.rig.x, y: m.rig.y, z: m.rig.z }]; }; for (let i = 0; i < 60 && !read; i++) await frame(); await frame(); };
+    await crash(); out.autoCrash = h1 - m.rig.hull; m.leaveGun(true); m.rig.immune = 0; const h2 = m.rig.hull; await crash(); out.wheelCrash = h2 - m.rig.hull;
     m.rig.immune = 0; m.attackT = 0.4; m.hurt(4); out.wheelAttackT = +m.attackT.toFixed(2); // at the wheel you can dodge: no breather
     G.setpiece = undefined; return out;
   });

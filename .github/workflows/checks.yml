@@ -1,0 +1,17 @@
+# Cheap checks on every push and pull request: every module parses, and the Node unit tests pass.
+# (The browser suites need Playwright and Chromium and take an hour: they are run locally, see README.)
+name: checks
+on: [push, pull_request]
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Every module parses
+        run: |
+          for f in src/*.js; do cp "$f" /tmp/module.mjs; node --check /tmp/module.mjs || { echo "::error file=$f::$f does not parse"; exit 1; }; done
+      - name: Unit tests
+        run: node --test tests/*.test.mjs
