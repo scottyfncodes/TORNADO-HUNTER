@@ -197,7 +197,7 @@ export class Mission {
     if (ev === 'windup') {
       const threat = te.reaches(c), tx = te.targetX(), tz = te.targetZ(); G.audio.strain(te.stepDur, violent ? 1 : 0.55);
       if (violent || threat) fx.telegraph(s.ax + tx, s.az + tz, wall, te.landsIn, null, { track: (e) => { e.x = s.ax + tx; e.z = s.az + tz; } }); // where the wall will be: the storm's own magenta
-      if (!this.taughtLunge) { this.taughtLunge = true; this.call('IT IS FIGHTING THE LINE', 'warn', 1.8); }
+      if (!this.taughtLunge && !this.cine) { this.taughtLunge = true; this.call('IT IS FIGHTING THE LINE', 'warn', 1.8); }
       else if (threat) this.call('IT IS LUNGING', 'bad', Math.min(1.6, te.landsIn));
     } else if (ev === 'lunge') {
       G.audio.gust(); if (violent) G.audio.boom(0.35);
@@ -217,6 +217,8 @@ export class Mission {
     const G = this.G, s = this.storm; if (this.phase !== 'rip' || this.result || !this.dropped) return false;
     _a.copy(this.dorothy.position); _a.y += 3; this.rec.dorothy.push(this.rec.busHits ? 'y' : 'g'); this.leaveBus(); const r = this.rig;
     this.phase = 'dorothy'; this.phaseT = 0; this.stats.dorothys++; G.audio.probeLaunch(); this.clearHazards(true); r.immune = Math.max(r.immune, FEEL.dorothySeconds + 0.6);
+    if (this.callout && this.calloutT > 0 && /^DOROTHY IS DOWN/.test(this.callout.text)) this.calloutT = 0; // done: it must not hang over her flight (2.24)
+    this.callQ = this.callQ.filter((c) => !/^DOROTHY IS DOWN/.test(c.text));
     this.cine = { kind: 'pod', pos: G.fx.swarmCenter, at: this.time }; this.call('DOROTHY IS FLYING', 'good', 1.6);
     G.fx.flashAt(_a.x, _a.y, _a.z, 12, PALETTE.signal, 0.3); G.fx.launchSwarm(_a, s, FEEL.dorothySeconds, () => {
       this.cine = null; this.sawCine('dorothy'); this.skipped = false; if (this.phase !== 'dorothy') return; this.note("CORE CRITICAL: SPARKS' ROCKET");
@@ -232,7 +234,7 @@ export class Mission {
     if (this.dist > FEEL.rocketRange) { this.call('OUT OF RANGE', 'warn', 0.7); return false; }
     this.reload = FEEL.rocketReload; G.audio.rocket(); G.fx.shake(4); this.rec.kill.push(this.killT >= this.p.kill / 2 ? 'g' : 'y');
     this.seatMuzzle(_a); G.fx.flashAt(_a.x, _a.y, _a.z, 7, '#ffb14a', 0.12); G.fx.puff(_a.x, _a.y, _a.z, 5, '#e9e2cc', 0.5, 2);
-    const rk = G.fx.rocket(_a.clone(), (out) => this.aimPoint(out), FEEL.rocketSpeed * 0.7, (pt) => { this.cine = null; this.sawCine('kill'); this.skipped = false; this.rocketHit(pt); });
+    const rk = G.fx.rocket(_a.clone(), (out) => this.aimPoint(out), FEEL.rocketSpeed * 0.7, (pt) => { this.cine = null; this.sawCine('kill'); this.skipped = false; this.impact = pt.clone(); this.rocketHit(pt); }); // impact: where the camera watches it die (2.24)
     if (rk) { this.cine = { kind: 'rocket', pos: rk.p, at: this.time }; G.fx.slowMo(0.5); r.immune = Math.max(r.immune, 1.5); }
     return true;
   }

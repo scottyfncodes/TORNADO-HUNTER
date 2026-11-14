@@ -55,6 +55,7 @@ export const FEEL = {
   shotgunRange: 22,           // m
   shotgunReload: 4,         // s
   staggerSeconds: 7,          // s the core stays exposed after the shield breaks: land the harpoon
+  deathShot: 2.8, deathStandOff: 46, // 2.24: s the camera holds on the storm as it dies, and how near (m) the rocket camera rides to its heart
   hookSeconds: 15,            // s the line holds a hooked storm: time to drive Doc's bus to its foot and set DOROTHY down
   hookedSpeed: 0.04,          // share of its speed a hooked storm keeps: the anchor creeps at this, the lunges are on top (TETHER)
   dropMargin: 17,             // m outside the funnel's wall where DOROTHY is set down
