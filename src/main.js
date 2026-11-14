@@ -52,7 +52,7 @@ window.addEventListener('resize', resize); window.addEventListener('orientationc
 // ---- game api used by the menus and the mission ----
 G.makeRig = () => {
   const s = save.s, def = RIGS.find((r) => r.id === s.loadout.rig) || RIGS[0], sparks = s.loadout.crew.includes('sparks');
-  return new Rig(scene, def, G.sky.envMap, { hull: 1 + s.upgrades.plating * 0.2, boost: 1 + s.upgrades.turbo * 0.15, recharge: (1 + s.upgrades.turbo * 0.15) * (sparks ? 1.35 : 1), glow: G.fx.dustTex });
+  return new Rig(scene, def, G.sky.stormEnv || G.sky.envMap, { low: !!G.low, hull: 1 + s.upgrades.plating * 0.2, boost: 1 + s.upgrades.turbo * 0.15, recharge: (1 + s.upgrades.turbo * 0.15) * (sparks ? 1.35 : 1), glow: G.fx.dustTex });
 };
 G.kickFov = () => { G.fovKick = 10; };
 G.onScreen = (name) => { G.state = name === 'results' ? 'over' : name; input.setEnabled(false); input.setMode('drive'); document.body.classList.remove('playing'); G.hud.show(false); };
