@@ -108,7 +108,8 @@ export class Hud {
     // whose seat: your own speed while the truck drives itself, or the crew member and the vehicle you are sitting on
     this.set('seat', SEAT[g.seatId] || '', (v) => { $('rig-mph').hidden = !!v; $('mph-lbl').textContent = v || 'mph · auto'; });
     // reticle: cream at rest, amber on something you can hurt, magenta on the seam (or a lock), dim when out of range
-    const can = m.canFire, reach = a.kind === 'haz' || a.kind === 'sat' || (a.kind === 'core' && can) || ((a.kind === 'band' || a.kind === 'hide') && m.inZone);
+    // in a finale seat the launcher can only ever be fired at the core: a satellite or a piece of wreckage under its sights is not a target
+    const can = m.canFire, reach = kill ? a.kind === 'core' && can : a.kind === 'haz' || a.kind === 'sat' || ((a.kind === 'band' || a.kind === 'hide') && m.inZone);
     this.set('aim', !a.kind ? '' : !reach ? 'far' : g.locked || (a.crit && !rk) ? 'hot' : 'on', (v) => { this.ret.classList.toggle('on', v === 'on'); this.ret.classList.toggle('hot', v === 'hot'); this.ret.classList.toggle('far', v === 'far'); });
     this.set('lock', locks ? Math.round(Math.min(1, g.lockT / FEEL.rocketLockSeconds) * 12) : 0, (v) => { this.ret.style.setProperty('--lock', v / 12); });
     const note = g.noteT > 0 ? g.note : g.locked ? 'LOCKED' : locks && g.lock ? 'LOCKING' : kill && !can && a.kind === 'core' ? 'CLOSING IN' : '';
