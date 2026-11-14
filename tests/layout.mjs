@@ -21,6 +21,9 @@ const ok = (cond, msg) => { checks++; if (!cond) { fails.push(msg); console.log(
 // each state: a name, and a function run in the page that puts the game there (and returns once it is)
 export const STATES = {
   title: async () => { const G = window.__G; if (G.mission) G.toHQ(); G.ui.show('title'); },
+  // headquarters (2.13): the rigs with their gun reach in the blurbs, and the crew with two leading and the refusal line up
+  'hq-rig': async () => { const G = window.__G; if (G.mission) G.toHQ(); G.save.s.kills.agnes = G.save.s.kills.agnes || 1; G.ui.tab = 'rig'; G.ui.show('hq'); },
+  'hq-crew': async () => { const G = window.__G; if (G.mission) G.toHQ(); G.save.s.loadout.crew = ['doc', 'winch']; G.ui.tab = 'crew'; G.ui.show('hq'); },
   pause: async () => { // the pause menu, the Sound button on its longest setting
     const G = window.__G, { STORMS } = await import('/src/config.js'); G.startMission(STORMS[0]); for (let i = 0; i < 10; i++) await new Promise((r) => requestAnimationFrame(r));
     G.setPaused(true); const b = document.getElementById('p-sound'); for (let i = 0; i < 3 && b.textContent !== 'Sound on, music off'; i++) b.click();

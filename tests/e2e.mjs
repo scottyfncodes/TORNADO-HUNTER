@@ -24,7 +24,7 @@ async function finale(page, { id, seed, driver, scenario = 'full' }) {
   return page.evaluate(async ({ id, seed, driver, scenario }) => {
     const { STORMS, FEEL, TETHER } = await import('/src/config.js');
     const G = window.__G, def = STORMS.find((s) => s.id === id);
-    G.tetherSeed = seed; G.startMission(def); G.fast = 6;
+    const bank0 = G.save.s.data; G.tetherSeed = seed; G.startMission(def); G.fast = 6;
     const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
     const until = async (cond, secs, what) => { const t0 = G.mission.time; while (!cond()) { if (G.mission.time - t0 > secs) throw new Error(`timed out (${secs} s of game time): ${what}`); await frame(); } };
     const m = G.mission, s = m.storm, log = { id, seed, driver, scenario, hits: [], lunges: [], windups: [], maxOff: 0, maxStep: 0, radius: 0, teleShown: 0, threatened: 0 };
@@ -83,6 +83,12 @@ async function finale(page, { id, seed, driver, scenario = 'full' }) {
       log.killSeat = m.gn.seatId; log.killTether = !!m.tether;
       await until(() => { if (m.phase === 'kill' && m.reload <= 0) m.killShot(); return !!m.result; }, 15, 'the kill shot');
       log.result = { won: m.result.won, reason: m.result.reason, phase: m.phase, tug: s.tug, tether: m.tether };
+      // the data: every band's shards, the last one's included, banked once; the HUD, the results screen and the save agree
+      const atEnd = m.result.data; G.fast = 6; await until(() => G.resultShown, 15, 'the results screen');
+      for (let i = 0; i < 30; i++) await frame(); // every shard has landed by now
+      const banked = G.save.s.data - bank0; m.end(true, 'again'); m.ripBand(); m.earn(50); for (let i = 0; i < 10; i++) await frame(); // completion again, a band again, data again: none of it counts
+      log.data = { atEnd, live: Math.round(m.data), hud: +document.getElementById('hud-data').textContent, shown: document.querySelector('#res-tally dd.total').textContent, banked, after: G.save.s.data - bank0, owed: m.owed,
+        floor: Math.round((s.bands.length + 1) * def.pay * m.p.dataMul) }; // every band's pay and the win's: the least a won fight banks
       return log;
     } finally { G.input.axes = axes0; }
   }, { id, seed, driver, scenario });
@@ -131,6 +137,10 @@ try {
       ok(L.deploy && L.dorothy && L.swarm && L.cine, `${tag}: DEPLOY did not send the swarm`);
       ok(L.killSeat === 'rocket' && L.killTether, `${tag}: the kill shot was not on Sparks' truck with the storm still on the line`);
       ok(L.result && L.result.won && L.result.reason === 'destroyed' && !L.result.tug && !L.result.tether, `${tag}: no victory`);
+      const D = L.data || {};
+      ok(D.atEnd === D.live && D.hud === D.atEnd && D.shown === '+' + D.atEnd && D.banked === D.atEnd && D.owed === 0, `${tag}: the data does not agree: result ${D.atEnd}, after the shards ${D.live}, HUD ${D.hud}, results ${D.shown}, banked ${D.banked}`);
+      ok(D.atEnd >= D.floor, `${tag}: ${D.atEnd} data banked, less than the bands and the win pay (${D.floor}): a band's shards went missing`);
+      ok(D.after === D.banked, `${tag}: a second completion paid again (${D.banked} then ${D.after})`);
       if (driver === 'attentive') ok(lungeHits.length === 0, `${tag}: an attentive driver was bitten by a telegraphed lunge ${JSON.stringify(lungeHits)}`);
     }
     // the line runs out with nobody coming: the storm is let go, as before

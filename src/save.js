@@ -30,6 +30,22 @@ export function migrate(raw) {
   try { const old = typeof raw === 'string' ? JSON.parse(raw) : raw; if (!old || typeof old !== 'object' || Array.isArray(old)) return FRESH(); return merge(FRESH(), old); } catch { return FRESH(); }
 }
 
+// ---- the crew who lead: at most two, each once, only ones that exist. Pure, for the headquarters and tests/progress.test.mjs ----
+export const CREW_LEADS = 2;
+// a stored list as it may be (any build's save, or a damaged one) to a valid one: unknown and repeated names dropped, at most two kept
+export function crewOf(list, known) {
+  if (!Array.isArray(list)) return FRESH().loadout.crew.slice();
+  const out = []; for (const id of list) if (known.includes(id) && !out.includes(id) && out.length < CREW_LEADS) out.push(id);
+  return out;
+}
+// a tap on a crew card: a leader stands down, anyone else steps up if there is room. Never a silent swap: with two leading,
+// someone else is refused (`full`) until the player stands one down
+export function tapCrew(list, id) {
+  if (list.includes(id)) return { crew: list.filter((x) => x !== id), full: false };
+  if (list.length >= CREW_LEADS) return { crew: list, full: true };
+  return { crew: [...list, id], full: false };
+}
+
 let state = FRESH();
 let storage = null;
 try { storage = window.localStorage; storage.getItem(KEY); } catch { storage = null; }

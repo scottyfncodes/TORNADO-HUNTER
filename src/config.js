@@ -95,7 +95,7 @@ export const FEEL = {
   gunGuard: 0.3,              // s after a seat change before any press counts: no accidental shot, boost or seat change
   gunStormDps: 17,            // storm strength per second of hits on the band
   gunCrit: 2.2,               // a hit on the seam (storm) or dead centre (wreckage)
-  gunWreckRange: 250,         // m: wreckage can be engaged as soon as it leaves the funnel
+  gunWreckRange: 250,         // m: wreckage can be engaged as soon as it leaves the funnel. Times the rig's gun range (RIGS[].gun.range): the Bulldog 212, the Whippet 325 (all 250 until 2.13, when only the crew's cover used the range)
   gunSatMul: 0.1,             // bullets barely mark a satellite twister: that is a rocket's job
   wreckHp: 45, wreckHpBig: 80, // what it takes to shoot a bale, or a tractor, out of the air (a tractor was 170 until 2.11: 2.8 s of perfect fire against 1.9 s in the air, so with the rack empty armour was a hit you could do nothing about)
   crewGunShare: 0.75,         // the crew covering you at the wheel shoot at three quarters of the rate you do
@@ -130,7 +130,7 @@ export const GRADE = {
   par: { pete: 45, agnes: 78, sisters: 80 }, // s: full marks for time at par (a clean fight by a gunner who never misses), none at timeZero times par. (40, 72, 75 until 2.11: measured on a test clock that ran wreckage ahead of the truck; no played fight reached them)
   timeZero: 3,                              // (2.2 until 2.11: a 90-second first win of Skinny Pete scored nothing for time)
   accZero: 0.2, accFull: 0.85,              // share of turret rounds that hit something you can hurt (nothing below 0.3 until 2.11)
-  crits: { pete: 170, agnes: 360, sisters: 275 }, // critical hits for full marks
+  crit: { pete: 0.5, agnes: 0.5, sisters: 0.5 }, // CALIBRATE
   close: 5,                                 // near misses for full marks (8 until 2.11: a near miss is a dodge at the wheel, and most of a fight is on the gun)
   letters: [['S', 90], ['A', 75], ['B', 55], ['C', 25], ['D', 0]], // (B from 60 and C from 45 until 2.11)
   share: { accGood: 0.75, accOk: 0.45, hullOk: 25 }, // the share text's squares: the turret's accuracy on a band, hull lost at the wheel
@@ -246,13 +246,13 @@ export const STORMS = [
 ];
 
 export const RIGS = [
-  { id: 'mule', name: 'The Mule', blurb: 'A lifted farm pickup with a machine gun and a harpoon. Balanced.', price: 0,
+  { id: 'mule', name: 'The Mule', blurb: 'A lifted farm pickup with a machine gun. Balanced: the reach and the punch the other guns are measured against.', price: 0,
     gun: { name: 'Machine gun', dps: 1, range: 1, every: 0.085, sound: 'mg' },
     speed: 1.0, accel: 1.0, turn: 1.0, hull: 1.0, resist: 1.0, boost: 1.0, body: '#e0662b', trim: '#f3ecd8', len: 4.8, wid: 2.2, hgt: 1.1 },
-  { id: 'bulldog', name: 'Bulldog', blurb: 'An armoured wedge with a minigun: brutal up close, short reach. Most hull, turns like a barn.', price: 260, needs: 'agnes',
+  { id: 'bulldog', name: 'Bulldog', blurb: 'An armoured wedge with a minigun: 35% more damage, but it reaches wreckage 15% less far. Most hull, shrugs off the wind, turns like a barn.', price: 260, needs: 'agnes',
     gun: { name: 'Minigun', dps: 1.35, range: 0.85, every: 0.045, sound: 'minigun' },
     speed: 0.9, accel: 0.85, turn: 0.82, hull: 1.6, resist: 0.55, boost: 0.9, body: '#4f6b54', trim: '#ffc531', len: 5.4, wid: 2.6, hgt: 1.5 },
-  { id: 'whippet', name: 'Whippet', blurb: 'A stripped prerunner with an autocannon: slow, heavy shots from long range. Fastest, made of paper.', price: 320, needs: 'sisters',
+  { id: 'whippet', name: 'Whippet', blurb: 'A stripped prerunner with an autocannon: slow, heavy shots that reach wreckage 30% further, for 10% less damage. Fastest, made of paper.', price: 320, needs: 'sisters',
     gun: { name: 'Autocannon', dps: 0.9, range: 1.3, every: 0.2, sound: 'cannon' },
     speed: 1.13, accel: 1.25, turn: 1.2, hull: 0.7, resist: 1.25, boost: 1.35, body: '#2f8f9a', trim: '#f3ecd8', len: 4.2, wid: 2.0, hgt: 0.8 },
 ];

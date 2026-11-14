@@ -156,7 +156,7 @@ export class Gunner {
     const m = this.m, s = m.storm; let best = 1e9; out.kind = null; out.ref = null; out.crit = false;
     for (const z of m.hz) {
       if (!z || z.state === 'gone') continue; const h = z.h, vx = h.x - o.x, vy = h.y - o.y, vz = h.z - o.z, t = vx * d.x + vy * d.y + vz * d.z;
-      if (t < 3 || t > FEEL.gunWreckRange || t > best) continue;
+      if (t < 3 || t > m.p.wreckRange || t > best) continue; // each rig's gun reaches wreckage its own distance
       const d2 = vx * vx + vy * vy + vz * vz - t * t, R = Math.max(z.big ? 3.6 : 2.8, t * 0.028) * assist;
       if (d2 < R * R) { best = t; out.kind = 'haz'; out.ref = z; out.crit = d2 < R * R * 0.18; }
     }
