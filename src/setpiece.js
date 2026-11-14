@@ -13,7 +13,7 @@
 //   A pole is lighter than a bin: less hull, less speed lost over a downed one. Everything else is the elevator's.
 // Numbers: SETPIECE and POWERLINES in config.js. Tested by tests/e2e.mjs (it triggers, it telegraphs, the escape line is clean).
 import * as THREE from '../vendor/three.module.min.js';
-import { PALETTE, WORLD, SETPIECE as SP, POWERLINES as PL } from './config.js';
+import { FEEL, PALETTE, WORLD, SETPIECE as SP, POWERLINES as PL } from './config.js';
 import { box, cyl, prism, merge } from './geo.js';
 import { HWD, hwDist, gridDist } from './world.js';
 
@@ -175,7 +175,7 @@ export class SetPiece {
         } else this.rubble(p, P, dt);
       }
       if (lines) this.string();
-      if (all && !this.finished) { this.finished = true; this.doneT = 0; if (!this.hit) { r.addBoost(K.give); m.earn(5); m.call('CLEAN ESCAPE', 'good', 0.9); } this.state = 'done'; }
+      if (all && !this.finished) { this.finished = true; this.doneT = 0; if (!this.hit) { r.addBoost(K.give); m.earn(5); m.call('CLEAN ESCAPE', 'good', 0.9); m.attackT = Math.max(m.attackT, FEEL.calloutRead); } this.state = 'done'; }
     }
   }
   drop(sp = 60) {
