@@ -51,7 +51,7 @@ export class Mission {
     // wreckRange: how far out your turret reaches wreckage (the rig's gun); mgRange: the crew's cover at the wheel
     Object.assign(this.p, { wreckRange: FEEL.gunWreckRange * gun.range, mgRange: FEEL.mgRange * gun.range * gk, mgDps: FEEL.mgDebrisDps * gun.dps * gk, gunStorm: FEEL.gunStormDps * gun.dps * gk * (1 + up.cable * 0.1) });
     this.rig.place(rx, rz, hd, w); this.rig.vx = fx * 40; this.rig.vz = fz * 40; this.rig.speed = 40;
-    this.convoy = new Convoy(G.scene, w, G.fx.dustTex); this.convoy.place(this.rig);
+    this.convoy = new Convoy(G.scene, w, G.fx.dustTex, G.sky.stormEnv || G.sky.envMap, !!G.low); this.convoy.place(this.rig);
     this.phase = 'chase'; this.time = 0; this.phaseT = 0; this.stage = 0; this.data = 0; this.dataShown = 0; this.owed = 0; this.result = null; // owed: band data on its way to the truck as shards, before the multiplier
     this.view = 'drive'; this.zoneLatch = false; this.autoHold = 0; this.inZone = false; this.killT = 0; this.cine = null; this.podBusy = false; this.harpoonBusy = false; this.reload = 0; this.shotgunCd = 0; this.mgT = 0; this.firing = 0;
     this.staggerT = 0; this.hookT = 0; this.tether = null; this.tetherSeed = 0; this.mercyT = 0; this.taughtLunge = false; this.home = null; this.busUnit = null; this.dropped = false; this.line = null; this.surge = null; this.wind = null; this.windWait = 0; this.hz = []; this.sats = []; this.attackT = 3.2;
