@@ -58,7 +58,7 @@ G.kickFov = () => { G.fovKick = 10; };
 G.onScreen = (name) => { G.state = name === 'results' ? 'over' : name; input.setEnabled(false); input.setMode('drive'); document.body.classList.remove('playing'); G.hud.show(false); };
 G.startMission = (def, opts = {}) => {
   abandon(); if (G.mission) G.mission.dispose(); if (G.attract) { G.attract.dispose(); G.attract = null; }
-  G.world.reset(); G.fx.reset(); G.lastOpts = { def, opts }; input.setMode('drive'); view.name = 'drive'; view.t = 1;
+  G.world.reset(); G.fx.reset(); G.lastOpts = { def, opts }; G.runN = (G.runN || 0) + 1; input.setMode('drive'); view.name = 'drive'; view.t = 1;
   G.mission = new Mission(G, def, save.s.loadout, save.s.upgrades, opts); G.weather.begin(G.mission);
   G.ui.hide(); G.hud.show(true); G.hud.begin(G.mission); G.state = 'playing'; G.paused = false; G.banked = false; G.resultShown = false;
   document.body.classList.add('playing'); input.clear(); input.setEnabled(true); camState.init = false; audio.suspend(false); document.activeElement && document.activeElement.blur && document.activeElement.blur();
@@ -80,6 +80,12 @@ G.setPaused = (on) => {
   if (on) { G.ui.syncPause(G.mission); G.ui.screens.pause.hidden = false; if (!input.usingTouch) $('p-resume').focus({ preventScroll: true }); } else { G.ui.screens.pause.hidden = true; input.clear(); document.activeElement && document.activeElement.blur && document.activeElement.blur(); }
   audio.suspend(on);
 };
+// the fight as the music hears it (score.js sectionOf, intensityOf): which part of the score, and how hard to push
+function scoreState(m) {
+  const last = (left, span) => THREE.MathUtils.clamp(1 - left / span, 0, 1); // 0 until the last `span` seconds of a window, 1 as it closes
+  return { scene: G.resultShown ? 'results' : 'mission', run: G.runN, storm: m.def.id, phase: m.phase, view: m.view, inZone: m.inZone, cine: m.cine ? m.cine.kind : null, stage: m.stage, hull: m.rig.hull / m.rig.hullMax,
+    threat: m.view === 'gun' && !!G.hud.hotOn, urgency: m.phase === 'stagger' ? last(m.staggerT, 3) : m.phase === 'kill' ? last(m.killT, 3) : m.phase === 'rip' ? last(m.hookT, 5) : 0, won: m.result ? m.result.won : null };
+}
 function spawnAttract() {
   if (G.attract) return; const t = TOWNS.pete; G.world.reset();
   G.attract = new Storm(scene, G.sky.uniforms, STORMS[0], G.world, { low: !!G.low }); G.attract.place(t.x + 420, t.z + 360);
@@ -198,7 +204,8 @@ function frame(now) {
     storm = m.storm; prox = THREE.MathUtils.clamp(1 - (m.dist - 40) / 500, 0, 1); stormLevel = m.phase === 'won' ? 0 : 1;
     viewCamera(dtBase, m);
     if (!G.paused) G.hud.update(dtBase, m, camera, input.usingTouch, fx.calm);
-    audio.beds({ prox: storm.alive ? prox : 0, storm: G.sky.storm, speed: Math.min(1.4, m.rig.speedFrac), throttle: Math.abs(m.rig.throttle), tension: m.line ? 0.6 : null, playing: !G.paused && !m.result, drift: m.rig.drifting ? 1 : Math.min(1, Math.abs(m.rig.slip || 0) / 14), boost: m.rig.boostT > 0, hail: G.weather.hail });
+    audio.beds({ prox: storm.alive ? prox : 0, storm: G.sky.storm, speed: Math.min(1.4, m.rig.speedFrac), throttle: Math.abs(m.rig.throttle), tension: m.line ? 0.6 : null, playing: !G.paused && !m.result, drift: m.rig.drifting ? 1 : Math.min(1, Math.abs(m.rig.slip || 0) / 14), boost: m.rig.boostT > 0, hail: G.weather.hail, hull: m.rig.hull / m.rig.hullMax });
+    audio.score(scoreState(m));
     if (m.result && !G.banked) { G.banked = true; G.unlockText = bank(m.result); input.setEnabled(false); document.body.classList.remove('playing'); }
     if (m.result && !G.resultShown && m.phaseT > (m.result.won ? 4.8 : 1.8)) { G.resultShown = true; G.hud.show(false); G.ui.results(m.result, G.unlockText); }
     const g = window.__game; g.state = m.result ? 'over' : 'playing'; g.score = Math.round(m.data); g.data = g.score; g.time = +m.time.toFixed(2); g.phase = m.phase; g.hull = Math.round(m.rig.hull); g.stability = +m.stability.toFixed(3); g.stage = m.stage; g.bands = storm.bandsLeft; g.dist = Math.round(m.dist); g.speed = +Math.hypot(m.rig.vx, m.rig.vz).toFixed(1); g.mph = m.rig.mph; g.stormMph = m.stormMph; g.inZone = !!m.inZone; g.cine = !!m.cine; g.boost = +m.rig.boostCharge.toFixed(2); g.shot = m.stats.shot; g.close = m.stats.close; g.view = m.view; g.seat = m.gn.seatId; g.weapon = m.gn.weapon; g.rockets = m.gn.rockets; g.crits = m.stats.crits; g.locked = m.gn.locked; g.aim = m.gn.aim.kind; g.hail = +G.weather.hail.toFixed(2); g.x = Math.round(m.rig.x); g.z = Math.round(m.rig.z);
@@ -206,7 +213,7 @@ function frame(now) {
   } else if (G.attract) {
     const s = G.attract, t = TOWNS.pete, a = simT * 0.05; s.moveX = Math.cos(a); s.moveZ = Math.sin(a); s.moveSpeed = 9; if (dt > 0) { s.update(dt, simT); G.world.update(dt, s); G.world.events.length = 0; }
     if (Math.hypot(s.x - t.x, s.z - t.z) > 700) s.place(t.x + 420, t.z + 360);
-    storm = s; prox = 0.35; attractCamera(dtBase, simT); audio.beds({ prox: 0.12, storm: 1 });
+    storm = s; prox = 0.35; attractCamera(dtBase, simT); audio.beds({ prox: 0.12, storm: 1 }); audio.score({ scene: 'title', run: 0 });
     const g = window.__game; g.state = G.state === 'over' ? 'over' : 'title'; g.phase = G.state;
   }
   if (dt > 0) fx.update(dt, simT);
@@ -228,10 +235,10 @@ async function boot() {
   G.hud = new Hud(); G.fx.flashCb = (s, c) => G.hud.flash(s, c); G.fx.calm = save.s.settings.calm || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   G.hud.onReady = () => audio.ready_();
   input.init({ view: canvas, zone: $('stick-zone'), aim: $('aim-zone'), base: $('stick-base'), nub: $('stick-nub'), action: $('btn-action'), boost: $('btn-boost'), fire: $('btn-fire'), swap: $('btn-swap'), drive: $('btn-drive') });
-  audio.setMuted(save.s.settings.mute);
+  audio.setMuted(save.s.settings.mute); audio.setMusic(save.s.settings.music);
   G.ui = new UI(G); spawnAttract(); G.ui.show('title');
   window.addEventListener('pointerdown', () => audio.unlock(), { once: false, passive: true });
-  document.addEventListener('visibilitychange', () => { if (document.hidden && G.state === 'playing' && !G.paused && !G.mission.result) G.setPaused(true); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && G.state === 'playing' && !G.paused && !G.mission.result) G.setPaused(true); else if (!G.paused) audio.suspend(document.hidden); }); // nothing plays to a hidden tab: a fight pauses, a menu goes quiet
   try { await document.fonts.ready; } catch { /* fonts are a nicety */ }
   prog(1); $('loading').hidden = true;
   last = performance.now(); requestAnimationFrame(frame);

@@ -249,7 +249,7 @@ export class Gunner {
   // the marker on the reticle, the sound in your ear, the bar under the sights
   feedback(kind, label, frac, what) {
     const G = this.G; G.hud.hit(kind); G.hud.target(label, frac, what);
-    if (kind === 'kill') G.audio.kill(); else if (this.hitT <= 0) { this.hitT = 0.055; if (kind === 'crit') G.audio.crit(); else if (kind === 'weak' || kind === 'far') G.audio.plink(); else G.audio.hit(what === 'band'); }
+    if (kind === 'kill') G.audio.kill(); else if (this.hitT <= 0) { this.hitT = 0.055; if (kind === 'crit') { const t = this.m.time; if (t - (this.critAt || -9) > 0.4) this.critFrom = t; this.critAt = t; G.audio.crit(Math.floor((t - this.critFrom) / 0.5)); } else if (kind === 'weak' || kind === 'far') G.audio.plink(); else G.audio.hit(what === 'band'); }
   }
 
   fireRocket() {

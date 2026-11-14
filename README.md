@@ -37,10 +37,11 @@ Then open `http://localhost:8000`. Any static host works.
 Tests (Node 22, no dependencies; the browser test uses Playwright with Chromium):
 
 ```
-node --test tests/*.test.mjs   # the tether, the handling, saves (a real v1 save), grades and the Daily Storm
+node --test tests/*.test.mjs   # the tether, the handling, saves (a real v1 save), grades, the Daily Storm and the score
 node tests/e2e.mjs             # the finale on every storm; seat reasons; skipping cinematics; turret fairness; the Daily Storm; a v1 save loaded cold
 node tests/firstminute.mjs     # the first 60 s of every storm, every beat timed, every callout checked (AUDIT=1 for the timeline)
 node tests/layout.mjs          # 44 px targets, 12 px text, no overlaps at 667x375, 844x390, 390x844 (SHOTS=dir to save them)
+node tests/audio.mjs           # the music: rendered offline for a whole fight and measured, then followed through a played one (OUT=dir saves WAVs)
 node tests/perf.mjs            # the low-detail tier holds its frame rate through both set pieces
 node tests/driving.probe.mjs   # what the handling numbers mean: corners, drifts, the cost of a tree
 node tests/fullfight.mjs       # whole fights by the test aimer at three skills: what the grade sees (GRADE is calibrated from it)
@@ -61,6 +62,9 @@ node tests/fullfight.mjs       # whole fights by the test aimer at three skills:
 | `tests/` | The tether and the handling under Node; the finale, the first minute and the layout in a browser |
 | `src/gunner.js` | The turret: first-person aim, hits and criticals, rockets and lock-on, autodrive, the weapon you see |
 | `src/weather.js` | Hail cores and ambient lightning |
+| `src/audio.js` | Every sound, synthesised: beds, guns, explosions, the pings and stings |
+| `src/score.js` | The score: one theme, each storm's key and tempo, which part of it the fight is in |
+| `src/music.js` | The band: plays the score on the audio clock |
 | `src/tornado.js` | The funnel, its bands and debris (shaders) |
 | `src/world.js` | Terrain, the baked ground texture, towns, farms and props |
 | `src/rig.js` | The vehicle and its arcade handling |
@@ -72,6 +76,8 @@ node tests/fullfight.mjs       # whole fights by the test aimer at three skills:
 | `fonts/` | Alfa Slab One and Barlow Semi Condensed (SIL OFL 1.1) |
 
 **After every fight:** a grade (S to D) from time, hull, accuracy, crits and near misses, the best one per storm kept, and one line on what would have raised it.
+
+**Music:** a synthesised score that follows the fight, with its own switch (pause menu: Sound on / Sound on, music off / Sound off).
 
 **The Daily Storm:** one storm a day for everyone (the date in Denver picks it and seeds it), one scored run plus unlimited practice, a streak on the title, and a spoiler-free result to share.
 

@@ -1,5 +1,13 @@
 // All sound is synthesised with Web Audio: nothing to download, works offline, unlocks on the first tap.
-let ctx = null, master = null, muted = false;
+// The music is score.js (what to play) and music.js (the band); this file is everything else, and the switch for both.
+import { Music } from './music.js';
+import { THEMES, mtof } from './score.js';
+
+let ctx = null, master = null, muted = false, music = null, musicOn = true, heartAt = 0, key = THEMES.pete.root;
+const STREAK = [0, 3, 5, 7, 10, 12]; // a run of critical hits climbs the minor pentatonic of the storm's key
+// the storm's key note, in the octave nearest `hz`: the pings and rings are tuned to the band
+const inKey = (hz, up = 0) => { let f = mtof(key + up); while (f < hz / 1.4142) f *= 2; while (f >= hz * 1.4142) f /= 2; return f; };
+const duck = (k, hold) => { if (music) music.duck(k, hold); };
 let wind, roar, rain, engine, cable, skid, rush, hail;
 let noiseBuf = null;
 
@@ -48,15 +56,23 @@ export const audio = {
     o1.type = 'sawtooth'; o2.type = 'square'; o1.frequency.value = 55; o2.frequency.value = 27.5; ef.type = 'lowpass'; ef.frequency.value = 400; eg.gain.value = 0;
     o1.connect(ef); o2.connect(ef); ef.connect(eg).connect(master); o1.start(); o2.start(); engine = { o1, o2, ef, g: eg };
     const co = ctx.createOscillator(), cg = ctx.createGain(); co.type = 'triangle'; co.frequency.value = 110; cg.gain.value = 0; co.connect(cg).connect(master); co.start(); cable = { o: co, g: cg };
+    music = new Music(ctx, master); music.setOn(musicOn);
   },
+  // the music: a switch of its own (Sound: no music), and the fight as main.js reads it, every frame
+  get musicOn() { return musicOn; },
+  setMusic(on) { musicOn = on; if (music) music.setOn(on); },
+  score(st) { if (st.storm && THEMES[st.storm]) key = THEMES[st.storm].root; if (music && ctx.state === 'running') music.update(st); },
+  musicState() { return music ? music.state() : null; },
   setMuted(m) { muted = m; if (master) master.gain.setTargetAtTime(m ? 0 : 0.8, ctx.currentTime, 0.05); },
   suspend(on) { if (ctx) { if (on) ctx.suspend(); else ctx.resume(); } },
   // continuous beds, set every frame. prox 0..1 (near the funnel), storm 0..1, speed 0..1, throttle 0..1, tension <0 slack .. >1 over
-  beds({ prox = 0, storm = 0, speed = 0, throttle = 0, tension = null, playing = false, drift = 0, boost = false, hail: ice = 0 }) {
+  beds({ prox = 0, storm = 0, speed = 0, throttle = 0, tension = null, playing = false, drift = 0, boost = false, hail: ice = 0, hull = 1 }) {
     if (!ctx) return;
     const t = ctx.currentTime, k = 0.12;
-    wind.g.gain.setTargetAtTime(0.04 * storm + 0.2 * prox, t, k); wind.f.frequency.setTargetAtTime(380 + 900 * prox, t, k);
-    roar.g.gain.setTargetAtTime(0.85 * prox * prox, t, k); roar.f.frequency.setTargetAtTime(90 + 160 * prox, t, k);
+    // with the band playing, the wind and the roar give it a little room: the wind sits where the tune does
+    const room = music && musicOn && !muted ? 1 : 0;
+    wind.g.gain.setTargetAtTime((0.04 * storm + 0.2 * prox) * (1 - 0.25 * room), t, k); wind.f.frequency.setTargetAtTime(380 + 900 * prox, t, k);
+    roar.g.gain.setTargetAtTime(0.85 * prox * prox * (1 - 0.15 * room), t, k); roar.f.frequency.setTargetAtTime(90 + 160 * prox, t, k);
     rain.g.gain.setTargetAtTime(0.03 * storm, t, 0.4); hail.g.gain.setTargetAtTime(0.085 * ice, t, 0.3);
     // the engine: pitch tracks speed, opens up on boost; air rushing past is half the feeling of going fast
     engine.g.gain.setTargetAtTime(playing ? 0.03 + 0.045 * throttle + (boost ? 0.03 : 0) : 0, t, 0.08);
@@ -64,6 +80,8 @@ export const audio = {
     engine.ef.frequency.setTargetAtTime(300 + 1500 * speed + (boost ? 900 : 0), t, 0.1);
     rush.g.gain.setTargetAtTime(playing ? 0.1 * speed * speed : 0, t, 0.15); rush.f.frequency.setTargetAtTime(500 + 1300 * speed, t, 0.15);
     skid.g.gain.setTargetAtTime(playing ? 0.07 * drift : 0, t, 0.05);
+    // a hull under 30% has a heartbeat, quicker the less there is
+    if (playing && hull < 0.3 && t >= heartAt) { heartAt = t + 0.55 + 1.5 * Math.max(0, hull); tone('sine', 64, 38, 0.13, 0.5); tone('sine', 58, 36, 0.12, 0.32, 0.17); }
     if (tension === null || tension < 0) cable.g.gain.setTargetAtTime(0, t, 0.05);
     else { cable.g.gain.setTargetAtTime(0.06, t, 0.05); cable.o.frequency.setTargetAtTime(160 + 520 * Math.min(1, tension), t, 0.05); }
   },
@@ -86,22 +104,25 @@ export const audio = {
   },
   lineSnap() { burst('highpass', 3000, 1, 0.08, 0.6); tone('sawtooth', 900, 80, 0.3, 0.2); },
   boost() { burst('bandpass', 400, 1.5, 0.7, 0.35, 2600); },
-  thunder(vol = 0.9) { burst('lowpass', 2400, 0.4, 0.08, vol); burst('lowpass', 500, 0.3, 2.2, vol * 0.9, 50, 0.04); },
+  thunder(vol = 0.9) { duck(0.5, 0.35); burst('lowpass', 2400, 0.4, 0.08, vol); burst('lowpass', 500, 0.3, 2.2, vol * 0.9, 50, 0.04); },
   // a strike somewhere else: it arrives `delay` seconds after the flash, and the further off it was the less crack and the more roll
   thunderFar(vol, delay, far) { if (far < 0.55) burst('lowpass', 1800 - 1400 * far, 0.4, 0.07, vol * (1 - far), 0, delay); burst('lowpass', 420 - 220 * far, 0.3, 2 + 2.4 * far, vol * 0.85, 45, delay + 0.03); burst('lowpass', 160, 0.2, 1.6 + 2 * far, vol * 0.5, 40, delay + 0.5 + far); },
   hailTick() { tone('sine', 2600 + Math.random() * 1800, 1400, 0.035, 0.05); burst('highpass', 5200, 0.8, 0.02, 0.12); },
   whistle(dur = 0.9) { tone('sine', 1500, 500, dur, 0.06); },
   impact() { burst('lowpass', 300, 0.6, 0.35, 0.9, 60); },
-  hurt() { burst('lowpass', 900, 0.8, 0.3, 0.9, 100); tone('square', 110, 55, 0.25, 0.2); },
+  hurt() { duck(0.3, 0.5); burst('lowpass', 900, 0.8, 0.3, 0.9, 100); tone('square', 110, 55, 0.25, 0.2); },
   smash() { burst('bandpass', 1400, 0.8, 0.14, 0.3, 500); },
-  bandSnap() { this.thunder(1); tone('sawtooth', 110, 440, 0.6, 0.18, 0.1); tone('triangle', 220, 880, 0.7, 0.14, 0.12); },
+  bandSnap() { duck(0.25, 0.7); this.thunder(1); tone('sawtooth', 110, 440, 0.6, 0.18, 0.1); tone('triangle', 220, 880, 0.7, 0.14, 0.12); },
   pickup(i = 0) { tone('sine', 660 * Math.pow(1.122, i % 8), 660 * Math.pow(1.122, i % 8), 0.12, 0.09); },
   thump() { tone('sine', 140, 30, 0.6, 0.9); burst('lowpass', 800, 0.5, 0.4, 0.5, 80); },
   stake() { burst('bandpass', 500, 3, 0.1, 0.5); tone('square', 80, 60, 0.15, 0.2); },
   warn() { tone('square', 740, 740, 0.09, 0.07); tone('square', 740, 740, 0.09, 0.07, 0.16); },
   // what a hit sounds like: a tick when it lands, a bright ring when it lands where it hurts, a crunch when the thing comes apart
   hit(deep) { if (deep) { burst('bandpass', 420, 2.2, 0.05, 0.3); tone('sine', 190, 120, 0.05, 0.1); } else { burst('highpass', 3200, 1, 0.022, 0.2); tone('square', 1500, 900, 0.03, 0.05); } },
-  crit() { tone('triangle', 1760, 2640, 0.07, 0.13); tone('sine', 3520, 3520, 0.09, 0.05, 0.015); burst('highpass', 4200, 1, 0.03, 0.16); },
+  // n: how many in a row. Riding the seam climbs a scale; coming off it starts again at the bottom
+  crit(n = 0) { const f = inKey(1760, STREAK[Math.min(STREAK.length - 1, n)]); tone('triangle', f, f * 1.5, 0.07, 0.13); tone('sine', f * 2, f * 2, 0.09, 0.05, 0.015); burst('highpass', 4200, 1, 0.03, 0.16); },
+  // a piece that will land on the truck, heard as well as ringed: a ping that comes faster and louder as it closes (k 0..1), lower and doubled for armour
+  incoming(k = 0, big = false) { const f = inKey(big ? 659 : 1319, 7), v = 0.05 + 0.06 * k; tone('triangle', f * 1.18, f, 0.07, v); if (big) tone('triangle', f * 0.89, f * 0.75, 0.07, v, 0.07); }, // the fifth of the key
   plink() { tone('square', 620, 420, 0.03, 0.035); },
   kill() { burst('bandpass', 900, 0.9, 0.16, 0.5, 220); tone('sine', 150, 48, 0.2, 0.3); tone('triangle', 880, 1320, 0.09, 0.1, 0.05); },
   stormCrack(deep) { tone('sawtooth', deep ? 300 : 420, 70, 0.4, 0.14); burst('lowpass', 1200, 0.7, 0.35, 0.45, 110); },
@@ -122,10 +143,20 @@ export const audio = {
   crack() { burst('highpass', 2200, 0.8, 0.09, 0.35); tone('square', 420, 120, 0.09, 0.12); },
   gust() { burst('bandpass', 300, 0.8, 1.2, 0.5, 1400); },
   dorothy() { tone('sine', 880, 1760, 0.18, 0.12); tone('sine', 1320, 2640, 0.22, 0.1, 0.1); tone('sine', 1760, 3520, 0.3, 0.08, 0.2); },
-  stagger() { tone('sawtooth', 520, 90, 0.9, 0.2); burst('lowpass', 900, 0.6, 0.8, 0.6, 80); },
+  stagger() { duck(0.4, 0.5); tone('sawtooth', 520, 90, 0.9, 0.2); burst('lowpass', 900, 0.6, 0.8, 0.6, 80); },
+  // the kill. With the music on, the band plays the win (score.js fanfare) and this adds the meadowlark after the last chord;
+  // without it, the old four notes, so a win is never silent
   win() {
-    [262, 330, 392, 523].forEach((f, i) => tone('triangle', f, f, 1.4, 0.14, 0.35 + i * 0.12));
-    for (let i = 0; i < 5; i++) tone('sine', 2600 + (i % 2) * 500, 3400 + (i % 3) * 300, 0.09, 0.05, 2.2 + i * 0.16); // the meadowlark
+    const band = music && musicOn;
+    if (!band) [262, 330, 392, 523].forEach((f, i) => tone('triangle', f, f, 1.4, 0.14, 0.35 + i * 0.12));
+    for (let i = 0; i < 5; i++) tone('sine', 2600 + (i % 2) * 500, 3400 + (i % 3) * 300, 0.09, 0.05, (band ? 7.6 : 2.2) + i * 0.16); // the meadowlark
   },
-  fail() { tone('sawtooth', 196, 98, 0.9, 0.16); tone('sawtooth', 147, 73, 1.1, 0.12, 0.15); },
+  fail() { if (music && musicOn) return; tone('sawtooth', 196, 98, 0.9, 0.16); tone('sawtooth', 147, 73, 1.1, 0.12, 0.15); },
+  // the letter on the results screen: one note for a C, a chord climbing for an A, the octave on top for an S; a new best rings
+  grade(letter, fresh) {
+    const n = { S: 4, A: 3, B: 2, C: 1, D: 0 }[letter]; if (n === undefined) return; const f = inKey(880); // the major chord on the storm's key note, as the fanfare ended
+    if (n === 0) { tone('triangle', f * 0.63, f * 0.595, 0.3, 0.1, 0.3); return; }
+    [1, 1.26, 1.498, 2].slice(0, n).forEach((r, i) => tone('triangle', f * r, f * r, 0.5, 0.11, 0.3 + i * 0.09));
+    if (fresh) { tone('sine', f * 3, f * 3, 0.7, 0.07, 0.42 + n * 0.09); tone('sine', f * 4, f * 4, 0.9, 0.05, 0.54 + n * 0.09); }
+  },
 };

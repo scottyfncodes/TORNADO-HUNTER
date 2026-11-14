@@ -25,6 +25,7 @@ test('a version 1 save gets every new field at its default', () => {
   assert.deepEqual(s.grades, {});
   assert.deepEqual(s.daily, { day: '', used: false, result: null });
   assert.deepEqual(s.streak, { count: 0, last: '', best: 0 });
+  assert.equal(s.settings.music, true); assert.equal(s.settings.calm, true); // 2.12: the music is on for a save that never heard of it, and its other settings are kept
 });
 test('a migrated save written back and read again is the same save', () => {
   const s = migrate(V1); assert.deepEqual(migrate(JSON.stringify(s)), s);
@@ -34,7 +35,7 @@ test('nothing, rubbish or the wrong shape is a fresh start, never a crash', () =
 });
 test('a save from this build keeps its new fields', () => {
   const s = migrate(V1); s.grades.pete = 'A'; s.streak = { count: 4, last: '2026-11-11', best: 6 }; s.daily = { day: '2026-11-11', used: true, result: { won: true, letter: 'B', time: 80 } };
-  const back = migrate(JSON.stringify(s)); assert.equal(back.grades.pete, 'A'); assert.equal(back.streak.count, 4); assert.equal(back.daily.result.letter, 'B');
+  s.settings.music = false; const back = migrate(JSON.stringify(s)); assert.equal(back.settings.music, false); assert.equal(back.grades.pete, 'A'); assert.equal(back.streak.count, 4); assert.equal(back.daily.result.letter, 'B');
 });
 
 // ---- grades ----
