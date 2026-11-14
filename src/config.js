@@ -96,6 +96,7 @@ export const FEEL = {
   gunStormDps: 17,            // storm strength per second of hits on the band
   gunCrit: 2.2,               // a hit on the seam (storm) or dead centre (wreckage)
   gunWreckRange: 250,         // m: wreckage can be engaged as soon as it leaves the funnel. Times the rig's gun range (RIGS[].gun.range): the Bulldog 212, the Whippet 325 (all 250 until 2.13, when only the crew's cover used the range)
+  hideShare: 0.25,            // a round on the storm's body away from its heart's height: a glancing share of the damage (2.14, when the band became the whole storm)
   gunSatMul: 0.1,             // bullets barely mark a satellite twister: that is a rocket's job
   wreckHp: 45, wreckHpBig: 80, // what it takes to shoot a bale, or a tractor, out of the air (a tractor was 170 until 2.11: 2.8 s of perfect fire against 1.9 s in the air, so with the rack empty armour was a hit you could do nothing about)
   crewGunShare: 0.75,         // the crew covering you at the wheel shoot at three quarters of the rate you do

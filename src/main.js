@@ -89,7 +89,7 @@ function scoreState(m) {
 function spawnAttract() {
   if (G.attract) return; const t = TOWNS.pete; G.world.reset();
   G.attract = new Storm(scene, G.sky.uniforms, STORMS[0], G.world, { low: !!G.low }); G.attract.place(t.x + 420, t.z + 360);
-  for (const b of G.attract.bands) b.exposed = true;
+  G.attract.rage = 0.5; // on the title it is already angry
 }
 
 function bank(res) {
@@ -211,7 +211,7 @@ function frame(now) {
     const g = window.__game; g.state = m.result ? 'over' : 'playing'; g.score = Math.round(m.data); g.data = g.score; g.time = +m.time.toFixed(2); g.phase = m.phase; g.hull = Math.round(m.rig.hull); g.stability = +m.stability.toFixed(3); g.stage = m.stage; g.bands = storm.bandsLeft; g.dist = Math.round(m.dist); g.speed = +Math.hypot(m.rig.vx, m.rig.vz).toFixed(1); g.mph = m.rig.mph; g.stormMph = m.stormMph; g.inZone = !!m.inZone; g.cine = !!m.cine; g.boost = +m.rig.boostCharge.toFixed(2); g.shot = m.stats.shot; g.close = m.stats.close; g.view = m.view; g.seat = m.gn.seatId; g.weapon = m.gn.weapon; g.rockets = m.gn.rockets; g.crits = m.stats.crits; g.locked = m.gn.locked; g.aim = m.gn.aim.kind; g.hail = +G.weather.hail.toFixed(2); g.x = Math.round(m.rig.x); g.z = Math.round(m.rig.z);
     G.rigVel = m.rig;
   } else if (G.attract) {
-    const s = G.attract, t = TOWNS.pete, a = simT * 0.05; s.moveX = Math.cos(a); s.moveZ = Math.sin(a); s.moveSpeed = 9; if (dt > 0) { s.update(dt, simT); G.world.update(dt, s); G.world.events.length = 0; }
+    const s = G.attract, t = TOWNS.pete, a = simT * 0.05; s.moveX = Math.cos(a); s.moveZ = Math.sin(a); s.moveSpeed = 9; if (dt > 0) { s.setHeart(camera.position.x, camera.position.z, s.bands[0].v, 0.85, 14); s.wound = 0.35 + 0.25 * Math.sin(simT * 0.4); s.update(dt, simT); G.world.update(dt, s); G.world.events.length = 0; }
     if (Math.hypot(s.x - t.x, s.z - t.z) > 700) s.place(t.x + 420, t.z + 360);
     storm = s; prox = 0.35; attractCamera(dtBase, simT); audio.beds({ prox: 0.12, storm: 1 }); audio.score({ scene: 'title', run: 0 });
     const g = window.__game; g.state = G.state === 'over' ? 'over' : 'title'; g.phase = G.state;

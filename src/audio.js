@@ -125,6 +125,8 @@ export const audio = {
   incoming(k = 0, big = false) { const f = inKey(big ? 659 : 1319, 7), v = 0.05 + 0.06 * k; tone('triangle', f * 1.18, f, 0.07, v); if (big) tone('triangle', f * 0.89, f * 0.75, 0.07, v, 0.07); }, // the fifth of the key
   plink() { tone('square', 620, 420, 0.03, 0.035); },
   kill() { burst('bandpass', 900, 0.9, 0.16, 0.5, 220); tone('sine', 150, 48, 0.2, 0.3); tone('triangle', 880, 1320, 0.09, 0.1, 0.05); },
+  // the storm, hurt: a low growl that slides down, with a rasp over it (2.14, when it became a thing you fight)
+  roar(k = 1) { if (!ctx) return; duck(0.3, 0.5); tone('sawtooth', 92, 41, 1.5, 0.2 * k); tone('square', 61, 33, 1.3, 0.09 * k, 0.05); burst('lowpass', 420, 1.6, 1.4, 0.4 * k, 90); burst('bandpass', 1200, 4, 0.5, 0.12 * k, 600, 0.08); },
   stormCrack(deep) { tone('sawtooth', deep ? 300 : 420, 70, 0.4, 0.14); burst('lowpass', 1200, 0.7, 0.35, 0.45, 110); },
   lock() { tone('square', 1480, 1480, 0.05, 0.07); tone('square', 1976, 1976, 0.09, 0.07, 0.07); },
   swap() { burst('bandpass', 2400, 3, 0.03, 0.3); burst('bandpass', 1300, 3, 0.04, 0.3, 0, 0.09); tone('square', 210, 150, 0.05, 0.06, 0.09); },

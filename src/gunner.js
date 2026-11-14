@@ -1,5 +1,5 @@
 // The gunner's seat. First person on the turret while the truck drives itself:
-//   the machine gun (hold FIRE, hitscan, the seam on the band and dead-centre hits are critical)
+//   the machine gun (hold FIRE, hitscan, the storm's glowing heart and dead-centre hits are critical)
 //   rockets (few of them, a lock-on reticle, one shot for anything armoured, a bite out of a band)
 //   the kill shot (the same launcher, locked on the critical core)
 // One aim, one camera rig and one autodrive serve all of them. The truck is still a truck: whatever
@@ -85,7 +85,7 @@ export class Gunner {
     this.root = new THREE.Group(); this.root.visible = false; G.camera.add(this.root);
     this.mg = mgModel(mission.gun.sound); this.pod = podModel(); this.harp = harpModel(); this.models = { mg: this.mg, rocket: this.pod, harpoon: this.harp }; this.root.add(this.mg, this.pod, this.harp);
     this.muzzleFlash = new THREE.Sprite(new THREE.SpriteMaterial({ map: G.fx.dustTex, color: '#ffd27a', blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false })); this.muzzleFlash.visible = false; this.root.add(this.muzzleFlash);
-    // the seam: the one bright place on a band where a hit counts double
+    // the heart: the one glowing place on the storm where a hit counts double (the shader draws it into the funnel; these mark it on the gun)
     const sm = (color, order) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: G.fx.dustTex, color, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false })); s.visible = false; s.renderOrder = order; G.scene.add(s); return s; };
     this.seam = sm(PALETTE.accent, 8); this.seamHot = sm('#fff1c4', 9);
   }
@@ -173,6 +173,16 @@ export class Gunner {
         const t = (-bq - Math.sqrt(disc)) / (2 * dxz), y = o.y + d.y * t, hh = Math.max(10, t * 0.045) * assist * (kill ? 2.4 : 1);
         if (t > 3 && t < best && Math.abs(y - B.y) < hh) { best = t; out.kind = kill ? 'core' : 'band'; out.ref = s.band; _p.copy(o).addScaledVector(d, t); out.crit = _p.distanceTo(this.weak) < this.weakR * (assist > 1 ? 1.25 : 1); }
       }
+      // the rest of its body (2.14): the whole funnel answers a round, though only the band of it around the heart is where it
+      // really hurts. Walk the hit height onto the funnel's own shape: its radius and spine at the height the ray meets it
+      if (!kill && out.kind !== 'band') {
+        let v = (B.y - s.groundY) / s.height, tt = 0;
+        for (let i = 0; i < 3 && v >= 0; i++) {
+          s.spineAt(v, _w); const cx = s.x + _w.x, cz = s.z + _w.z, r = s.radiusAt(v), ox = o.x - cx, oz = o.z - cz, b2 = 2 * (ox * d.x + oz * d.z), c2 = ox * ox + oz * oz - r * r, q = b2 * b2 - 4 * dxz * c2;
+          if (q < 0 || c2 <= 0) { v = -1; break; } tt = (-b2 - Math.sqrt(q)) / (2 * dxz); v = (o.y + d.y * tt - s.groundY) / s.height; if (v < 0 || v > 0.85) v = -1;
+        }
+        if (v >= 0 && tt > 3 && tt < best) { best = tt; out.kind = 'hide'; out.ref = s; out.crit = false; }
+      }
     }
     out.t = best; if (out.kind) out.point.copy(o).addScaledVector(d, best); return out;
   }
@@ -215,7 +225,7 @@ export class Gunner {
     if (this.mg.userData.spin) { this.spinV += ((firing && !rocket ? 34 : 0) - this.spinV) * Math.min(1, dt * 6); this.mg.userData.spin.rotation.z += this.spinV * dt; }
     // the seam marker
     const show = seam && m.storm.alive && (ph === 'chase' || ph === 'kill' || ph === 'stagger'); this.seam.visible = this.seamHot.visible = show;
-    if (show) { const pulse = 1 + 0.16 * Math.sin(this.weakT * (ph === 'chase' ? 9 : 16)), sz = this.weakR * 2.3 * pulse; this.seam.position.copy(this.weak); this.seam.scale.set(sz, sz, 1); this.seamHot.position.copy(this.weak); this.seamHot.scale.set(sz * 0.36, sz * 0.36, 1); this.seam.material.opacity = m.inZone || ph !== 'chase' ? 0.95 : 0.4; }
+    if (show) { const pulse = 1 + 0.16 * Math.sin(this.weakT * (ph === 'chase' ? 9 : 16)), sz = this.weakR * 1.6 * pulse; this.seam.position.copy(this.weak); this.seam.scale.set(sz, sz, 1); this.seamHot.position.copy(this.weak); this.seamHot.scale.set(sz * 0.36, sz * 0.36, 1); this.seam.material.opacity = m.inZone || ph !== 'chase' ? 0.95 : 0.4; }
   }
   muzzlePoint(out) { return out.copy(_o).addScaledVector(this.dir(_e), this.weapon === 'mg' ? 2.0 : 1.4).add(_e.set(0, -0.42, 0)); }
 
@@ -229,7 +239,7 @@ export class Gunner {
     this.recoil = 1; this.kick += snd === 'cannon' ? 0.012 : 0.0045; this.flashT = 0.045; if (snd === 'cannon') fx.shake(2);
     const far = h.kind ? h.t : _o.distanceTo(h.point), k = Math.max(1, far * 0.028), P = h.point;
     if (!h.kind) { if (far < 400 && Math.random() < 0.5) fx.puff(P.x, P.y + 0.4, P.z, 1.5 * k, '#b89a58', 0.4, 2); return; }
-    const crit = h.crit, mul = crit ? FEEL.gunCrit : 1; m.stats.fired++; m.rec.hits[m.stage] = (m.rec.hits[m.stage] || 0) + 1;
+    const crit = h.crit, mul = crit ? FEEL.gunCrit : 1; if (h.kind !== 'hide') { m.stats.fired++; m.rec.hits[m.stage] = (m.rec.hits[m.stage] || 0) + 1; } // a glancing round on its body is not one on something you can properly hurt
     if (h.kind === 'haz') {
       const z = h.ref, hz = z.h, T = TARGET[hz.kind]; z.hp -= m.p.mgDps * every * mul; hz.hitFlash = 1; hz.dmg = clamp(1 - z.hp / z.max, 0, 1);
       fx.flashAt(P.x, P.y, P.z, (crit ? 3.4 : 2.2) * k, crit ? '#fff1c4' : '#ffd27a', 0.07); fx.sparks(P.x, P.y, P.z, crit ? 5 : 2, k, 14, crit ? '#fff1c4' : '#ffd27a');
@@ -240,6 +250,10 @@ export class Gunner {
       const st = h.ref; st.hp -= m.p.mgDps * every * FEEL.gunSatMul; fx.sparks(P.x, P.y, P.z, 1, k, 10, '#9fb0ac');
       if (st.hp <= 0) { m.killSat(st); this.feedback('kill', 'SATELLITE', 0, 'sat'); } else { this.feedback('weak', 'SATELLITE', st.hp / 100, 'sat'); this.say(this.rockets > 0 ? 'ARMOURED: USE A ROCKET' : 'ARMOURED', 0.8); }
     } else if (!m.inZone) { this.feedback('far', m.def.name.toUpperCase(), m.shield, 'band'); this.say('OUT OF RANGE', 0.6); }
+    else if (h.kind === 'hide') { // its body: it flinches and sparks, a glancing share of the damage, and the sights say where it hurts
+      fx.sparks(P.x, P.y, P.z, 2, k, 12, '#9fb0ac'); const before = m.stage; m.damageStorm(m.p.gunStorm * every * FEEL.hideShare, P, false);
+      this.feedback(m.stage !== before || m.phase !== 'chase' ? 'kill' : 'weak', m.def.name.toUpperCase(), m.shield, 'band'); this.say('AIM FOR THE HEART', 0.8);
+    }
     else {
       fx.flashAt(P.x, P.y, P.z, (crit ? 5 : 3) * k, crit ? '#ffffff' : '#ffd27a', crit ? 0.1 : 0.06); fx.sparks(P.x, P.y, P.z, crit ? 6 : 2, k, 16, crit ? PALETTE.accent : '#ffd27a');
       const before = m.stage; m.damageStorm(m.p.gunStorm * every * mul, P, crit); if (crit) m.stats.crits++;
