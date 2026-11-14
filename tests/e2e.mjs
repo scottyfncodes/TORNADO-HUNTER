@@ -87,7 +87,7 @@ async function finale(page, { id, seed, driver, scenario = 'full' }) {
       const atEnd = m.result.data; G.fast = 6; await until(() => G.resultShown, 15, 'the results screen');
       for (let i = 0; i < 30; i++) await frame(); // every shard has landed by now
       const banked = G.save.s.data - bank0; m.end(true, 'again'); m.ripBand(); m.earn(50); for (let i = 0; i < 10; i++) await frame(); // completion again, a band again, data again: none of it counts
-      log.data = { atEnd, live: Math.round(m.data), hud: +document.getElementById('hud-data').textContent, shown: document.querySelector('#res-tally dd.total').textContent, banked, after: G.save.s.data - bank0, owed: m.owed,
+      log.data = { atEnd, live: Math.round(m.data), hud: +document.getElementById('hud-data').textContent, shown: document.querySelector('#res-tally dd.total').textContent, rows: [...document.querySelectorAll('#res-tally dt')].map((e) => e.textContent), banked, after: G.save.s.data - bank0, owed: m.owed,
         floor: Math.round((s.bands.length + 1) * def.pay * m.p.dataMul) }; // every band's pay and the win's: the least a won fight banks
       return log;
     } finally { G.input.axes = axes0; }
@@ -139,6 +139,7 @@ try {
       ok(L.result && L.result.won && L.result.reason === 'destroyed' && !L.result.tug && !L.result.tether, `${tag}: no victory`);
       const D = L.data || {};
       ok(D.atEnd === D.live && D.hud === D.atEnd && D.shown === '+' + D.atEnd && D.banked === D.atEnd && D.owed === 0, `${tag}: the data does not agree: result ${D.atEnd}, after the shards ${D.live}, HUD ${D.hud}, results ${D.shown}, banked ${D.banked}`);
+      ok(['Time', 'Hull left', 'Accuracy', 'Critical hits', 'Near misses'].every((k) => (D.rows || []).includes(k)), `${tag}: the results do not read back every number the grade reads (${(D.rows || []).join(', ')})`);
       ok(D.atEnd >= D.floor, `${tag}: ${D.atEnd} data banked, less than the bands and the win pay (${D.floor}): a band's shards went missing`);
       ok(D.after === D.banked, `${tag}: a second completion paid again (${D.banked} then ${D.after})`);
       if (driver === 'attentive') ok(lungeHits.length === 0, `${tag}: an attentive driver was bitten by a telegraphed lunge ${JSON.stringify(lungeHits)}`);
