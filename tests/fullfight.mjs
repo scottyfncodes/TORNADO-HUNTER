@@ -56,7 +56,7 @@ export async function fight(page, { id, skill, seed, daily, rig = 'mule', fast =
     } finally { G.input.axes = axes0; G.bot = false; G.botLag = 0; G.botAim = null; G.botGunOnly = false; G.setpiece = undefined; G.fast = 1; Math.random = R; }
     const res = m.result; if (!res) return { timeout: true, phase: m.phase, time: m.time };
     const g = grade(res), st = res.stats;
-    return { won: res.won, hits: st.hits, shot: st.shot, time: +res.time.toFixed(1), hull: Math.round(res.hull), hullMax: res.hullMax, acc: st.rounds ? +(st.fired / st.rounds).toFixed(2) : 0, rounds: st.rounds, crits: st.crits, crit: st.rounds ? +(st.crits / st.rounds).toFixed(3) : 0, close: st.close, letter: g.letter, score: g.score, hint: g.hint, rows: res.rows, storm: res.storm.id, trail: { jukes: trail.jukes.slice(0, 12), attacks: trail.attacks.slice(0, 24) } };
+    return { won: res.won, data: res.data, hits: st.hits, shot: st.shot, time: +res.time.toFixed(1), hull: Math.round(res.hull), hullMax: res.hullMax, acc: st.rounds ? +(st.fired / st.rounds).toFixed(2) : 0, rounds: st.rounds, crits: st.crits, crit: st.rounds ? +(st.crits / st.rounds).toFixed(3) : 0, close: st.close, letter: g.letter, score: g.score, hint: g.hint, rows: res.rows, storm: res.storm.id, trail: { jukes: trail.jukes.slice(0, 12), attacks: trail.attacks.slice(0, 24) } };
   }, { id, skill, seed, daily, rig, fast, AIM, TUNE });
 }
 
@@ -70,7 +70,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     for (const id of (process.env.ONLY || 'pete,agnes,sisters').split(',')) for (const skill of SKILLS) for (const rig of RIGS) for (let seed = 1; seed <= RUNS; seed++) {
       const F = await fight(page, { id, skill, seed, rig }); rows.push({ id, skill, rig, ...F });
       const r = F.rows ? Object.entries(F.rows).map(([k, v]) => `${k} ${v.join('')}`).join(' ') : '';
-      console.log(`${id.padEnd(8)} ${skill.padEnd(6)} ${RIGS.length > 1 ? rig.padEnd(8) : ''}${seed}: ${F.won ? 'won ' : 'LOST'} ${String(F.time).padStart(6)} s  hull ${String(F.hull).padStart(3)}/${F.hullMax}  acc ${F.acc}  crits ${String(F.crits).padStart(4)} (${Math.round(F.crit * 100)}%)  close ${F.close}  hits ${F.hits} shot ${F.shot}  -> ${F.letter || '-'} (${F.score})  "${F.hint}"  ${r}`);
+      console.log(`${id.padEnd(8)} ${skill.padEnd(6)} ${RIGS.length > 1 ? rig.padEnd(8) : ''}${seed}: ${F.won ? 'won ' : 'LOST'} ${String(F.time).padStart(6)} s  hull ${String(F.hull).padStart(3)}/${F.hullMax}  acc ${F.acc}  crits ${String(F.crits).padStart(4)} (${Math.round(F.crit * 100)}%)  close ${F.close}  hits ${F.hits} shot ${F.shot}  data ${F.data}  -> ${F.letter || '-'} (${F.score})  "${F.hint}"  ${r}`);
       ok(!F.timeout, `${id}/${skill}/${seed}: the fight did not finish (${F.phase} at ${F.time})`);
     }
     // the table the tuning is read from: wins, and the median hull left in a win, per storm and gunner

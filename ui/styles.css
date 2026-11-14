@@ -105,6 +105,11 @@ b, .num { font-variant-numeric: tabular-nums; }
 .levels { display: flex; gap: var(--s1); }
 .levels i { width: 22px; height: 8px; background: var(--bg); border-radius: 1px; }
 .levels i.on { background: var(--primary); }
+/* 2.23: what a level does, now → next, on the rig you have picked */
+.up-stats { display: grid; grid-template-columns: auto 1fr; gap: 2px var(--s3); margin: 0; font-size: var(--t-sm); font-variant-numeric: tabular-nums; }
+.up-stats dt { color: var(--muted); }
+.up-stats dd { margin: 0; color: var(--text); font-weight: 700; }
+.up-stats dd b { color: var(--signal); }
 
 .screen-results, .screen-pause { align-items: center; justify-content: center; background: rgba(14, 27, 29, 0.78); }
 .panel { width: min(100%, 460px); max-height: 100%; overflow-y: auto; touch-action: pan-y; display: flex; flex-direction: column; gap: var(--s3); padding: var(--s5); background: var(--bg); border: 2px solid var(--line); border-radius: 4px; clip-path: var(--clip); }

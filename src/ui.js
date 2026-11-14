@@ -1,5 +1,5 @@
 // Title, headquarters, results and pause. Plain DOM, built from the tables in config.js.
-import { STORMS, RIGS, CREW, GADGETS, UPGRADES, PALETTE, rankFor } from './config.js';
+import { STORMS, RIGS, CREW, GADGETS, UPGRADES, PALETTE, FEEL, rankFor, upgradeFx } from './config.js';
 import { TOWNS } from './world.js';
 import { save, crewOf, tapCrew, CREW_LEADS } from './save.js';
 import { dayKey, dailyFor, liveStreak, shareText, clock } from './daily.js';
@@ -119,11 +119,23 @@ export class UI {
     }
     body.appendChild(g);
   }
+  // what a level does, as numbers on the rig you have picked: now, and next (2.23)
+  upgradeStats(id, lv, rig) {
+    const f = upgradeFx({ [id]: lv }), pct = (k) => Math.round(k * 100) + '%';
+    if (id === 'winch') return [['Line holds', +(FEEL.hookSeconds + f.hook).toFixed(1) + ' s']];
+    if (id === 'cable') return [['Turret damage', pct(f.gun)], ['Rockets', String(FEEL.rocketMax + f.rockets)]];
+    if (id === 'plating') return [['Hull', String(Math.round(FEEL.hullBase * rig.hull * f.hull))]];
+    return [['Boost', (FEEL.boostSeconds * rig.boost * f.boost).toFixed(1) + ' s']];
+  }
   tab_shop(body, s) {
-    body.appendChild(el('h3', 'section-h', 'Spend storm data on the rig'));
+    const rig = RIGS.find((r) => r.id === s.loadout.rig) || RIGS[0];
+    body.appendChild(el('h3', 'section-h', `Fitted to every rig · shown for ${rig.name}`));
     const g = el('div', 'grid-4');
     for (const u of UPGRADES) {
       const lv = s.upgrades[u.id], max = lv >= u.prices.length, c = el('div', 'card'); c.appendChild(el('h3', '', u.name)); c.appendChild(el('p', '', u.blurb));
+      const now = this.upgradeStats(u.id, lv, rig), next = max ? null : this.upgradeStats(u.id, lv + 1, rig), st = el('dl', 'up-stats');
+      now.forEach(([k, v], i) => { st.appendChild(el('dt', '', k)); const d = el('dd', '', v); if (next && next[i][1] !== v) { d.append(' → '); d.appendChild(el('b', '', next[i][1])); } st.appendChild(d); });
+      c.appendChild(st);
       const lv_ = el('div', 'levels'); for (let i = 0; i < u.prices.length; i++) lv_.appendChild(el('i', i < lv ? 'on' : '')); c.appendChild(lv_);
       if (max) c.appendChild(el('span', 'tag tag-ok', 'Maxed')); else c.appendChild(this.buyBtn(u.prices[lv], () => { s.upgrades[u.id]++; }));
       g.appendChild(c);
