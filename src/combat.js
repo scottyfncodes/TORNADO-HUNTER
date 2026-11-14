@@ -165,7 +165,7 @@ export class Mission {
   // his bus, while your rig drives itself (this.home). Get to the ring at the funnel's foot and DOROTHY is set down.
   takeBus() {
     const G = this.G, u = this.convoy.unit('dorothy'); if (this.home || !u) return;
-    const bus = new Rig(G.scene, BUS, G.sky.envMap, { hull: 1, boost: 1, recharge: 1, glow: null, ghost: true });
+    const bus = new Rig(G.scene, BUS, G.sky.envMap, { hull: 1, boost: 1, recharge: 1, glow: null, ghost: true, low: true }); // handling only: never drawn
     bus.place(u.x, u.z, u.heading, G.world); bus.vx = Math.sin(u.heading) * u.speed; bus.vz = Math.cos(u.heading) * u.speed; bus.speed = u.speed; bus.hullMax = this.rig.hullMax; bus.hull = this.rig.hull; bus.gripMul = this.rig.gripMul;
     this.home = this.rig; this.rig = bus; this.busUnit = u; u.driven = true; this.rec.busHits = 0; this.dropped = false; this.dorothy.visible = false;
     const c = CREW.find((x) => x.id === u.crew); this.bark = { name: c.name, text: c.barks.seat }; this.barkT = 3; this.note("HOOKED: DOC'S BUS, YOU DRIVE");
