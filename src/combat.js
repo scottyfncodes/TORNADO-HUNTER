@@ -506,7 +506,7 @@ export class Mission {
       fx.setRing(sg.x, sg.z, sg.r, 1, 0.9 * (1 - k * k * 0.7), PALETTE.accent, 9);
       for (let i = 0; i < 3; i++) if (Math.random() < dt * 30) { const a = Math.random() * 6.283, px = sg.x + Math.cos(a) * sg.r, pz = sg.z + Math.sin(a) * sg.r; fx.puff(px, fx.ground(px, pz) + 3, pz, 14, '#6e5637', 0.8, 6); }
       if (!sg.hit && !over && Math.abs(rd - sg.r) < 8 && sg.r > 40) { sg.hit = true; if (this.hurt(FEEL.dmgSurge) && r.hull > 0) r.fling((r.x - sg.x) / (rd || 1), (r.z - sg.z) / (rd || 1), 34, 8); }
-      if (sg.r >= FEEL.surgeRadius) { if (!sg.hit && !over) { r.addBoost(0.6); this.earn(5); this.call('CLEAN ESCAPE', 'good', 0.9); this.attackT = Math.max(this.attackT, FEEL.calloutRead); } // it gets read: nothing thrown over it this.surge = null; fx.hideRing(); if (!over) { this.phase = 'chase'; this.phaseT = 0; this.spawnSats(); } }
+      if (sg.r >= FEEL.surgeRadius) { if (!sg.hit && !over) { r.addBoost(0.6); this.earn(5); this.call('CLEAN ESCAPE', 'good', 0.9); this.attackT = Math.max(this.attackT, FEEL.calloutRead); /* it gets read: nothing thrown over it */ } this.surge = null; fx.hideRing(); if (!over) { this.phase = 'chase'; this.phaseT = 0; this.spawnSats(); } }
     }
 
     // ---- attacks ----
