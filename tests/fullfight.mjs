@@ -26,7 +26,7 @@ const server = spawn('python3', ['-m', 'http.server', String(PORT), '--bind', '1
 const AIM = { thumb: { deg: 3.5, delay: 0.4, rest: -0.7 }, novice: { deg: 5, delay: 0.5, rest: -0.6 } }; // degrees off, seconds to swing onto a new target, how often it is off the trigger (-1 never, 1 always)
 if (process.env.AIM) { const [deg, delay, rest] = process.env.AIM.split(',').map(Number); AIM.thumb = AIM.novice = { deg, delay, rest }; }
 const TUNE = Object.fromEntries((process.env.TUNE || '').split(',').filter(Boolean).map((kv) => { const [k, v] = kv.split(':'); return [k, +v]; })); // TUNE=gunnerMercy:4,wreckHpBig:110 tries FEEL numbers without editing config.js
-const CRIT_SPREAD = 1.3; // the most one rig's mean crit share may be over another's, the same gunner on the same seeds: the guns spray differently, the Bulldog's most
+const CRIT_SPREAD = 1.5; // the most one rig's mean crit share may be over another's, the same gunner on the same seeds (measured up to 1.4 on two seeds: the guns spray differently, the Bulldog most; the count it replaced ran 2.5 to 3 times)
 const fails = []; let checks = 0;
 const ok = (cond, msg) => { checks++; if (!cond) { fails.push(msg); console.log('  FAIL', msg); } };
 
