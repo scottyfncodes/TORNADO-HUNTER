@@ -65,7 +65,7 @@ export class Fx {
     }
     // dust puffs
     this.dustTex = softDot(); this.dust = [];
-    for (let i = 0; i < (low ? 64 : 96); i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.dustTex, color: '#cdb27a', transparent: true, depthWrite: false, opacity: 0 })); s.visible = false; s.renderOrder = 5; scene.add(s); this.dust.push({ s, on: false }); }
+    for (let i = 0; i < (low ? 72 : 150); i++) { /* (64 and 96 until 2.20: every wheel of the convoy raises dust now) */ const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.dustTex, color: '#cdb27a', transparent: true, depthWrite: false, opacity: 0 })); s.visible = false; s.renderOrder = 5; scene.add(s); this.dust.push({ s, on: false }); }
     // wreckage the storm throws: real objects you can read, dodge and shoot (pooled)
     const W = '#f3ecd8', K = '#1b2224';
     this.hazGeo = {
@@ -160,9 +160,9 @@ export class Fx {
   cancelTelegraphs(x, z, radius) { let n = 0; for (const t of this.tele) if (t.on && Math.hypot(t.x - x, t.z - z) < radius) { t.on = false; t.g.visible = false; this.puff(t.x, this.ground(t.x, t.z) + 1, t.z, 10, '#f3ecd8'); n++; } return n; }
   clearTelegraphs() { for (const t of this.tele) { t.on = false; t.g.visible = false; } }
 
-  puff(x, y, z, size = 6, color = '#cdb27a', life = 0.9, rise = 3) {
+  puff(x, y, z, size = 6, color = '#cdb27a', life = 0.9, rise = 3, vx = 0, vz = 0) { /* vx, vz: drift (2.20) */
     const d = this.dust.find((e) => !e.on) || this.dust[(Math.random() * this.dust.length) | 0];
-    d.on = true; d.t = 0; d.life = life; d.size = size; d.rise = rise; d.s.visible = true; d.s.position.set(x, y, z); d.s.material.color.set(color); d.s.material.rotation = Math.random() * 6;
+    d.on = true; d.t = 0; d.life = life; d.size = size; d.rise = rise; d.vx = vx; d.vz = vz; d.s.visible = true; d.s.position.set(x, y, z); d.s.material.color.set(color); d.s.material.rotation = Math.random() * 6;
   }
   // a thrown object: arcs from `from` to `to` in `dur` seconds; returns the pooled record (x,y,z are live)
   hazard(kind, from, to, dur) {
@@ -204,6 +204,15 @@ export class Fx {
     this.debris(x, y, z, this.low ? 4 : Math.round(6 + 8 * k), ['#1d2a2b', '#4d5a53', '#6e5637'], 0.9 * sc, 16 + 18 * k);
     this.sparks(x, y, z, this.low ? 3 : Math.round(4 + 6 * k), sc * 1.5, 22, color);
   }
+  // dust off a wheel (2.20): a trail that thickens with speed, is heavy on gravel, light on tarmac and in a slide, takes the colour
+  // of what it is thrown off, lags behind what threw it and drifts with the storm's inflow (wx, wz). Its own random stream, so a
+  // trail never reshuffles the draws the fight makes from Math.random
+  trail(x, y, z, dt, speed, surface, slide, vx, vz, wx = 0, wz = 0, k = 1) {
+    if (speed < 7) return; const rate = (surface === 2 ? 3 : surface === 1 ? 15 : 10) * Math.min(1.6, speed / 35) * (slide ? 3.2 : 1) * (this.low ? 0.45 : 1) * k;
+    if (this.rnd() >= dt * rate) return; const j = () => (this.rnd() - 0.5) * 1.2;
+    this.puff(x + j(), y + 0.35, z + j(), ((slide ? 4.6 : 2.2) + speed * 0.045) * (0.8 + 0.4 * k), surface === 2 ? '#8d9392' : surface === 1 ? '#cdb27a' : '#a68c5f', 0.8 + 0.6 * this.rnd(), 1.2 + this.rnd(), -vx * 0.12 + wx, -vz * 0.12 + wz);
+  }
+  rnd() { let t = (this.seedD = (this.seedD || 0x9e3779b9) + 0x6d2b79f5 >>> 0); t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }
   explode(x, y, z, size = 14) {
     this.flashAt(x, y, z, size * 2.2, '#ffe9b0', 0.14); this.flashAt(x, y, z, size * 1.3, '#ff9a3c', 0.22);
     for (let i = 0; i < 5; i++) this.puff(x + (Math.random() - 0.5) * size * 0.7, y + (Math.random() - 0.3) * size * 0.5, z + (Math.random() - 0.5) * size * 0.7, size * (0.5 + Math.random() * 0.5), i % 2 ? '#2a2420' : '#6e5637', 0.9 + Math.random() * 0.5, 4);
@@ -279,7 +288,7 @@ export class Fx {
       e.disc.material.opacity = 0.22 + 0.35 * k; e.ring.material.opacity = e.time > e.lock ? 1 : 0.7 + 0.3 * Math.sin(t * 22);
       if (e.time >= e.dur) { e.on = false; e.g.visible = false; e.onLand && e.onLand(e); }
     }
-    for (const d of this.dust) { if (!d.on) continue; d.t += dt; const k = d.t / d.life; if (k >= 1) { d.on = false; d.s.visible = false; continue; } d.s.position.y += d.rise * dt; const s = d.size * (0.5 + k * 1.2); d.s.scale.set(s, s, 1); d.s.material.opacity = 0.6 * (1 - k); }
+    for (const d of this.dust) { if (!d.on) continue; d.t += dt; const k = d.t / d.life; if (k >= 1) { d.on = false; d.s.visible = false; continue; } d.s.position.y += d.rise * dt; d.s.position.x += (d.vx || 0) * dt; d.s.position.z += (d.vz || 0) * dt; const s = d.size * (0.5 + k * 1.2); d.s.scale.set(s, s, 1); d.s.material.opacity = 0.6 * (1 - k); }
     for (const h of this.haz) {
       if (!h.on) continue; h.t += dt;
       if (!h.landed) { const k = Math.min(1, h.t / h.dur); h.x = h.fx + (h.tx - h.fx) * k; h.z = h.fz + (h.tz - h.fz) * k; h.y = h.fy + (h.ty - h.fy) * k + Math.sin(k * Math.PI) * (26 + h.dur * 12); h.m.rotation.x += dt * h.spin; h.m.rotation.z += dt * h.spin * 0.7; }
