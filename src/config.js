@@ -129,7 +129,7 @@ export const FEEL = {
 // the rockets, B or C. Three real first wins of Skinny Pete (68 to 112 s, 12 to 52 hull left) graded C, D, D on the 2.10 scale.
 export const GRADE = {
   weights: { time: 0.35, hull: 0.25, acc: 0.15, crits: 0.15, close: 0.1 },
-  par: { pete: 45, agnes: 78, sisters: 80 }, // s: full marks for time at par (a clean fight by a gunner who never misses), none at timeZero times par. (40, 72, 75 until 2.11: measured on a test clock that ran wreckage ahead of the truck; no played fight reached them)
+  par: { pete: 45, agnes: 78, sisters: 80, midnight: 76 }, // s: full marks for time at par (a clean fight by a gunner who never misses), none at timeZero times par. (40, 72, 75 until 2.11: measured on a test clock that ran wreckage ahead of the truck; no played fight reached them)
   timeZero: 3,                              // (2.2 until 2.11: a 90-second first win of Skinny Pete scored nothing for time)
   accZero: 0.2, accFull: 0.85,              // share of turret rounds that hit something you can hurt (nothing below 0.3 until 2.11)
   // the share of turret rounds that were critical (the seam on a band, dead centre on wreckage), for full marks. A share, not a
@@ -137,7 +137,7 @@ export const GRADE = {
   // the same aim, and the Whippet's cannon half of it. Set from fights on the 2.13 build so the thumb gunner on the Mule keeps
   // the share of these marks it had (Pete 25% of rounds critical, Agnes 66%, the Sisters 33%); a sharp one is over all three.
   // Agnes's seam is the biggest target of the three
-  crit: { pete: 0.55, agnes: 0.85, sisters: 0.6 },
+  crit: { pete: 0.55, agnes: 0.85, sisters: 0.6, midnight: 0.9 }, // (Old Midnight's seam is as big as Agnes's: a thumb gunner puts 60% of rounds on it)
   close: 5,                                 // near misses for full marks (8 until 2.11: a near miss is a dodge at the wheel, and most of a fight is on the gun)
   letters: [['S', 90], ['A', 75], ['B', 55], ['C', 25], ['D', 0]], // (B from 60 and C from 45 until 2.11)
   share: { accGood: 0.75, accOk: 0.45, hullOk: 25 }, // the share text's squares: the turret's accuracy on a band, hull lost at the wheel
@@ -250,6 +250,19 @@ export const STORMS = [
     volley: [2, 2, 3], satellites: [3, 4, 5], unlocks: null,
     tether: { jitter: 2, restless: 4, aggressive: 12, violent: 24, windup: 1, rest: 0.95, fury: 1.1 }, // the angriest; her satellites keep circling the anchor
   },
+  // 2.26: the fourth, after the Sisters. The fight is at night: the world is dark, the truck's headlights throw a pool ahead of
+  // it, and the lightning (a strike every couple of seconds out in the country) is what shows you the funnel and the ground.
+  // What it throws is ringed as everything is; its heart is the brightest thing out there. Not on the Daily Storm (daily: false)
+  {
+    id: 'midnight', name: 'Old Midnight', ef: 5, type: 'Rain-wrapped', bands: 3, stageHp: 270, zone: 225, night: 1, bolts: 0.4, daily: false, pow: 1.45, wob: 9,
+    blurb: 'Comes after dark, wrapped in rain. You see it when the lightning does.',
+    habit: 'Lightning every few seconds. What it throws comes out of the dark: trust the rings.',
+    pay: 200, run: 48, juke: [5, 8.5], jukeAngle: [0.45, 1.25], lead: 400,
+    r0: 22, r1: 118, height: 335, suckR: 160, suck: 15, killR: 27, dorothyRange: 160,
+    attackEvery: [2.6, 2.2, 1.85], attacks: [['debris', 'lightning', 'big', 'debris'], ['lightning', 'debris', 'big', 'lightning', 'crosswind'], ['lightning', 'field', 'big', 'debris', 'lightning']],
+    volley: [2, 3, 3], unlocks: null,
+    tether: { jitter: 2, restless: 4.5, aggressive: 13, violent: 26, windup: 1.05, rest: 1.0, fury: 1.0 }, // between Agnes and the Sisters, but you see the windup by its heart
+  },
 ];
 
 export const RIGS = [
@@ -299,5 +312,8 @@ export function upgradeFx(u = {}) {
 }
 
 export const RANKS = [[0, 'Rookie'], [4, 'Chaser'], [10, 'Wrangler'], [20, 'Roper'], [40, 'Storm Boss']];
+
+// the Enhanced Fujita scale stops at 5: a rematch of an EF5 is EF5+ (2.26)
+export const efLabel = (n) => (n > 5 ? 'EF5+' : 'EF' + n);
 
 export function rankFor(bands) { let r = RANKS[0][1]; for (const [n, t] of RANKS) if (bands >= n) r = t; return r; }

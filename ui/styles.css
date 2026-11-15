@@ -89,6 +89,8 @@ b, .num { font-variant-numeric: tabular-nums; }
 .tag-pay { color: var(--signal); background: var(--bg); }
 .tag-lock { color: var(--muted); }
 .card .pick { position: absolute; right: var(--s3); top: var(--s3); font-size: var(--t-xs); font-weight: 700; letter-spacing: 0.1em; color: var(--primary); text-transform: uppercase; }
+.card.sel .meta { padding-right: 76px; } /* 2.26: the tags never run under SELECTED */
+.tag.tag-night { background: #1a2340; color: #b9c8f0; }
 .bars { display: grid; grid-template-columns: auto 1fr; gap: 2px var(--s2); align-items: center; font-size: var(--t-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
 .bar { height: 6px; background: var(--bg); border-radius: 1px; }
 .bar i { display: block; height: 100%; background: var(--wheat); border-radius: 1px; }

@@ -1,5 +1,5 @@
 // Title, headquarters, results and pause. Plain DOM, built from the tables in config.js.
-import { STORMS, RIGS, CREW, GADGETS, UPGRADES, PALETTE, FEEL, rankFor, upgradeFx } from './config.js';
+import { STORMS, RIGS, CREW, GADGETS, UPGRADES, PALETTE, FEEL, rankFor, upgradeFx, efLabel } from './config.js';
 import { TOWNS } from './world.js';
 import { save, crewOf, tapCrew, CREW_LEADS } from './save.js';
 import { dayKey, dailyFor, liveStreak, shareText, clock } from './daily.js';
@@ -72,10 +72,10 @@ export class UI {
     const wrap = el('div', 'storm-wrap'), list = el('div', 'storm-list');
     for (const def of STORMS) {
       const open = stormOpen(def), beaten = !!s.kills[def.id], sel = s.loadout.storm === def.id;
-      const tags = [['tag-ef', 'EF' + def.ef], ['', def.type], ['', Math.round(def.run * 2.237 / 5) * 5 + ' mph'], ['tag-pay', '+' + def.pay + ' data']]; if (beaten) tags.push(['tag-ok', 'Beaten ×' + s.kills[def.id]]); if (!open) tags.push(['tag-lock', 'Beat ' + STORMS[STORMS.indexOf(def) - 1].name]);
+      const tags = [['tag-ef', 'EF' + def.ef], ['', def.type], ['', Math.round(def.run * 2.237 / 5) * 5 + ' mph'], ['tag-pay', '+' + def.pay + ' data']]; if (def.night) tags.splice(2, 0, ['tag-night', 'Night']); if (beaten) tags.push(['tag-ok', 'Beaten ×' + s.kills[def.id]]); if (!open) tags.push(['tag-lock', 'Beat ' + STORMS[STORMS.indexOf(def) - 1].name]);
       const c = this.card(def.name, open ? `${def.blurb} ${def.habit}` : 'Not on the radar yet.', { sel, locked: !open, tags, onClick: () => { s.loadout.storm = def.id; } });
       list.appendChild(c);
-      if (sel && beaten) { const r = el('button', 'rematch', s.loadout.rematch ? 'Rematch at EF' + (def.ef + 1) + ': on' : 'Rematch at EF' + (def.ef + 1) + ': off'); r.type = 'button'; r.setAttribute('aria-pressed', String(!!s.loadout.rematch)); r.addEventListener('click', () => { this.G.audio.ui(); s.loadout.rematch = !s.loadout.rematch; save.write(); this.renderHQ(); }); list.appendChild(r); }
+      if (sel && beaten) { const r = el('button', 'rematch', s.loadout.rematch ? 'Rematch at ' + efLabel(def.ef + 1) + ': on' : 'Rematch at ' + efLabel(def.ef + 1) + ': off'); r.type = 'button'; r.setAttribute('aria-pressed', String(!!s.loadout.rematch)); r.addEventListener('click', () => { this.G.audio.ui(); s.loadout.rematch = !s.loadout.rematch; save.write(); this.renderHQ(); }); list.appendChild(r); }
     }
     const radar = el('div', 'radar'), cv = el('canvas'); cv.width = cv.height = 384; radar.appendChild(cv); radar.appendChild(el('span', 'lbl', 'Radar')); this.drawRadar(cv, s.loadout.storm);
     wrap.appendChild(list); wrap.appendChild(radar); body.appendChild(wrap);
@@ -84,7 +84,7 @@ export class UI {
     const c = cv.getContext('2d'), map = this.G.world.mapCanvas, S = 384, X = (w) => (w + 1536) / 3072 * S;
     c.drawImage(map, 0, 0, S, S); c.fillStyle = 'rgba(14,27,29,0.62)'; c.fillRect(0, 0, S, S);
     c.strokeStyle = 'rgba(98,245,140,0.22)'; c.lineWidth = 1; for (let r = 48; r < 300; r += 48) { c.beginPath(); c.arc(S / 2, S / 2, r, 0, 6.283); c.stroke(); }
-    const def = STORMS.find((s) => s.id === stormId), start = { pete: [808, -770], agnes: [-720, 728], sisters: [216, 720] }[stormId], sx = start[0], sz = start[1];
+    const def = STORMS.find((s) => s.id === stormId), start = { pete: [808, -770], agnes: [-720, 728], sisters: [216, 720], midnight: [-728, -720] }[stormId], sx = start[0], sz = start[1];
     for (const k in TOWNS) { const tn = TOWNS[k]; c.fillStyle = 'rgba(243,236,216,0.55)'; c.fillRect(X(tn.x) - 4, X(tn.z) - 4, 8, 8); }
     const col = [PALETTE.signal, PALETTE.primary, PALETTE.accent]; [18, 12, 6].forEach((r, i) => { c.fillStyle = col[i]; c.beginPath(); c.arc(X(sx), X(sz), r, 0, 6.283); c.fill(); });
     c.font = '700 15px "Barlow Semi Condensed", sans-serif'; c.fillStyle = PALETTE.text; c.textAlign = 'center'; c.fillText(def.name.toUpperCase(), X(sx), X(sz) - 26);
@@ -176,7 +176,7 @@ export class UI {
     const sc = this.screens.results; sc.classList.toggle('won', res.won); sc.classList.toggle('lost', !res.won);
     this.lastRes = res; const st = res.stats, g = res.grade || { letter: null, hint: '' }, daily = res.daily, D = daily ? save.s.daily.day : '';
     const date = D ? new Date(D + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : '';
-    $('res-eyebrow').textContent = (daily ? `Daily Storm · ${date} · ` : '') + `${res.storm.name} · EF${res.storm.ef + res.rematch}` + (daily === 'practice' ? ' · Practice' : '');
+    $('res-eyebrow').textContent = (daily ? `Daily Storm · ${date} · ` : '') + `${res.storm.name} · ${efLabel(res.storm.ef + res.rematch)}` + (daily === 'practice' ? ' · Practice' : '');
     $('res-title').textContent = res.won ? 'Storm destroyed' : 'Rig wrecked';
     $('res-sub').textContent = res.won ? '' : st.snaps ? 'So close. On the gun, shoot down what it throws before it lands; rockets for cars and tractors. Or hit DRIVE and steer off the magenta circles.' : 'Get inside the danger zone and the turret is yours: shoot its glowing heart. Then the crew take over, a seat each: harpoon, Dorothy, kill shot.';
     $('res-sub').hidden = res.won;

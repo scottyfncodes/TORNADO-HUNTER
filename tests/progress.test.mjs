@@ -169,3 +169,10 @@ test('pacing: a rig to buy after the first win, data to spend long after the las
   // the first rig's blueprint is affordable by the time the next storm is beaten
   const bull = RIGS.find((r) => r.needs === STORMS[0].id); assert.ok(bull && bull.price < 230 + 525, 'the Bulldog is in reach after Big Agnes');
 });
+
+// 2.26: Old Midnight is the fourth storm, after the Sisters. It is not on the Daily Storm, so every day's storm is what it was
+test('Old Midnight comes after the Sisters, at night, and never as the Daily Storm', () => {
+  const ids = STORMS.map((s) => s.id); assert.deepEqual(ids, ['pete', 'agnes', 'sisters', 'midnight']);
+  const om = STORMS[3]; assert.equal(om.night, 1); assert.equal(om.daily, false); assert.ok(GRADE.par.midnight && GRADE.crit.midnight, 'graded');
+  for (let i = 0; i < 730; i++) assert.notEqual(dailyFor(shiftDay('2026-01-01', i)).storm.id, 'midnight');
+});

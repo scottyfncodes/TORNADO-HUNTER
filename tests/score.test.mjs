@@ -9,7 +9,7 @@ import { THEMES, THEME, PROG, SECTIONS, MINOR, MIXO, semis, sectionOf, themeOf, 
 const pcs = (theme) => new Set(theme.scale.map((s) => (theme.root + s) % 12));
 const LOOPS = ['camp', 'chase', 'zone', 'surge', 'stagger', 'rip', 'dorothy', 'kill', 'killcine', 'after', 'ashes'];
 const themeFor = (sec, id) => (sec === 'camp' || sec === 'ashes' ? THEMES.camp : sec === 'after' ? THEMES.after : THEMES[id]);
-const each = (fn) => { for (const id of ['pete', 'agnes', 'sisters']) for (const section of LOOPS) for (const x of [0.2, 0.6, 1]) for (let bar = 0; bar < 16; bar++) for (let step = 0; step < 16; step++) fn({ theme: themeFor(section, id), section, bar, step, x, urgency: x }); };
+const each = (fn) => { for (const id of ['pete', 'agnes', 'sisters', 'midnight']) for (const section of LOOPS) for (const x of [0.2, 0.6, 1]) for (let bar = 0; bar < 16; bar++) for (let step = 0; step < 16; step++) fn({ theme: themeFor(section, id), section, bar, step, x, urgency: x }); };
 
 test('the fight is mapped to the right part of the score', () => {
   const m = (o) => sectionOf({ scene: 'mission', storm: 'pete', phase: 'chase', view: 'drive', ...o });
@@ -25,7 +25,7 @@ test('the fight is mapped to the right part of the score', () => {
 test('each storm has its own key and tempo, and the tempo climbs 4% a band', () => {
   assert.equal(themeOf({ scene: 'mission', storm: 'agnes', phase: 'chase' }).id, 'agnes'); assert.equal(themeOf({ scene: 'mission', storm: 'nobody', phase: 'chase' }).id, 'pete');
   assert.equal(themeOf({ scene: 'title' }).id, 'camp'); assert.equal(themeOf({ scene: 'results', won: true }).id, 'after'); assert.equal(themeOf({ scene: 'results', won: false }).id, 'camp');
-  assert.equal(new Set(['pete', 'agnes', 'sisters'].map((k) => THEMES[k].root)).size, 3); assert.ok(THEMES.agnes.bpm < THEMES.pete.bpm && THEMES.pete.bpm < THEMES.sisters.bpm);
+  assert.equal(new Set(['pete', 'agnes', 'sisters', 'midnight'].map((k) => THEMES[k].root)).size, 4); assert.ok(THEMES.agnes.bpm < THEMES.pete.bpm && THEMES.pete.bpm < THEMES.sisters.bpm);
   assert.equal(tempoOf(THEMES.pete, { stage: 0 }), 126); assert.ok(Math.abs(tempoOf(THEMES.pete, { stage: 2 }) - 126 * 1.08) < 1e-9); assert.equal(tempoOf(THEMES.camp, { stage: 2 }), 84); assert.equal(tempoOf(THEMES.after, { stage: 3 }), 84);
 });
 
@@ -36,7 +36,7 @@ test('every note is in the key', () => {
 });
 
 test("the tune's long notes sit on the chord under them", () => {
-  for (const th of [THEMES.pete, THEMES.agnes, THEMES.sisters]) for (let bar = 0; bar < 8; bar++) {
+  for (const th of [THEMES.pete, THEMES.agnes, THEMES.sisters, THEMES.midnight]) for (let bar = 0; bar < 8; bar++) {
     const tones = new Set([0, 2, 4].map((k) => (th.root + semis(th.scale, PROG[bar] + k)) % 12));
     for (const [, d, len] of THEME[bar]) if (len >= 6) assert.ok(tones.has((th.root + semis(th.scale, d)) % 12), `${th.id} bar ${bar}: the held note (degree ${d}) is not in the chord`);
   }
@@ -81,7 +81,7 @@ test('the chords and the bass', () => {
 });
 
 test('the win lands on its last chord as the results come up, in the major', () => {
-  for (const th of [THEMES.pete, THEMES.agnes, THEMES.sisters]) {
+  for (const th of [THEMES.pete, THEMES.agnes, THEMES.sisters, THEMES.midnight]) {
     const F = fanfare(th), major = new Set([0, 2, 4, 5, 7, 9, 10, 11].map((s) => (th.root + s) % 12)); // the major scale, and the flat seventh the tune keeps
     for (const [t, v, m, d] of F) { assert.ok(t >= 0 && t + d <= STING.won + 1.2, `${v} at ${t}`); if (m) assert.ok(major.has(m % 12), `${th.id}: ${v} plays ${m}`); }
     const last = F.filter(([t]) => t === LAND); assert.ok(last.length >= 8 && last.some(([, , m]) => m % 12 === th.root % 12) && last.some(([, , m]) => m % 12 === (th.root + 4) % 12), 'the last chord is the major chord on the root');

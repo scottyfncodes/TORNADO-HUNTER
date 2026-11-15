@@ -67,7 +67,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
     await page.goto(URL); await page.waitForFunction(() => window.__G && window.__G.ui && document.getElementById('loading').hidden, null, { timeout: 60000 });
     const rows = [];
-    for (const id of (process.env.ONLY || 'pete,agnes,sisters').split(',')) for (const skill of SKILLS) for (const rig of RIGS) for (let seed = 1; seed <= RUNS; seed++) {
+    for (const id of (process.env.ONLY || 'pete,agnes,sisters,midnight').split(',')) for (const skill of SKILLS) for (const rig of RIGS) for (let seed = 1; seed <= RUNS; seed++) {
       const F = await fight(page, { id, skill, seed, rig }); rows.push({ id, skill, rig, ...F });
       const r = F.rows ? Object.entries(F.rows).map(([k, v]) => `${k} ${v.join('')}`).join(' ') : '';
       console.log(`${id.padEnd(8)} ${skill.padEnd(6)} ${RIGS.length > 1 ? rig.padEnd(8) : ''}${seed}: ${F.won ? 'won ' : 'LOST'} ${String(F.time).padStart(6)} s  hull ${String(F.hull).padStart(3)}/${F.hullMax}  acc ${F.acc}  crits ${String(F.crits).padStart(4)} (${Math.round(F.crit * 100)}%)  close ${F.close}  hits ${F.hits} shot ${F.shot}  data ${F.data}  -> ${F.letter || '-'} (${F.score})  "${F.hint}"  ${r}`);
@@ -75,14 +75,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     }
     // the table the tuning is read from: wins, and the median hull left in a win, per storm and gunner
     console.log('');
-    for (const id of ['pete', 'agnes', 'sisters']) for (const k of SKILLS) { const R = rows.filter((r) => r.id === id && r.skill === k); if (!R.length) continue; const W = R.filter((r) => r.won), h = W.map((r) => r.hull).sort((a, b) => a - b), t = W.map((r) => r.time).sort((a, b) => a - b); console.log(`  ${id.padEnd(8)} ${k.padEnd(6)} won ${W.length}/${R.length}  median hull ${h.length ? h[h.length >> 1] : '-'}  median time ${t.length ? t[t.length >> 1] : '-'}  grades ${R.map((r) => r.letter || 'x').join('')}  hits ${R.map((r) => r.hits).join(',')}`); }
-    for (const id of ['pete', 'agnes', 'sisters']) {
+    for (const id of ['pete', 'agnes', 'sisters', 'midnight']) for (const k of SKILLS) { const R = rows.filter((r) => r.id === id && r.skill === k); if (!R.length) continue; const W = R.filter((r) => r.won), h = W.map((r) => r.hull).sort((a, b) => a - b), t = W.map((r) => r.time).sort((a, b) => a - b); console.log(`  ${id.padEnd(8)} ${k.padEnd(6)} won ${W.length}/${R.length}  median hull ${h.length ? h[h.length >> 1] : '-'}  median time ${t.length ? t[t.length >> 1] : '-'}  grades ${R.map((r) => r.letter || 'x').join('')}  hits ${R.map((r) => r.hits).join(',')}`); }
+    for (const id of ['pete', 'agnes', 'sisters', 'midnight']) {
       const sc = (k) => rows.filter((r) => r.id === id && r.skill === k && r.won).map((r) => r.score), mean = (a) => a.reduce((p, q) => p + q, 0) / (a.length || 1);
       const low = SKILLS.find((k) => k !== 'sharp'); if (low && sc('sharp').length && sc(low).length) ok(mean(sc('sharp')) > mean(sc(low)), `${id}: a sharp gunner does not grade above a ${low} one`);
     }
     // the same gunner on every rig: the crit share the grade reads comes out about the same, where the count it read until 2.13
     // ran about 1.4 times the Mule's on the Bulldog and half of it on the Whippet
-    if (RIGS.length > 1) for (const id of ['pete', 'agnes', 'sisters']) for (const k of SKILLS) {
+    if (RIGS.length > 1) for (const id of ['pete', 'agnes', 'sisters', 'midnight']) for (const k of SKILLS) {
       const mean = (rig, f) => { const R = rows.filter((r) => r.id === id && r.skill === k && r.rig === rig && r.rounds); return R.length ? R.reduce((p, r) => p + f(r), 0) / R.length : null; };
       const share = RIGS.map((g) => mean(g, (r) => r.crit)), count = RIGS.map((g) => mean(g, (r) => r.crits)); if (share.some((v) => v === null)) continue;
       console.log(`${id.padEnd(8)} ${k.padEnd(6)} crit share ${RIGS.map((g, i) => `${g} ${(share[i] * 100).toFixed(1)}%`).join('  ')}   (count ${RIGS.map((g, i) => `${g} ${Math.round(count[i])}`).join('  ')})`);

@@ -46,7 +46,7 @@ export class Weather {
     // ---- hail ----
     if (!live) this.spell = 0;
     else if (this.spell > 0) { this.spell -= dt; if (this.spell <= 0) this.nextHail = this.wr(...FEEL.hailGap); }
-    else if ((m.phase === 'chase' || m.phase === 'surge') && !(m.sp && m.sp.busy)) { this.nextHail -= dt; if (this.nextHail <= 0) { this.spell = this.wr(...FEEL.hailSeconds); this.spells++; m.call('HAIL CORE: LOW GRIP', 'warn', 1.6, 3); G.audio.warn(); } } // it changes your grip: a threat, never dropped from the callout queue
+    else if ((m.phase === 'chase' || m.phase === 'surge') && !(m.sp && m.sp.busy)) { this.nextHail -= dt; if (this.nextHail <= 0 && m.calloutT > 0 && m.callout && m.callout.pri >= 2 && m.calloutUp < FEEL.calloutRead) this.nextHail = 0.1; /* (2.26) the hail builds in over a second or two: it waits for what is up to be read, never cuts it off */ if (this.nextHail <= 0) { this.spell = this.wr(...FEEL.hailSeconds); this.spells++; m.call('HAIL CORE: LOW GRIP', 'warn', 1.6, 3); G.audio.warn(); } } // it changes your grip: a threat, never dropped from the callout queue
     this.hail += ((this.spell > 0 ? 1 : 0) - this.hail) * Math.min(1, dt * 0.9); if (this.hail < 0.004) this.hail = 0;
     const h = this.hail; sky.ice = h; sky.vis = 1 - (1 - FEEL.hailVisibility) * h; sky.calm = calm;
     if (m) m.rig.gripMul = 1 - FEEL.hailGrip * h;
@@ -62,7 +62,7 @@ export class Weather {
     // ---- lightning out in the country ----
     this.reveal = Math.max(0, this.reveal - dt); this.boltT -= dt;
     if (this.boltT <= 0 && storm && storm.alive) {
-      this.boltT = (m && this.rb ? this.br(...(h > 0.4 ? FEEL.boltEveryHail : FEEL.boltEvery)) : span(h > 0.4 ? FEEL.boltEveryHail : FEEL.boltEvery)) * (calm ? 1.6 : 1) * (m ? 1 : 1.5);
+      this.boltT = (m && this.rb ? this.br(...(h > 0.4 ? FEEL.boltEveryHail : FEEL.boltEvery)) : span(h > 0.4 ? FEEL.boltEveryHail : FEEL.boltEvery)) * (calm ? 1.6 : 1) * (m ? 1 : 1.5) * (m && m.def.bolts ? m.def.bolts : 1); // (2.26: Old Midnight strikes far more often)
       if (!(m && m.cine)) this.bolt(storm, camera, !!m);
     }
   }
