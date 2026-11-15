@@ -56,6 +56,27 @@ G.makeRig = () => {
   return new Rig(scene, def, G.sky.stormEnv || G.sky.envMap, { low: !!G.low, hull: u.hull, boost: u.boost, recharge: u.boost * (sparks ? 1.35 : 1), glow: G.fx.dustTex, ups: s.upgrades });
 };
 G.kickFov = () => { G.fovKick = 10; };
+// 2.25: a portrait of a rig, for the blueprint on the results screen: the real model, three-quarter front, rendered once
+// off screen into a picture with a clear background, and kept
+const portraits = {};
+G.rigPortrait = (id) => {
+  if (portraits[id]) return portraits[id];
+  const def = RIGS.find((r) => r.id === id); if (!def || !renderer) return '';
+  const W = 448, H = 280, sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(26, W / H, 0.5, 200), rt = new THREE.WebGLRenderTarget(W, H);
+  rt.texture.colorSpace = THREE.SRGBColorSpace;
+  sc.add(new THREE.HemisphereLight('#dfe8e4', '#3a3226', 2.1)); const key = new THREE.DirectionalLight('#fff1d6', 2.6); key.position.set(6, 9, 7); sc.add(key);
+  const rig = new Rig(sc, def, G.sky.stormEnv || G.sky.envMap, { low: !!G.low, hull: 1, boost: 1, recharge: 1, glow: null, ups: {} });
+  rig.shadow.visible = false; rig.model.rotation.y = 0.62; rig.model.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(rig.model), c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length() / 2;
+  cam.position.set(c.x + r * 0.42, c.y + r * 0.5, c.z + r * 2.75); cam.lookAt(c);
+  const clear = renderer.getClearColor(new THREE.Color()), alpha = renderer.getClearAlpha();
+  renderer.setRenderTarget(rt); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(sc, cam);
+  const px = new Uint8Array(W * H * 4); renderer.readRenderTargetPixels(rt, 0, 0, W, H, px); renderer.setRenderTarget(null); renderer.setClearColor(clear, alpha);
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const cx = cv.getContext('2d'), img = cx.createImageData(W, H);
+  for (let y = 0; y < H; y++) img.data.set(px.subarray((H - 1 - y) * W * 4, (H - y) * W * 4), y * W * 4); // GL rows run bottom up
+  cx.putImageData(img, 0, 0); rig.dispose(); rt.dispose();
+  return (portraits[id] = cv.toDataURL('image/png'));
+};
 G.onScreen = (name) => { G.state = name === 'results' ? 'over' : name; input.setEnabled(false); input.setMode('drive'); document.body.classList.remove('playing'); G.hud.show(false); };
 G.startMission = (def, opts = {}) => {
   abandon(); if (G.mission) G.mission.dispose(); if (G.attract) { G.attract.dispose(); G.attract = null; }
@@ -94,14 +115,15 @@ function spawnAttract() {
 }
 
 function bank(res) {
-  const s = save.s, first = res.won && !s.kills[res.storm.id]; let unlock = '';
+  const s = save.s, first = res.won && !s.kills[res.storm.id]; let unlock = null;
   // the grade, the best one per storm, and today's Daily Storm
   const g = grade(res); res.grade = g; res.bestBefore = s.grades[res.storm.id] || null; if (g.letter) s.grades[res.storm.id] = res.bestBefore ? better(g.letter, res.bestBefore) : g.letter;
   if (res.daily === 'scored') { s.daily.result = { won: res.won, letter: g.letter, time: res.time, storm: res.storm.name, rows: res.rows }; s.streak = extendStreak(s.streak, s.daily.day); }
   s.data += res.data; s.bands += res.stats.snaps;
   if (res.won) {
     s.kills[res.storm.id] = (s.kills[res.storm.id] || 0) + 1; if (!s.best[res.storm.id] || res.time < s.best[res.storm.id]) s.best[res.storm.id] = Math.round(res.time);
-    if (first) { const i = STORMS.indexOf(res.storm), next = STORMS[i + 1], bp = res.storm.unlocks, names = { bulldog: 'the Bulldog', whippet: 'the Whippet' }; unlock = (bp ? `Blueprint recovered: ${names[bp]}. ` : '') + (next ? `${next.name} is on the radar.` : 'Every storm now has a rematch.'); if (next) { s.loadout.storm = next.id; s.loadout.rematch = false; } }
+    // a first win: what it opens. The blueprint is revealed on the results screen (2.25), and the next storm goes on the radar
+    if (first) { const i = STORMS.indexOf(res.storm), next = STORMS[i + 1], bp = res.storm.unlocks; unlock = { rig: bp || null, next: next ? next.name : null }; if (next) { s.loadout.storm = next.id; s.loadout.rematch = false; } }
   }
   save.write(); return unlock;
 }
@@ -227,9 +249,10 @@ function frame(now) {
     const steps = dt > 0 ? (G.fast || 1) : 0, sdt = dt;
     for (let i = 0; i < steps; i++) { if (i) { simT += sdt; fx.update(sdt, simT); if (fx.stopT > 0) fx.stopT = 0; } m.update(sdt, simT, input.axes(), input); }
     storm = m.storm; prox = THREE.MathUtils.clamp(1 - (m.dist - 40) / 500, 0, 1); stormLevel = m.phase === 'won' && m.phaseT > FEEL.deathShot * 0.6 ? 0 : 1; // 2.24: it dies under its own weather, then the sky breaks
+    if (m.phase === 'won' && !stormLevel && !m.skyBroke) { m.skyBroke = true; audio.skyBreak(); } // and it is heard to (2.25)
     viewCamera(dtBase, m);
     if (!G.paused) G.hud.update(dtBase, m, camera, input.usingTouch, fx.calm);
-    audio.beds({ prox: storm.alive ? prox : 0, storm: G.sky.storm, speed: Math.min(1.4, m.rig.speedFrac), throttle: Math.abs(m.rig.throttle), tension: m.line ? 0.6 : null, playing: !G.paused && !m.result, drift: m.rig.drifting ? 1 : Math.min(1, Math.abs(m.rig.slip || 0) / 14), boost: m.rig.boostT > 0, hail: G.weather.hail, hull: m.rig.hull / m.rig.hullMax });
+    audio.beds({ prox: prox * (storm.alive ? 1 : storm.fade * storm.fade), /* (2.25: the roar dies with the funnel, not the moment it is hit) */ storm: G.sky.storm, speed: Math.min(1.4, m.rig.speedFrac), throttle: Math.abs(m.rig.throttle), tension: m.line ? 0.6 : null, playing: !G.paused && !m.result, drift: m.rig.drifting ? 1 : Math.min(1, Math.abs(m.rig.slip || 0) / 14), boost: m.rig.boostT > 0, hail: G.weather.hail, hull: m.rig.hull / m.rig.hullMax });
     audio.score(scoreState(m));
     if (m.result && !G.banked) { G.banked = true; G.unlockText = bank(m.result); input.setEnabled(false); document.body.classList.remove('playing'); }
     if (m.result && !G.resultShown && m.phaseT > (m.result.won ? 4.8 : 1.8)) { G.resultShown = true; G.hud.show(false); G.ui.results(m.result, G.unlockText); }

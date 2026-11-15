@@ -124,6 +124,18 @@ b, .num { font-variant-numeric: tabular-nums; }
 .tally .total { color: var(--text); font-weight: 700; font-size: var(--t-lg); padding-top: var(--s2); }
 .tally dd.total { color: var(--signal); }
 .unlock { padding: var(--s2) var(--s3); background: var(--surface); border-left: 4px solid var(--primary); font-weight: 600; }
+/* 2.25: a blueprint recovered: the rig itself, its name, where to build it; the next storm under it */
+.unlock.has-rig { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: var(--s1) var(--s3); padding: var(--s2) var(--s3) var(--s2) var(--s2); }
+.unlock img { width: 128px; height: 80px; object-fit: contain; filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.35)); }
+.unlock .bp { display: grid; gap: 2px; min-width: 0; }
+.unlock .bp-eyebrow { font-size: var(--t-xs); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--primary); }
+.unlock .bp h3 { font-family: var(--display); font-weight: 400; font-size: var(--t-lg); line-height: 1.05; }
+.unlock .bp p { font-size: var(--t-sm); font-weight: 500; color: var(--muted); }
+.unlock .bp-next { font-size: var(--t-sm); }
+.unlock.has-rig .bp-next { grid-column: 1 / -1; padding-top: var(--s1); border-top: 1px solid var(--line); }
+.tab.dot { position: relative; }
+.tab.dot::after { content: ''; position: absolute; top: 8px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 0 2px var(--bg); }
+.tab.dot[aria-selected="true"]::after { box-shadow: 0 0 0 2px var(--primary); }
 /* the grade: one letter, the best one under it, and the one thing that would have raised it */
 .res-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s4); }
 .res-titles { display: grid; gap: var(--s2); min-width: 0; }
@@ -342,6 +354,9 @@ body:not(.playing) #lens { display: none; }
   /* the buttons go under the grade, where there is room: never below the fold */
   .screen-results .panel > .btn-row { grid-column: 1; grid-row: 4; align-self: end; }
   .screen-results .panel > .tally { grid-row: 1 / span 4; }
+  /* a blueprint recovered (2.25): beside the buttons, under the tally, where there is room */
+  .screen-results .panel > .unlock { grid-column: 2; grid-row: 4; align-self: end; }
+  .screen-results .panel:has(> .unlock:not([hidden])) > .tally { grid-row: 1 / span 3; }
   .screen-results .btn-row { gap: var(--s2); }
   .screen-results #res-share:not([hidden]) { flex-basis: 100%; }
   .btn-col { grid-template-columns: 1fr 1fr; }
