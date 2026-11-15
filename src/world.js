@@ -77,6 +77,7 @@ export const LIT = `vec3 alb=c; c*=uTint*(1.0+uFlash);
 export const HEAD = `uniform sampler2D uNoise; uniform vec3 uTint,uFog,uTor,uGoldHaze; uniform vec2 uTorDir; uniform float uFogNear,uFogFar,uFlash,uGoldK,uHeadK; uniform vec4 uHead; varying vec3 vW;`;
 
 const FLY_MAX = 64;
+const LOD_NEAR = 620; // m from a 512 m chunk's middle: chunks nearer than this draw the hero props (src/props.js), the rest the plain kit
 const dummy = new THREE.Object3D(), tmp = new THREE.Vector3();
 
 export class World {
@@ -264,8 +265,8 @@ export class World {
       float camD = length(vViewPosition); if (camD < 11.0 && fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) > camD / 11.0 - 0.12) discard;`); };
     this.chunks = []; this.props = []; this.grid = new Map(); this.gcell = 96;
     for (const [key, list] of groups) {
-      const [type, cx, cz] = key.split('|'), kit = KIT[type], mesh = new THREE.InstancedMesh(geos[type] || (geos[type] = !this.env.low && HERO[type] ? HERO[type]() : kit.g()), mat, list.length); // the hero props (src/props.js, 2.27), the plain kit on the low tier
-      this.group.add(mesh); this.chunks.push({ mesh, x: (+cx + 0.5) * CH, z: (+cz + 0.5) * CH, range: kit.veg ? kit.range || 1250 : 0 });
+      const [type, cx, cz] = key.split('|'), kit = KIT[type], plain = geos[type] || (geos[type] = kit.g()), hero = !this.env.low && HERO[type] ? (geos['hero:' + type] || (geos['hero:' + type] = HERO[type]())) : null, mesh = new THREE.InstancedMesh(hero || plain, mat, list.length); // the hero props (src/props.js, 2.27) near the camera, the plain kit further out and on the low tier
+      this.group.add(mesh); this.chunks.push({ mesh, x: (+cx + 0.5) * CH, z: (+cz + 0.5) * CH, range: kit.veg ? kit.range || 1250 : 0, hero, plain });
       list.forEach((p, i) => {
         const y = this.heightAt(p.x, p.z), rec = { type, kit, mesh, i, x: p.x, y, z: p.z, rot: p.rot, scale: p.scale, bx: p.x, by: y, bz: p.z, state: 0, r: (kit.r || 0) * p.scale };
         this.place(rec); if (kit.deco) return;
@@ -277,7 +278,7 @@ export class World {
     }
   }
   // distance culling for vegetation (frustum culling does the rest); detail 0..1 shortens the range on weak GPUs
-  cull(camera, detail = 1) { const cx = camera.position.x, cz = camera.position.z; for (const c of this.chunks) if (c.range) c.mesh.visible = Math.hypot(c.x - cx, c.z - cz) < c.range * detail + (detail < 1 ? 280 : 360); }
+  cull(camera, detail = 1) { const cx = camera.position.x, cz = camera.position.z; for (const c of this.chunks) { const d = Math.hypot(c.x - cx, c.z - cz); if (c.range) c.mesh.visible = d < c.range * detail + (detail < 1 ? 280 : 360); if (c.hero) c.mesh.geometry = d < LOD_NEAR ? c.hero : c.plain; } } // (2.27) the detail where it can be seen
   place(p, rx = 0, rz = 0, s = p.scale) { dummy.position.set(p.x, p.y, p.z); dummy.rotation.set(rx, p.rot, rz); dummy.scale.setScalar(s); dummy.updateMatrix(); p.mesh.setMatrixAt(p.i, dummy.matrix); p.mesh.instanceMatrix.needsUpdate = true; }
   reset() { for (const p of this.props) if (p.state !== 0) { p.state = 0; p.x = p.bx; p.y = p.by; p.z = p.bz; this.place(p); p.mesh.frustumCulled = true; } this.flying.length = 0; this.events.length = 0; }
 

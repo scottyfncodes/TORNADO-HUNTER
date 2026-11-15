@@ -37,17 +37,17 @@ function gambrel(w, d, h, y0, roofCol, gableCol, gw) {
 function xDoor(P, x, y, z, w, h, s) {
   P.push(bev(w, h, 0.12, C.red, x, y, z, 0.03, C.redE));
   const t = 0.16, dz = z + s * 0.08, ang = Math.atan2(h - t, w - t), len = Math.hypot(w - t, h - t);
-  for (const [px, py, pw, ph] of [[x, y + h / 2 - t / 2, w, t], [x, y - h / 2 + t / 2, w, t], [x - w / 2 + t / 2, y, t, h], [x + w / 2 - t / 2, y, t, h]]) P.push(bev(pw, ph, 0.1, C.white, px, py, dz, 0.025, C.whiteE));
-  P.push(bev(len, t, 0.08, C.white, x, y, dz + s * 0.01, 0.02, C.whiteE, 0, 0, ang), bev(len, t, 0.08, C.white, x, y, dz + s * 0.01, 0.02, C.whiteE, 0, 0, -ang));
+  for (const [px, py, pw, ph] of [[x, y + h / 2 - t / 2, w, t], [x, y - h / 2 + t / 2, w, t], [x - w / 2 + t / 2, y, t, h], [x + w / 2 - t / 2, y, t, h]]) P.push(box(pw, ph, 0.1, C.white, px, py, dz));
+  P.push(box(len, t, 0.08, C.white, x, y, dz + s * 0.01, 0, 0, ang), box(len, t, 0.08, C.white, x, y, dz + s * 0.01, 0, 0, -ang));
 }
 // a window: dark glass in a white frame, with shutters if asked; in the plane z = z0 (s: which way it faces), or x = x0 (side)
 // u: where along the wall; wall: the wall's z (or x, for a side wall); s: which way it faces
 function win(P, u, y, wall, w, h, s, side = false, shut = null) {
   const at = (uu, v, o) => (side ? [wall + s * o, v, uu] : [uu, v, wall + s * o]), ry = side ? Z : 0;
-  P.push(bev(w, h, 0.08, C.glass, ...at(u, y, 0.02), 0.01, null, 0, ry));
+  P.push(box(w, h, 0.08, C.glass, ...at(u, y, 0.02), ry));
   const fw = 0.14, cx = u;
-  for (const [u, v, pw, ph] of [[cx, y + h / 2, w + fw, fw], [cx, y - h / 2, w + fw * 2, fw * 1.4], [cx - w / 2, y, fw, h], [cx + w / 2, y, fw, h], [cx, y, fw * 0.6, h]]) P.push(bev(pw, ph, 0.12, C.white, ...at(u, v, 0.06), 0.02, C.whiteE, 0, ry));
-  if (shut) for (const o of [-1, 1]) P.push(bev(w * 0.42, h * 1.02, 0.08, shut, ...at(cx + o * (w / 2 + w * 0.26), y, 0.05), 0.02, null, 0, ry));
+  for (const [u, v, pw, ph] of [[cx, y + h / 2, w + fw, fw], [cx, y - h / 2, w + fw * 2, fw * 1.4], [cx - w / 2, y, fw, h], [cx + w / 2, y, fw, h], [cx, y, fw * 0.6, h]]) P.push(box(pw, ph, 0.12, C.white, ...at(u, v, 0.06), ry));
+  if (shut) for (const o of [-1, 1]) P.push(box(w * 0.42, h * 1.02, 0.08, shut, ...at(cx + o * (w / 2 + w * 0.26), y, 0.05), ry));
 }
 
 export const HERO = {
@@ -86,7 +86,7 @@ export const HERO = {
     P.push(bev(W + 0.3, 0.6, D + 0.3, C.stone, 0, 0.3, 0, 0.06));
     P.push(bev(W, 4.5, D, C.cream, 0, 2.85, 0, 0.08, C.creamE));
     for (let i = 0; i < 8; i++) for (const s of [1, -1]) K.push(box(W + 0.02, 0.05, 0.03, '#cfc4a8', 0, 1.0 + i * 0.52, s * (D / 2 + 0.01))); // clapboard lines front and back
-    for (const sx of [1, -1]) for (const sz of [1, -1]) P.push(bev(0.3, 4.5, 0.3, C.white, sx * W / 2, 2.85, sz * D / 2, 0.04, C.whiteE));
+    for (const sx of [1, -1]) for (const sz of [1, -1]) P.push(box(0.3, 4.5, 0.3, C.white, sx * W / 2, 2.85, sz * D / 2));
     P.push(prism(10, 3.4, 9, C.brick, 0, 5.1, 0)); for (const s of [1, -1]) P.push(bev(0.18, 0.3, 9.2, C.white, s * 5.0, 5.1, 0, 0.03, C.whiteE)); // the roof, its fascia
     P.push(bev(1.3, 3.2, 1.3, C.brick, 2.4, 6.6, 1.5, 0.05, C.brickE), bev(1.55, 0.25, 1.55, C.stone, 2.4, 8.25, 1.5, 0.04)); // chimney, its cap
     for (const s of [1, -1]) { win(P, -2.6, 3.1, s * D / 2, 1.3, 1.6, s, false, C.teal); win(P, 2.6, 3.1, s * D / 2, 1.3, 1.6, s, false, C.teal); }
@@ -145,7 +145,7 @@ export const HERO = {
     for (const x of [-3.6, 3.6]) win(P, x, 2.2, D / 2, 3.2, 2.4, 1); // shop windows
     P.push(bev(1.6, 2.8, 0.12, C.teal, 0, 1.4, D / 2 + 0.05, 0.03, '#5aa0a7'));
     for (const x of [-3.6, 0, 3.6]) win(P, x, 5.0, D / 2, 1.0, 1.1, 1); // the rooms upstairs
-    for (let i = 0; i < 10; i++) P.push(bev(1.3, 0.12, 2.6, i % 2 ? C.cream : C.mustard, -5.85 + i * 1.3, 3.75, D / 2 + 1.25, 0.02, null, 0.42)); // a striped awning, sloping down to the street
+    for (let i = 0; i < 10; i++) P.push(box(1.3, 0.12, 2.6, i % 2 ? C.cream : C.mustard, -5.85 + i * 1.3, 3.75, D / 2 + 1.25, 0, 0.42)); // a striped awning, sloping down to the street
     P.push(bev(6, 1.0, 0.14, C.dark, 0, 7.0, D / 2 + 0.38, 0.03), bev(5.6, 0.6, 0.06, C.mustard, 0, 7.0, D / 2 + 0.47, 0.02)); // the sign
     return ao(merge([...P, ...K]), 1, 0, 2.5, 0.68);
   },
@@ -171,15 +171,15 @@ export const HERO = {
   // the small things, the same way: a round bale with its net wrap and a spiral face, a fence section with capped posts,
   // a road sign on a post with its frame, a pole with insulators on its crossarm
   bale() {
-    const P = [cyl(1.25, 1.25, 1.7, '#d9b45a', 0, 1.25, 0, 12, 0, Z)];
-    for (const x of [-0.55, 0, 0.55]) P.push(cyl(1.27, 1.27, 0.08, '#c39c45', x, 1.25, 0, 12, 0, Z));
-    for (const s of [1, -1]) { P.push(cyl(1.0, 1.0, 0.04, '#e6c573', s * 0.86, 1.25, 0, 12, 0, Z), cyl(0.55, 0.55, 0.05, '#cfa851', s * 0.87, 1.25, 0, 10, 0, Z), cyl(0.18, 0.18, 0.06, '#b8913f', s * 0.88, 1.25, 0, 8, 0, Z)); }
+    const P = [cyl(1.25, 1.25, 1.7, '#d9b45a', 0, 1.25, 0, 10, 0, Z)];
+    for (const x of [-0.45, 0.45]) P.push(open(cyl(1.27, 1.27, 0.08, '#c39c45', x, 1.25, 0, 10, 0, Z)));
+    for (const s of [1, -1]) P.push(cyl(0.6, 0.6, 0.05, '#cfa851', s * 0.86, 1.25, 0, 8, 0, Z));
     return ao(merge(P), 1, 0, 1.4, 0.7);
   },
   fence() {
     const P = [];
-    for (const x of [-2.8, 0, 2.8]) P.push(bev(0.3, 1.5, 0.3, C.cream, x, 0.75, 0, 0.04, C.creamE), bev(0.38, 0.1, 0.38, C.white, x, 1.53, 0, 0.02));
-    for (const y of [1.25, 0.7]) P.push(bev(6, 0.2, 0.14, C.cream, 0, y, 0.12, 0.03, C.creamE));
+    for (const x of [-2.8, 0, 2.8]) P.push(box(0.3, 1.5, 0.3, C.cream, x, 0.75, 0), box(0.38, 0.1, 0.38, C.white, x, 1.53, 0));
+    for (const y of [1.25, 0.7]) P.push(box(6, 0.2, 0.14, C.cream, 0, y, 0.12));
     return ao(merge(P), 1, 0, 0.8, 0.7);
   },
   sign() {
