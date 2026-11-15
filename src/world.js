@@ -2,6 +2,7 @@
 import * as THREE from '../vendor/three.module.min.js';
 import { WORLD, FEEL } from './config.js';
 import { box, cyl, cone, blob, octa, open, dome, prism, merge, rng, cowGeo } from './geo.js';
+import { HERO } from './props.js';
 
 const HALF = WORLD.size / 2, N = 129, CELL = WORLD.size / (N - 1);
 const HW0 = { x: -HALF, z: -1180 }, HW1 = { x: HALF, z: 1020 };
@@ -263,7 +264,7 @@ export class World {
       float camD = length(vViewPosition); if (camD < 11.0 && fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) > camD / 11.0 - 0.12) discard;`); };
     this.chunks = []; this.props = []; this.grid = new Map(); this.gcell = 96;
     for (const [key, list] of groups) {
-      const [type, cx, cz] = key.split('|'), kit = KIT[type], mesh = new THREE.InstancedMesh(geos[type] || (geos[type] = kit.g()), mat, list.length);
+      const [type, cx, cz] = key.split('|'), kit = KIT[type], mesh = new THREE.InstancedMesh(geos[type] || (geos[type] = !this.env.low && HERO[type] ? HERO[type]() : kit.g()), mat, list.length); // the hero props (src/props.js, 2.27), the plain kit on the low tier
       this.group.add(mesh); this.chunks.push({ mesh, x: (+cx + 0.5) * CH, z: (+cz + 0.5) * CH, range: kit.veg ? kit.range || 1250 : 0 });
       list.forEach((p, i) => {
         const y = this.heightAt(p.x, p.z), rec = { type, kit, mesh, i, x: p.x, y, z: p.z, rot: p.rot, scale: p.scale, bx: p.x, by: y, bz: p.z, state: 0, r: (kit.r || 0) * p.scale };
