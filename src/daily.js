@@ -3,6 +3,7 @@
 // jukes, the throws, the weather and the line come in the same order for everyone, whatever their frame rate.
 // Nothing here leaves the device: the result and the streak live in the save, and Share only hands text to the player.
 import { STORMS } from './config.js';
+const DAILY = STORMS.filter((s) => s.daily !== false); // (2.26: Old Midnight is not on it, so every day before keeps its storm)
 import { rng } from './tether.js';
 
 export const ZONE = 'America/Denver';
@@ -22,7 +23,7 @@ export function stream(seed, name) { return rng((seed ^ SALT[name]) >>> 0); }
 
 export function dailyFor(key = dayKey()) {
   const seed = seedOf(key), pick = stream(seed, 'storm');
-  return { day: key, seed, storm: STORMS[Math.floor(pick() * STORMS.length)], tetherSeed: Math.floor(stream(seed, 'tether')() * 4294967296) >>> 0 };
+  return { day: key, seed, storm: DAILY[Math.floor(pick() * DAILY.length)], tetherSeed: Math.floor(stream(seed, 'tether')() * 4294967296) >>> 0 };
 }
 
 // the streak: consecutive Denver days with a scored attempt played to the end. last: the day it was last extended.

@@ -81,7 +81,7 @@ G.onScreen = (name) => { G.state = name === 'results' ? 'over' : name; input.set
 G.startMission = (def, opts = {}) => {
   abandon(); if (G.mission) G.mission.dispose(); if (G.attract) { G.attract.dispose(); G.attract = null; }
   G.world.reset(); G.fx.reset(); G.lastOpts = { def, opts }; G.runN = (G.runN || 0) + 1; input.setMode('drive'); view.name = 'drive'; view.t = 1;
-  G.mission = new Mission(G, def, save.s.loadout, save.s.upgrades, opts); G.weather.begin(G.mission);
+  G.mission = new Mission(G, def, save.s.loadout, save.s.upgrades, opts); G.weather.begin(G.mission); G.sky.night = G.sky.nightTarget = def.night || 0; // (2.26)
   G.ui.hide(); G.hud.show(true); G.hud.begin(G.mission); G.state = 'playing'; G.paused = false; G.banked = false; G.resultShown = false;
   document.body.classList.add('playing'); input.clear(); input.setEnabled(true); camState.init = false; audio.suspend(false); document.activeElement && document.activeElement.blur && document.activeElement.blur();
   if (!save.s.seenCoach) { save.s.seenCoach = true; save.write(); }
@@ -90,7 +90,7 @@ G.startMission = (def, opts = {}) => {
 function abandon() { const m = G.mission; if (m && m.daily === 'scored' && !m.result) { save.s.daily.result = { abandoned: true, won: false, time: m.time, storm: m.def.name }; save.write(); } }
 // a restart of the scored Daily Storm is practice: the attempt has been used
 G.restart = () => { if (!G.lastOpts) return; abandon(); const o = G.lastOpts.opts; G.startMission(G.lastOpts.def, o.daily === 'scored' ? { ...o, daily: 'practice' } : o); };
-G.toHQ = () => { abandon(); if (G.mission) { G.mission.dispose(); G.mission = null; } G.paused = false; spawnAttract(); G.ui.show('hq'); };
+G.toHQ = () => { abandon(); if (G.mission) { G.mission.dispose(); G.mission = null; } G.sky.night = G.sky.nightTarget = 0; G.paused = false; spawnAttract(); G.ui.show('hq'); };
 // the Daily Storm: today's storm in Denver, the same for everyone. 'scored' spends today's one scored attempt, 'practice' is free
 G.startDaily = (mode, day = dayKey()) => {
   const D = dailyFor(day), d = save.s.daily; if (d.day !== day) { save.s.daily = { day, used: false, result: null }; }
@@ -266,7 +266,8 @@ function frame(now) {
   }
   if (dt > 0) fx.update(dt, simT);
   G.weather.update(dt, simT, m, storm, camera);
-  G.world.cull(camera, quality.detail); G.crops && G.crops.update(camera, m && !m.result ? m.rig : null, storm, G.fx.tele); G.sky.update(dtBase, simT, stormLevel, storm, prox, m && !m.result ? m.rig : null); G.sky.capture(renderer, dtBase);
+  G.world.cull(camera, quality.detail); G.crops && G.crops.update(camera, m && !m.result ? m.rig : null, storm, G.fx.tele); if (m) { const r = m.rig, hx = Math.sin(r.heading), hz = Math.cos(r.heading); G.sky.uniforms.uHead.value.set(r.x + hx * 1.5, r.z + hz * 1.5, hx, hz); G.sky.uniforms.uHeadK.value = G.sky.uniforms.uNight.value * (r.dead ? 0.2 : 1); } else G.sky.uniforms.uHeadK.value = 0; // the headlights at night (2.26)
+  G.sky.update(dtBase, simT, stormLevel, storm, prox, m && !m.result ? m.rig : null); G.sky.capture(renderer, dtBase);
   renderer.render(scene, camera);
 }
 

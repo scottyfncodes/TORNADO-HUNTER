@@ -6,7 +6,7 @@ import { Tether, TIERS, rng } from '../src/tether.js';
 import { TETHER, FEEL, STORMS } from '../src/config.js';
 
 const DT = 1 / 60;
-const WALL = { pete: 22 + TETHER.hitPad, agnes: 60 + TETHER.hitPad, sisters: 32 + TETHER.hitPad }; // funnel contact radius, roughly radiusAt(0.02)
+const WALL = { pete: 22 + TETHER.hitPad, agnes: 60 + TETHER.hitPad, sisters: 32 + TETHER.hitPad, midnight: 44 + TETHER.hitPad }; // funnel contact radius, roughly radiusAt(0.02)
 const SEEDS = Array.from({ length: 120 }, (_, i) => (i * 2654435761) >>> 0);
 
 // a bus that drives in from `from` metres at `speed` m/s, stops at the ring and waits there (the slow, unlucky player)

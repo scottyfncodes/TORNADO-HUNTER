@@ -63,15 +63,17 @@ const KIT = {
 // the ground's light, shared with the crops (src/crops.js): storm shadow, warm haze, fog
 // the light (2.15): the storm's shadow reaches across the ground toward you (it is lit from behind, as you see it), cool in the
 // shadow and faintly warm where the light still reaches; the haze toward the gold horizon behind the storm warms with it
-export const LIT = `c*=uTint*(1.0+uFlash);
+export const LIT = `vec3 alb=c; c*=uTint*(1.0+uFlash);
       vec2 rel=vW.xz-uTor.xy; float sa=-dot(rel,uTorDir), sc=dot(rel,vec2(-uTorDir.y,uTorDir.x)), td=length(vec2(sc,(sa-uTor.z*1.4)*0.62));
       float sh=(0.46+0.54*smoothstep(uTor.z*0.6,uTor.z*4.5,td))*(0.8+0.2*smoothstep(uTor.z*2.0,uTor.z*9.0,td)); sh=mix(1.0,sh,uGoldK);
       c*=sh*mix(vec3(0.78,0.87,0.97),vec3(1.0),smoothstep(0.46,1.0,sh))*mix(vec3(1.0),vec3(1.05,1.0,0.92),uGoldK*0.6*smoothstep(0.85,1.0,sh));
+      vec2 hr=vW.xz-uHead.xy; float ha=dot(hr,uHead.zw), hs=abs(dot(hr,vec2(-uHead.w,uHead.z)));
+      c+=alb*vec3(1.0,0.9,0.72)*uHeadK*0.62*smoothstep(-1.0,4.0,ha)*(1.0-smoothstep(16.0,48.0,ha))*(1.0-smoothstep(ha*0.15+1.2,ha*0.17+4.0,hs))*(1.0-ha*0.012); // the headlights (2.26)
       float dd=distance(vW,cameraPosition), f=smoothstep(uFogNear,uFogFar,dd);
       float warm=uGoldK*smoothstep(0.1,0.95,dot(normalize(vW.xz-cameraPosition.xz+vec2(1e-4)),uTorDir))*smoothstep(uFogNear,uFogFar*0.8,dd);
       c=mix(c,mix(uFog,uGoldHaze,warm*0.7),f); gl_FragColor=vec4(c,1.0);
       #include <colorspace_fragment>`;
-export const HEAD = `uniform sampler2D uNoise; uniform vec3 uTint,uFog,uTor,uGoldHaze; uniform vec2 uTorDir; uniform float uFogNear,uFogFar,uFlash,uGoldK; varying vec3 vW;`;
+export const HEAD = `uniform sampler2D uNoise; uniform vec3 uTint,uFog,uTor,uGoldHaze; uniform vec2 uTorDir; uniform float uFogNear,uFogFar,uFlash,uGoldK,uHeadK; uniform vec4 uHead; varying vec3 vW;`;
 
 const FLY_MAX = 64;
 const dummy = new THREE.Object3D(), tmp = new THREE.Vector3();
@@ -104,7 +106,7 @@ export class World {
     progress(0.7);
     const map = new THREE.CanvasTexture(canvas); map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 4; map.flipY = false;
     const u = this.env.uniforms;
-    const shared = { uNoise: u.uNoise, uTint: u.uTint, uFog: u.uFog, uFogNear: u.uFogNear, uFogFar: u.uFogFar, uFlash: u.uFlash, uTor: u.uTor, uTorDir: u.uTorDir, uGoldHaze: u.uGoldHaze, uGoldK: u.uGoldK };
+    const shared = { uNoise: u.uNoise, uTint: u.uTint, uFog: u.uFog, uFogNear: u.uFogNear, uFogFar: u.uFogFar, uFlash: u.uFlash, uTor: u.uTor, uTorDir: u.uTorDir, uGoldHaze: u.uGoldHaze, uGoldK: u.uGoldK, uHead: u.uHead, uHeadK: u.uHeadK };
     this.ground = new THREE.Mesh(g, new THREE.ShaderMaterial({
       uniforms: { uMap: { value: map }, ...shared },
       vertexShader: `varying vec2 vUv; varying vec3 vW; void main(){ vUv=uv; vec4 w=modelMatrix*vec4(position,1.0); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,

@@ -68,7 +68,7 @@ try {
   await page.goto(URL); await page.waitForFunction(() => window.__G && window.__G.ui && document.getElementById('loading').hidden, null, { timeout: 60000 });
 
   // ---- the render: every storm's fight, measured ----
-  for (const storm of ['pete', 'agnes', 'sisters']) {
+  for (const storm of ['pete', 'agnes', 'sisters', 'midnight']) {
     const R = await render(page, storm, { wav: !!OUT }), P = Object.fromEntries(R.parts.map((p) => [p.name, p]));
     if (R.wav) { fs.mkdirSync(OUT, { recursive: true }); fs.writeFileSync(path.join(OUT, `fight-${storm}.wav`), Buffer.from(R.wav, 'base64')); }
     console.log(`${storm}: ${R.total} s, ${R.notes} notes, peak ${R.all.peak}, rms ${R.all.rms}`);

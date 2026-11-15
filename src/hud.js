@@ -3,7 +3,7 @@
 // centre of the screen gets the sights: a reticle per weapon, a hit marker, and the health of whatever you are hitting.
 // Writes to the DOM only when a value actually changes.
 import * as THREE from '../vendor/three.module.min.js';
-import { FEEL } from './config.js';
+import { FEEL, efLabel } from './config.js';
 
 const $ = (id) => document.getElementById(id);
 const _v = new THREE.Vector3();
@@ -42,7 +42,7 @@ export class Hud {
 
   begin(m) {
     this.last = {}; this.targetT = 0; $('ret-info').hidden = true; $('ret-note').hidden = true; this.ret.hidden = true; for (const k of this.marks) { k.on = false; k.e.hidden = true; }
-    $('storm-name').textContent = m.def.name; $('storm-ef').textContent = m.daily === 'scored' ? 'DAILY' : m.daily ? 'PRACTICE' : 'EF' + m.ef;
+    $('storm-name').textContent = m.def.name; $('storm-ef').textContent = m.daily === 'scored' ? 'DAILY' : m.daily ? 'PRACTICE' : efLabel(m.ef);
     const pips = $('band-pips'); pips.textContent = ''; this.pips = m.storm.bands.map(() => { const i = document.createElement('i'); pips.appendChild(i); return i; });
   }
 

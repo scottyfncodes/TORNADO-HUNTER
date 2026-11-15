@@ -26,7 +26,7 @@ export class Crops {
   constructor(scene, world, uniforms, low) {
     this.world = world; this.G = low ? 30 : 56; this.cell = low ? 2.4 : CELL; const n = this.G * this.G;
     this.edge = this.G * this.cell * 0.5; this.key = new Int32Array(n * 2).fill(-999999); this.cx = null; this.cz = null;
-    this.u = { uTime: uniforms.uTime, uTint: uniforms.uTint, uFog: uniforms.uFog, uFogNear: uniforms.uFogNear, uFogFar: uniforms.uFogFar, uFlash: uniforms.uFlash, uTor: uniforms.uTor, uTorDir: uniforms.uTorDir, uGoldHaze: uniforms.uGoldHaze, uGoldK: uniforms.uGoldK, uGold: uniforms.uGold, uNoise: uniforms.uNoise,
+    this.u = { uTime: uniforms.uTime, uTint: uniforms.uTint, uFog: uniforms.uFog, uFogNear: uniforms.uFogNear, uFogFar: uniforms.uFogFar, uFlash: uniforms.uFlash, uTor: uniforms.uTor, uTorDir: uniforms.uTorDir, uGoldHaze: uniforms.uGoldHaze, uGoldK: uniforms.uGoldK, uHead: uniforms.uHead, uHeadK: uniforms.uHeadK, uGold: uniforms.uGold, uNoise: uniforms.uNoise,
       uStorm: { value: new THREE.Vector4(0, 0, 1, 0) }, uRig: { value: new THREE.Vector3(0, 0, -1) }, uTele: { value: Array.from({ length: TELE }, () => new THREE.Vector4(0, 0, 0, 0)) }, uCam: { value: new THREE.Vector3() }, uEdge: { value: this.edge } };
     const mat = new THREE.ShaderMaterial({
       uniforms: this.u, side: THREE.DoubleSide,
@@ -57,7 +57,8 @@ export class Crops {
         void main(){
           // stalks cut out of the card: nine across, each its own height, thin, with an ear at the top
           float sx = vUv.x * 9.0, id = floor(sx), fs = fract(sx), top = 0.62 + 0.38 * hh(id), ear = smoothstep(top - 0.2, top - 0.12, vUv.y);
-          float w = mix(0.5, 0.86, ear) * (0.8 + 0.3 * hh(id + 3.0)); // game-scale stalks: real ones would vanish under a pixel if (abs(fs - 0.5) > w * 0.5 || vUv.y > top) discard;
+          float w = mix(0.5, 0.86, ear) * (0.8 + 0.3 * hh(id + 3.0)); /* game-scale stalks: real ones would vanish under a pixel */
+          if (abs(fs - 0.5) > w * 0.5 || vUv.y > top) discard; // (2.26: this sat inside the comment above since 2.20, so every card drew whole)
           // the canopy is lighter and warmer than the field under it: dark at the root, bright at the head
           vec3 c = mix(vC, vC * vec3(1.25, 1.18, 0.95) + vec3(0.04, 0.035, 0.0), vH) * (0.38 + 1.0 * pow(vH, 1.3)) * (0.86 + 0.28 * hh(id + 7.0)) * mix(1.0, 1.15, ear);
           c += uGold * uGoldK * vH * vH * 0.3 * max(0.0, dot(normalize(vW.xz - cameraPosition.xz + vec2(1e-4)), uTorDir)); // the tips catch the gold behind the storm

@@ -12,6 +12,7 @@ export const THEMES = {
   pete:    { id: 'pete', root: 45, bpm: 126, scale: MINOR, leadOct: 24, lead: 'pluck' },         // Skinny Pete: A minor, light on its feet
   agnes:   { id: 'agnes', root: 38, bpm: 108, scale: MINOR, leadOct: 24, lead: 'brass', heavy: true }, // Big Agnes: D minor, low, slow and heavy (half-time drums)
   sisters: { id: 'sisters', root: 40, bpm: 138, scale: MINOR, leadOct: 24, lead: 'pluck', twin: true }, // The Sisters: E minor, fastest, the arpeggio answered a third above
+  midnight: { id: 'midnight', root: 43, bpm: 116, scale: MINOR, leadOct: 12, lead: 'brass', twin: true }, // Old Midnight (2.26): G minor, low brass answered a third above
   after:   { id: 'after', root: 45, bpm: 84, scale: MIXO, leadOct: 12, lead: 'pluck' },          // after a win: A major with the flat seventh
 };
 export const PROG = [0, 0, 6, 6, 5, 5, 6, 6];            // the chord under each of the eight bars, as a scale degree: i i VII VII VI VI VII VII

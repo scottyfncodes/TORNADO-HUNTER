@@ -118,7 +118,7 @@ try {
   const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
   await page.goto(URL); await page.waitForFunction(() => window.__G && window.__G.ui && document.getElementById('loading').hidden, null, { timeout: 60000 });
 
-  for (const id of (process.env.STORMS ?? 'pete,agnes,sisters').split(',').filter(Boolean)) { // STORMS= skips the finale runs
+  for (const id of (process.env.STORMS ?? 'pete,agnes,sisters,midnight').split(',').filter(Boolean)) { // STORMS= skips the finale runs
     for (const [driver, seeds] of [['attentive', [11, 12, 13]], ['naive', [21, 22]]]) for (const seed of seeds) {
       const L = await finale(page, { id, seed, driver });
       const lungeHits = L.hits.filter((h) => h.phase === 'rip' && h.funnel < 4), satHits = L.hits.filter((h) => h.phase === 'rip' && h.funnel >= 4);

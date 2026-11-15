@@ -24,7 +24,7 @@ const rand = (a, b) => a + Math.random() * (b - a);
 const SAT_RING = new THREE.RingGeometry(7, 8.6, 28), SAT_MAT = new THREE.MeshBasicMaterial({ color: PALETTE.accent, transparent: true, opacity: 0.85, depthWrite: false, fog: false, side: THREE.DoubleSide });
 const BOUND = 1120;
 // rolling starts: rig on a road at speed, storm already running ahead of it
-const STARTS = { pete: [768, -1100, 0], agnes: [-1050, 768, Math.PI / 2], sisters: [256, 1050, Math.PI] };
+const STARTS = { pete: [768, -1100, 0], agnes: [-1050, 768, Math.PI / 2], sisters: [256, 1050, Math.PI], midnight: [-768, -1100, 0] };
 const SEATS = { harpoon: 'harpoon', kill: 'rocket' };
 // DOROTHY herself: a steel drum of sensors with a beacon on it, set down at the foot of the funnel
 const DOROTHY_GEO = merge([cyl(0.95, 1.05, 1.5, '#c9cdca', 0, 0.75, 0, 10), cyl(1.0, 1.0, 0.22, '#e8b21c', 0, 0.5, 0, 10), cyl(1.0, 1.0, 0.22, '#e8b21c', 0, 1.1, 0, 10), cyl(0.8, 0.95, 0.12, '#1b2224', 0, 1.56, 0, 10),

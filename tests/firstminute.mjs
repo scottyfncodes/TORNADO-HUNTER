@@ -72,7 +72,7 @@ try {
   // a boost press, the way the button makes one
   await page.evaluate(() => { const b = document.getElementById('btn-boost'); window.__G.input.__press = () => { b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch', pointerId: 77 })); b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerType: 'touch', pointerId: 77 })); }; });
   const rows = [];
-  for (const id of (process.env.ONLY || 'pete,agnes,sisters').split(',')) for (const skill of ['sharp', 'sloppy']) for (const seed of [1, 2, 3]) {
+  for (const id of (process.env.ONLY || 'pete,agnes,sisters,midnight').split(',')) for (const skill of ['sharp', 'sloppy']) for (const seed of [1, 2, 3]) {
     const R = await opening(page, { id, skill, seed, coach: id === 'pete' && seed === 1 });
     rows.push({ id, skill, seed, ...R });
     const t = (k) => (R.T[k] === undefined ? '  -  ' : String(R.T[k]).padStart(5));
@@ -91,7 +91,7 @@ try {
   // medians per storm, for the design doc
   const med = (a) => { const v = a.filter((x) => x !== undefined).sort((p, q) => p - q); return v.length ? v[(v.length - 1) >> 1] : undefined; };
   console.log('\nmedians (seconds into the mission):');
-  for (const id of ['pete', 'agnes', 'sisters']) {
+  for (const id of ['pete', 'agnes', 'sisters', 'midnight']) {
     const R = rows.filter((r) => r.id === id), sharp = R.filter((r) => r.skill === 'sharp'), sl = R.filter((r) => r.skill === 'sloppy');
     console.log(`  ${id.padEnd(8)} boost ${med(R.map((r) => r.T.boost))}, wreckage ${med(R.map((r) => r.T.wreckage))}, near miss ${med(R.map((r) => r.T.nearMiss))}, zone ${med(R.map((r) => r.T.zone))}, band ${med(sharp.map((r) => r.T.band))} sharp / ${med(sl.map((r) => r.T.band))} sloppy`);
   }
