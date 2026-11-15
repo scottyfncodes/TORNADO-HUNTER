@@ -124,10 +124,10 @@ export class Sky {
     if (tor) { _w.set(tor.x - cam.x, 0, tor.z - cam.z); if (_w.lengthSq() > 1) { _w.normalize(); const td = u.uTorDir.value, k = Math.min(1, dt * 2); td.x += (_w.x - td.x) * k; td.y += (_w.z - td.y) * k; td.normalize(); } }
     const TD = u.uTorDir.value, sd = this.sunDir || this.sun.position, b = 0.7 * this.goldK; _s.set(sd.x + (TD.x - sd.x) * b, 0, sd.z + (TD.y - sd.z) * b).normalize(); this.sun.position.set(_s.x, sd.y + (0.26 - sd.y) * b, _s.z);
     const subj = mover || cam; this.shade = 1;
-    if (tor && tor.alive) { const r = tor.shadowR, rx = subj.x - tor.x, rz = subj.z - tor.z, al = -(rx * TD.x + rz * TD.y), ac = -rx * TD.y + rz * TD.x, td = Math.hypot(ac, (al - r * 1.4) * 0.62); this.shade = 1 - (1 - (0.46 + 0.54 * sstep(r * 0.6, r * 4.5, td)) * (0.8 + 0.2 * sstep(r * 2, r * 9, td))) * this.goldK; }
+    if (tor && tor.visible) { const r = tor.shadowR * (tor.alive ? 1 : 0.4 + 0.6 * tor.fade), rx = subj.x - tor.x, rz = subj.z - tor.z, al = -(rx * TD.x + rz * TD.y), ac = -rx * TD.y + rz * TD.x, td = Math.hypot(ac, (al - r * 1.4) * 0.62); this.shade = 1 - (1 - (0.46 + 0.54 * sstep(r * 0.6, r * 4.5, td)) * (0.8 + 0.2 * sstep(r * 2, r * 9, td))) * this.goldK; }
     const lit = this.shade; this.sun.intensity = (2.4 - 0.9 * s) * (0.3 + 0.7 * lit); this.hemi.intensity *= 0.72 + 0.28 * lit; this.hemi.color.lerp(_shadeSky, (1 - lit) * 0.5); this.sun.color.copy(_sunClear).lerp(_sunGold, this.goldK);
     if (tor) {
-      u.uTor.value.set(tor.x, tor.z, tor.alive ? tor.shadowR : 0.001);
+      u.uTor.value.set(tor.x, tor.z, tor.visible ? tor.shadowR * (tor.alive ? 1 : tor.fade) + 0.001 : 0.001); // (2.24: its shadow goes as it fades, not the moment it is hit)
       this.wall.visible = tor.visible; this.wall.position.set(tor.x + tor.topOffset.x, tor.groundY + tor.height + 6, tor.z + tor.topOffset.z);
       this.wall.scale.setScalar(tor.wallR); this.wall.material.uniforms.uSpin.value = tor.spin; this.wall.material.uniforms.uAlpha.value = tor.fade * Math.min(1, s * 1.4);
     } else { u.uTor.value.set(0, 0, 0.001); this.wall.visible = false; }

@@ -148,34 +148,58 @@ function gunCamera(dt, m) {
   camState.pos.copy(camera.position);
 }
 function viewCamera(dt, m) {
-  const gun = m.view === 'gun' && !m.cine, now = m.cine ? 'cine' : gun ? 'gun:' + m.gn.seatId : 'drive', r = m.rig;
+  const death = m.phase === 'won' && m.phaseT < FEEL.deathShot && !!m.impact;
+  const gun = m.view === 'gun' && !m.cine, now = m.cine ? 'cine' : death ? 'death' : gun ? 'gun:' + m.gn.seatId : 'drive', r = m.rig;
   if (now !== view.name) { // cuts to and from the cinematics stay cuts; wheel to gun, and one crew vehicle to the next, is a swing
     const was = view.name; view.dur = now.startsWith('gun:') && now !== 'gun:rig' ? FEEL.seatBlend : FEEL.gunBlend;
-    if (now !== 'cine' && was !== 'cine') { view.t = 0; view.pos.copy(camera.position).sub(_p.set(r.x, r.y, r.z)); view.quat.copy(camera.quaternion); } else view.t = 1;
-    if (now === 'drive' && was !== 'cine') camState.init = false;
+    if (now !== 'cine' && was !== 'cine' && now !== 'death' && was !== 'death') { view.t = 0; view.pos.copy(camera.position).sub(_p.set(r.x, r.y, r.z)); view.quat.copy(camera.quaternion); } else view.t = 1;
+    if (now === 'drive' && was !== 'cine') camState.init = false; // (after the death shot too: a cut to the truck under the clearing sky)
+    if (now === 'death') deathCam.init = false;
     view.name = now;
   }
   G.fx.fp = gun; if (!gun) m.gn.root.visible = false;
-  if (now === 'cine') cineCamera(dt, m); else if (gun) gunCamera(dt, m); else missionCamera(dt, m);
+  if (now === 'cine') cineCamera(dt, m); else if (now === 'death') deathCamera(dt, m); else if (gun) gunCamera(dt, m); else missionCamera(dt, m);
   if (view.t < 1) {
     view.t = Math.min(1, view.t + dt / (G.fx.calm ? 0.1 : view.dur || FEEL.gunBlend)); const k = view.t * view.t * (3 - 2 * view.t);
     _l.set(r.x, r.y, r.z).add(view.pos); camera.position.lerpVectors(_l, camera.position, k); _q.copy(camera.quaternion); camera.quaternion.slerpQuaternions(view.quat, _q, k); camera.updateMatrixWorld();
   }
 }
 // phase 4 and the kill shot: the camera leaves the truck and rides with the sensors, or the rocket
+const _t = new THREE.Vector3(), deathCam = { init: false, pos: new THREE.Vector3(), at: new THREE.Vector3(), out: new THREE.Vector3() };
 function cineCamera(dt, m) {
   const s = m.storm, p = m.cine.pos, rocket = m.cine.kind === 'rocket';
-  _d.set(s.x - p.x, 0, s.z - p.z); const d = _d.length() || 1; _d.multiplyScalar(1 / d);
-  if (rocket) _p.set(p.x - _d.x * 11 - _d.z * 3, p.y + 3, p.z - _d.z * 11 + _d.x * 3);
-  else { // stand well outside the funnel, on the truck's side of it, and watch the sensors go round and up
-    const r = m.rig, ox = r.x - s.x, oz = r.z - s.z, od = Math.hypot(ox, oz) || 1, out = s.radiusAt(0.2) * 1.4 + 58;
-    _p.set(s.x + ox / od * out - oz / od * 22, s.groundY + 16 + (p.y - s.groundY) * 0.45, s.z + oz / od * out + ox / od * 22);
+  if (rocket) { // 2.24: over the rocket's shoulder with the heart it is flying at in the frame; it stops short and watches it go in
+    m.aimPoint(_t); _d.subVectors(_t, p); const d = _d.length() || 1; _d.multiplyScalar(1 / d); const hx = _d.x, hz = _d.z, hl = Math.hypot(hx, hz) || 1;
+    _p.set(p.x - _d.x * 10 - hz / hl * 3.5, p.y - _d.y * 10 + 2.6, p.z - _d.z * 10 + hx / hl * 3.5);
+    const far = _p.distanceTo(_t); if (far < FEEL.deathStandOff) _p.copy(camera.position); // close enough: hold, and watch it hit
+    _l.lerpVectors(p, _t, 0.6);
+  } else { // stand well outside the funnel, off the cable's line, and watch the sensors go round and up (2.24: 22 m to the side was on the cable)
+    _d.set(s.x - p.x, 0, s.z - p.z);
+    const r = m.rig, ox = r.x - s.x, oz = r.z - s.z, od = Math.hypot(ox, oz) || 1, out = s.radiusAt(0.2) * 1.4 + 58, side = out * 0.62;
+    _p.set(s.x + ox / od * out - oz / od * side, s.groundY + 22 + (p.y - s.groundY) * 0.5, s.z + oz / od * out + ox / od * side);
   }
   const gy = G.world.heightAt(_p.x, _p.z) + 2; if (_p.y < gy) _p.y = gy;
-  if (rocket) _l.set(p.x + _d.x * Math.min(d, 30), p.y, p.z + _d.z * Math.min(d, 30)); else _l.set(p.x * 0.7 + s.x * 0.3, p.y + 4, p.z * 0.7 + s.z * 0.3);
+  if (!rocket) _l.set(p.x * 0.75 + s.x * 0.25, p.y + 2, p.z * 0.75 + s.z * 0.25);
   if (!m.cine.cut) { m.cine.cut = true; camera.position.copy(_p); camState.look.copy(_l); } // a hard cut to the new subject, then follow it
   camera.position.lerp(_p, Math.min(1, dt * 7)); camState.look.lerp(_l, Math.min(1, dt * 9)); camera.lookAt(camState.look); camera.updateMatrixWorld();
   const fov = G.baseFov + (rocket ? 14 : -8); if (Math.abs(fov - camera.fov) > 0.05) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 6); camera.updateProjectionMatrix(); }
+  camState.pos.copy(camera.position);
+}
+// 2.24: the storm dies on screen. From where the rocket camera stood, the shot holds on the wound as the funnel tears through and
+// fades, drifting back and up, then cuts to the truck under the clearing sky (missionCamera's won orbit)
+function deathCamera(dt, m) {
+  const s = m.storm, k = m.phaseT / FEEL.deathShot;
+  if (!deathCam.init) {
+    deathCam.init = true; deathCam.at.copy(m.impact); deathCam.pos.copy(camera.position);
+    deathCam.out.subVectors(camera.position, m.impact); deathCam.out.y = 0; if (deathCam.out.lengthSq() < 1) deathCam.out.set(m.rig.x - s.x, 0, m.rig.z - s.z); deathCam.out.normalize();
+    const d = deathCam.pos.distanceTo(deathCam.at); if (d < FEEL.deathStandOff || d > FEEL.deathStandOff * 2.5) deathCam.pos.copy(deathCam.at).addScaledVector(deathCam.out, FEEL.deathStandOff * 1.3).setY(Math.max(deathCam.at.y - 6, G.world.heightAt(deathCam.at.x, deathCam.at.z) + 8));
+  }
+  const e = 1 - (1 - k) * (1 - k); _p.copy(deathCam.pos).addScaledVector(deathCam.out, e * 26); _p.y += e * 9;
+  const gy = G.world.heightAt(_p.x, _p.z) + 2; if (_p.y < gy) _p.y = gy;
+  _l.set(deathCam.at.x * 0.7 + s.x * 0.3, deathCam.at.y * 0.8 + (s.groundY + s.height * 0.3) * 0.2, deathCam.at.z * 0.7 + s.z * 0.3);
+  camera.position.copy(_p); const sh = G.fx.shakeAmt * 0.05; if (sh > 0) { camera.position.x += (Math.random() - 0.5) * sh; camera.position.y += (Math.random() - 0.5) * sh; }
+  camera.lookAt(_l); camera.updateMatrixWorld();
+  const fov = G.baseFov + 4; if (Math.abs(fov - camera.fov) > 0.05) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 4); camera.updateProjectionMatrix(); }
   camState.pos.copy(camera.position);
 }
 function attractCamera(dt, t) {
@@ -202,7 +226,7 @@ function frame(now) {
     // G.fast (tests only) runs extra fixed steps a frame so whole encounters can be simulated quickly
     const steps = dt > 0 ? (G.fast || 1) : 0, sdt = dt;
     for (let i = 0; i < steps; i++) { if (i) { simT += sdt; fx.update(sdt, simT); if (fx.stopT > 0) fx.stopT = 0; } m.update(sdt, simT, input.axes(), input); }
-    storm = m.storm; prox = THREE.MathUtils.clamp(1 - (m.dist - 40) / 500, 0, 1); stormLevel = m.phase === 'won' ? 0 : 1;
+    storm = m.storm; prox = THREE.MathUtils.clamp(1 - (m.dist - 40) / 500, 0, 1); stormLevel = m.phase === 'won' && m.phaseT > FEEL.deathShot * 0.6 ? 0 : 1; // 2.24: it dies under its own weather, then the sky breaks
     viewCamera(dtBase, m);
     if (!G.paused) G.hud.update(dtBase, m, camera, input.usingTouch, fx.calm);
     audio.beds({ prox: storm.alive ? prox : 0, storm: G.sky.storm, speed: Math.min(1.4, m.rig.speedFrac), throttle: Math.abs(m.rig.throttle), tension: m.line ? 0.6 : null, playing: !G.paused && !m.result, drift: m.rig.drifting ? 1 : Math.min(1, Math.abs(m.rig.slip || 0) / 14), boost: m.rig.boostT > 0, hail: G.weather.hail, hull: m.rig.hull / m.rig.hullMax });
