@@ -217,7 +217,7 @@ export class Mission {
     const G = this.G, s = this.storm; if (this.phase !== 'rip' || this.result || !this.dropped) return false;
     _a.copy(this.dorothy.position); _a.y += 3; this.rec.dorothy.push(this.rec.busHits ? 'y' : 'g'); this.leaveBus(); const r = this.rig;
     this.phase = 'dorothy'; this.phaseT = 0; this.stats.dorothys++; G.audio.probeLaunch(); this.clearHazards(true); r.immune = Math.max(r.immune, FEEL.dorothySeconds + 0.6);
-    if (this.callout && this.calloutT > 0 && /^DOROTHY IS DOWN/.test(this.callout.text)) this.calloutT = 0; // done: it must not hang over her flight (2.24)
+    if (this.callout && this.calloutT > 0 && /^DOROTHY IS DOWN/.test(this.callout.text)) { this.callout.moot = true; this.calloutT = 0; } // done: it must not hang over her flight (2.24); moot, not cut short (2.25)
     this.callQ = this.callQ.filter((c) => !/^DOROTHY IS DOWN/.test(c.text));
     this.cine = { kind: 'pod', pos: G.fx.swarmCenter, at: this.time }; this.call('DOROTHY IS FLYING', 'good', 1.6);
     G.fx.flashAt(_a.x, _a.y, _a.z, 12, PALETTE.signal, 0.3); G.fx.launchSwarm(_a, s, FEEL.dorothySeconds, () => {
