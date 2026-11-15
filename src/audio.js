@@ -103,7 +103,12 @@ export const audio = {
     burst('highpass', 2600, 2, dur, 0.04 + 0.05 * k, 5200); // the cable singing
   },
   lineSnap() { burst('highpass', 3000, 1, 0.08, 0.6); tone('sawtooth', 900, 80, 0.3, 0.2); },
-  boost() { burst('bandpass', 400, 1.5, 0.7, 0.35, 2600); },
+  // k: the Turbo level, 0..5 (2.25). Fitted exhausts afterfire: a few pops and a crackle behind the whoosh, more of them each level
+  boost(k = 0) {
+    burst('bandpass', 400, 1.5, 0.7, 0.35, 2600); if (!k) return;
+    burst('lowpass', 260, 0.8, 0.5, 0.25 + 0.04 * k, 90, 0.04); // the flame catching
+    for (let i = 0; i < 2 + k; i++) { const w = 0.1 + i * (0.09 + Math.random() * 0.06); burst('bandpass', 700 + Math.random() * 900, 1.2, 0.035, 0.22 + 0.03 * k, 0, w); tone('square', 95, 50, 0.04, 0.07, w); }
+  },
   thunder(vol = 0.9) { duck(0.5, 0.35); burst('lowpass', 2400, 0.4, 0.08, vol); burst('lowpass', 500, 0.3, 2.2, vol * 0.9, 50, 0.04); },
   // a strike somewhere else: it arrives `delay` seconds after the flash, and the further off it was the less crack and the more roll
   thunderFar(vol, delay, far) { if (far < 0.55) burst('lowpass', 1800 - 1400 * far, 0.4, 0.07, vol * (1 - far), 0, delay); burst('lowpass', 420 - 220 * far, 0.3, 2 + 2.4 * far, vol * 0.85, 45, delay + 0.03); burst('lowpass', 160, 0.2, 1.6 + 2 * far, vol * 0.5, 40, delay + 0.5 + far); },
@@ -145,6 +150,20 @@ export const audio = {
   crack() { burst('highpass', 2200, 0.8, 0.09, 0.35); tone('square', 420, 120, 0.09, 0.12); },
   gust() { burst('bandpass', 300, 0.8, 1.2, 0.5, 1400); },
   dorothy() { tone('sine', 880, 1760, 0.18, 0.12); tone('sine', 1320, 2640, 0.22, 0.1, 0.1); tone('sine', 1760, 3520, 0.3, 0.08, 0.2); },
+  // 2.25: the storm dying, heard as it is seen. The roar tears and climbs as the rocket opens it, then falls away under the
+  // music into nothing; the band comes back up as the sky breaks
+  death() {
+    if (!ctx) return; duck(0.3, 2.3);
+    tone('sawtooth', 62, 150, 0.45, 0.22); burst('bandpass', 1800, 6, 0.45, 0.2, 3800); // the rip
+    tone('sawtooth', 150, 22, 2.5, 0.24, 0.42); tone('square', 75, 18, 2.3, 0.11, 0.5); // the voice going
+    burst('lowpass', 900, 0.8, 2.7, 0.75, 38, 0.08); burst('bandpass', 2400, 5, 1.7, 0.16, 280, 0.25); // the body falling away, a rasp under it
+    burst('highpass', 3200, 0.7, 1.0, 0.12, 9000, 0.05); // what it was carrying, let go
+  },
+  // the sky breaking: the wind lets out its breath, and a held fifth in the storm's key, very quiet
+  skyBreak() {
+    if (!ctx) return; burst('bandpass', 760, 0.7, 3.0, 0.24, 130); const f = inKey(880);
+    tone('sine', f, f, 2.6, 0.035, 0.3); tone('sine', f * 1.498, f * 1.498, 2.4, 0.025, 0.55);
+  },
   stagger() { duck(0.4, 0.5); tone('sawtooth', 520, 90, 0.9, 0.2); burst('lowpass', 900, 0.6, 0.8, 0.6, 80); },
   // the kill. With the music on, the band plays the win (score.js fanfare) and this adds the meadowlark after the last chord;
   // without it, the old four notes, so a win is never silent

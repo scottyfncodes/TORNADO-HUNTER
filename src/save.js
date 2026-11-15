@@ -10,6 +10,7 @@ export const FRESH = () => ({
   loadout: { rig: 'mule', crew: ['doc', 'winch'], gadget: 'anchor', storm: 'pete' },
   settings: { mute: false, calm: false, music: true }, // music (2.12): the band has its own switch
   seenCoach: false,
+  seenBp: {}, // 2.25: blueprints whose rig card has been seen at headquarters (NEW until then)
   seen: { dorothy: false, kill: false }, // 2.7: the two cinematics, watched to the end at least once: from then on a tap skips them
   grades: {},                            // 2.8: the best letter per storm, { pete: 'A' }
   daily: { day: '', used: false, result: null }, // 2.8: today's Daily Storm: its Denver date, whether the scored attempt is spent, how it went

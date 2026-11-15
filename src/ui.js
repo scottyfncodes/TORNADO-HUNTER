@@ -38,6 +38,7 @@ export class UI {
     for (const k in this.screens) this.screens[k].hidden = k !== name;
     if (name === 'title') { const first = save.firstRun(); $('btn-start').textContent = first ? 'Start the chase' : 'Play'; $('btn-hq').hidden = true; $('title-hint').textContent = first ? 'Hold to drive. Slide to steer. In range you take the turret: drag to aim, hold to fire.' : `${rankFor(save.s.bands)} · ${Math.round(save.s.data)} Data banked`; }
     if (name === 'title') this.renderDaily();
+    if (name === 'hq' && this.nextTab) { this.tab = this.nextTab; this.nextTab = null; } // a blueprint just recovered: open where it is built
     if (name === 'hq') { save.s.loadout.crew = crewOf(save.s.loadout.crew, CREW.map((c) => c.id)); if (!stormOpen(STORMS.find((s) => s.id === save.s.loadout.storm) || STORMS[0])) save.s.loadout.storm = 'pete'; this.renderHQ(); }
     this.G.onScreen(name);
     const focus = { title: 'btn-start', hq: 'btn-roll', results: 'res-primary', pause: 'p-resume' }[name]; if (focus && !this.G.input.usingTouch) $(focus).focus({ preventScroll: true });
@@ -48,6 +49,9 @@ export class UI {
   renderHQ() {
     const s = save.s, body = $('hq-body'); body.textContent = ''; body.scrollTop = 0;
     for (const t of document.querySelectorAll('.tab')) t.setAttribute('aria-selected', String(t.dataset.tab === this.tab));
+    // a dot on a tab with something the data in hand will build (2.25)
+    const canRig = RIGS.some((r) => !s.owned[r.id] && (!r.needs || s.kills[r.needs]) && s.data >= r.price), canUp = UPGRADES.some((u) => s.upgrades[u.id] < u.prices.length && s.data >= u.prices[s.upgrades[u.id]]);
+    for (const t of document.querySelectorAll('.tab')) { const on = (t.dataset.tab === 'rig' && canRig) || (t.dataset.tab === 'shop' && canUp); t.classList.toggle('dot', on); t.setAttribute('aria-description', on ? 'Something to build' : ''); }
     $('hq-data').textContent = Math.round(s.data); $('hq-rank').textContent = rankFor(s.bands);
     this['tab_' + this.tab](body, s);
     const L = s.loadout, storm = STORMS.find((x) => x.id === L.storm), rig = RIGS.find((x) => x.id === L.rig), lo = $('hq-loadout'); lo.textContent = '';
@@ -92,6 +96,8 @@ export class UI {
     for (const r of RIGS) {
       const owned = !!s.owned[r.id], blueprint = !r.needs || !!s.kills[r.needs], sel = s.loadout.rig === r.id;
       const tags = owned ? [] : blueprint ? [['tag-pay', r.price + ' data']] : [['tag-lock', 'Blueprint: beat ' + STORMS.find((x) => x.id === r.needs).name]];
+      this.freshBp = this.freshBp || new Set(); if (!owned && blueprint && !(s.seenBp || {})[r.id]) { this.freshBp.add(r.id); (s.seenBp = s.seenBp || {})[r.id] = true; save.write(); } // new until the game is next opened
+      if (!owned && this.freshBp.has(r.id)) tags.unshift(['tag-ok', 'New blueprint']);
       if (owned) tags.push(['', r.gun.name]);
       const c = this.card(r.name, r.blurb, { sel, static: !owned, locked: !owned && !blueprint, tags, onClick: owned ? () => { s.loadout.rig = r.id; } : null });
       const bars = el('div', 'bars'); stat(bars, 'Speed', r.speed / 1.15); stat(bars, 'Hull', r.hull / 1.6); stat(bars, 'Grip', r.turn / 1.2); stat(bars, 'Weight', 0.55 / r.resist); c.appendChild(bars);
@@ -185,7 +191,17 @@ export class UI {
     row('Time', clock(res.time)); if (res.won) row('Hull left', Math.round(100 * res.hull / res.hullMax) + '%');
     row('Accuracy', st.rounds ? Math.round(100 * st.fired / st.rounds) + '%' : '-', st.rounds ? `${st.fired}/${st.rounds}` : ''); row('Critical hits', st.rounds ? Math.round(100 * st.crits / st.rounds) + '%' : '-', st.rounds ? `${st.crits}/${st.rounds}` : ''); /* a share of rounds, as the grade reads it */ row('Near misses', String(st.close));
     t.appendChild(el('dt', 'total', res.won ? 'Data banked' : 'Data salvaged')); t.appendChild(el('dd', 'total', '+' + res.data));
-    const u = $('res-unlock'); u.hidden = !unlockText; u.textContent = unlockText || '';
+    // what a first win opens (2.25): the blueprint, with the rig itself, and the storm that is next
+    const u = $('res-unlock'), un = unlockText; u.hidden = !un; u.textContent = ''; u.classList.toggle('has-rig', !!(un && un.rig)); this.nextTab = null;
+    if (un) {
+      const r = un.rig && RIGS.find((x) => x.id === un.rig);
+      if (r) {
+        const pic = this.G.rigPortrait ? this.G.rigPortrait(r.id) : ''; if (pic) { const im = el('img'); im.src = pic; im.alt = r.name; im.width = 224; im.height = 140; u.appendChild(im); }
+        const t = el('div', 'bp'); t.appendChild(el('span', 'bp-eyebrow', 'Blueprint recovered')); t.appendChild(el('h3', '', r.name));
+        t.appendChild(el('p', '', `${r.gun.name}. Build it at headquarters for ${r.price} data`)); u.appendChild(t); this.nextTab = 'rig';
+      }
+      u.appendChild(el('p', 'bp-next', un.next ? `${un.next} is on the radar.` : 'Every storm now has a rematch.'));
+    }
     const p = $('res-primary'), q = $('res-secondary'), sh = $('res-share');
     const again = () => { this.G.audio.unlock(); this.G.audio.ui(); this.G.restart(); }, hq = () => { this.G.audio.ui(); this.G.toHQ(); };
     sh.hidden = daily !== 'scored'; sh.textContent = 'Share';

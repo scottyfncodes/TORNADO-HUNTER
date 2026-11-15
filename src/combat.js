@@ -217,7 +217,7 @@ export class Mission {
     const G = this.G, s = this.storm; if (this.phase !== 'rip' || this.result || !this.dropped) return false;
     _a.copy(this.dorothy.position); _a.y += 3; this.rec.dorothy.push(this.rec.busHits ? 'y' : 'g'); this.leaveBus(); const r = this.rig;
     this.phase = 'dorothy'; this.phaseT = 0; this.stats.dorothys++; G.audio.probeLaunch(); this.clearHazards(true); r.immune = Math.max(r.immune, FEEL.dorothySeconds + 0.6);
-    if (this.callout && this.calloutT > 0 && /^DOROTHY IS DOWN/.test(this.callout.text)) this.calloutT = 0; // done: it must not hang over her flight (2.24)
+    if (this.callout && this.calloutT > 0 && /^DOROTHY IS DOWN/.test(this.callout.text)) { this.callout.moot = true; this.calloutT = 0; } // done: it must not hang over her flight (2.24); moot, not cut short (2.25)
     this.callQ = this.callQ.filter((c) => !/^DOROTHY IS DOWN/.test(c.text));
     this.cine = { kind: 'pod', pos: G.fx.swarmCenter, at: this.time }; this.call('DOROTHY IS FLYING', 'good', 1.6);
     G.fx.flashAt(_a.x, _a.y, _a.z, 12, PALETTE.signal, 0.3); G.fx.launchSwarm(_a, s, FEEL.dorothySeconds, () => {
@@ -366,7 +366,7 @@ export class Mission {
     if (won) {
       const fin = this.pay * this.p.dataMul, hull = Math.round(this.pay * 0.4 * (this.rig.hull / this.rig.hullMax) * this.p.dataMul);
       lines.push(['Storm destroyed', Math.round(fin)], ['Hull intact', hull]); this.data += fin + hull;
-      s.die(); fx.slowMo(1.4); fx.flash(1); fx.shake(18); fx.hitStop(0.12); this.G.audio.win(); this.say('win'); fx.blowout(s.x, s.groundY + 24, s.z, 60, PALETTE.accent, 1);
+      s.die(); fx.slowMo(1.4); fx.flash(1); fx.shake(18); fx.hitStop(0.12); this.G.audio.win(); this.G.audio.death(); this.say('win'); fx.blowout(s.x, s.groundY + 24, s.z, 60, PALETTE.accent, 1);
       for (let i = 0; i < 4; i++) fx.anim(0.25 + i * 0.3, () => {}, () => { fx.explode(s.x + rand(-20, 20), s.groundY + 20 + i * 28, s.z + rand(-20, 20), 22); this.G.audio.boom(0.8); fx.shake(8); });
       fx.shardBurst(s.x, s.groundY + 14, s.z, 20, this.rig, (i) => this.G.audio.pickup(i));
     } else { this.G.audio.fail(); this.rig.dead = true; const d = this.dist || 1; this.rig.fling((this.rig.x - s.x) / d, (this.rig.z - s.z) / d, 24, 13); fx.explode(this.rig.x, this.rig.y + 2, this.rig.z, 14); this.G.audio.boom(0.9); }
@@ -414,7 +414,7 @@ export class Mission {
       if (this.phase === 'chase' && this.view === 'drive') { if (this.inZone && !this.zoneLatch) { if (this.phaseT > 0.5 && this.autoHold <= 0 && r.stun <= 0 && r.air <= 0 && this.windWait <= 0 && !this.wind && !this.dodging() && !this.sp.armed) this.enterGun('auto'); } else if (dist > this.zone * 1.12) this.zoneLatch = false; }
       this.gn.handle(dt, input);
       if (this.view === 'drive' && input.take('action', FEEL.inputBuffer)) { if (!this.act()) { G.audio.deny(); G.hud.deny('btn-action'); } }
-      if (this.view === 'drive' && input.take('boost')) { if (r.boost()) { G.audio.boost(); fx.shake(4); G.kickFov(); const bx = r.x - Math.sin(r.heading) * 3, bz = r.z - Math.cos(r.heading) * 3; fx.flashAt(bx, r.y + 1, bz, 7, '#ff9a3c', 0.18); for (let i = 0; i < 5; i++) fx.puff(bx + rand(-1.5, 1.5), r.y + 0.8, bz + rand(-1.5, 1.5), 4 + i, '#e9e2cc', 0.6, 2); } else { G.audio.deny(); G.hud.deny('btn-boost'); } }
+      if (this.view === 'drive' && input.take('boost')) { if (r.boost()) { G.audio.boost(r.mods.ups ? Math.min(5, r.mods.ups.turbo | 0) : 0); fx.shake(4); G.kickFov(); const bx = r.x - Math.sin(r.heading) * 3, bz = r.z - Math.cos(r.heading) * 3; fx.flashAt(bx, r.y + 1, bz, 7, '#ff9a3c', 0.18); for (let i = 0; i < 5; i++) fx.puff(bx + rand(-1.5, 1.5), r.y + 0.8, bz + rand(-1.5, 1.5), 4 + i, '#e9e2cc', 0.6, 2); } else { G.audio.deny(); G.hud.deny('btn-boost'); } }
     }
 
     // hands off: on the gun, and while the camera is away with DOROTHY or the rocket, the truck drives itself
